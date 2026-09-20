@@ -33,20 +33,59 @@ def _toolbar_page(title: str, content: Gtk.Widget) -> Adw.ToolbarView:
     return view
 
 
-def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
-    config = Config.load()
-    page = Adw.PreferencesPage()
+def _info_strip(config: Config) -> Gtk.Widget:
+    """Dark info strip below the banner: app + system information."""
+    host = distro.detect()
+    strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=48)
+    strip.add_css_class("info-strip")
 
-    # --- Status (compact) ------------------------------------------------
-    status = Adw.PreferencesGroup(title="Status")
+    def column(title: str, rows: list[tuple[str, str]]) -> Gtk.Widget:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        heading = Gtk.Label(label=title, xalign=0)
+        heading.add_css_class("info-title")
+        box.append(heading)
+        for key, value in rows:
+            line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            key_label = Gtk.Label(label=key, xalign=0)
+            key_label.add_css_class("info-key")
+            value_label = Gtk.Label(label=value, xalign=0)
+            value_label.add_css_class("info-value")
+            line.append(key_label)
+            line.append(value_label)
+            box.append(line)
+        return box
+
     state = "Installerat" if battlenet.installed(config) else "Ej installerat"
     if health.running():
         state += " · körs"
-    status.add(_kv("Battle.net", state))
     build = proton.find(config.proton_name)
-    status.add(_kv("Proton", build.name if build else "saknas"))
-    status.add(_kv("Prefix", str(config.prefix)))
-    page.add(status)
+    strip.append(
+        column(
+            "App",
+            [
+                ("Battle.net", state),
+                ("Proton", build.name if build else "saknas"),
+                ("Prefix", str(config.prefix)),
+            ],
+        )
+    )
+    strip.append(
+        column(
+            "System",
+            [
+                ("Distro", host.distro),
+                ("Session", f"{host.session} · {host.desktop}"),
+                ("Kernel", host.kernel),
+                ("GPU", host.gpu or "-"),
+            ],
+        )
+    )
+    return strip
+
+
+def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
+    config = Config.load()
+    page = Adw.PreferencesPage()
 
     # --- Maintenance (ice: preserve and keep running) --------------------
     maintenance = Adw.PreferencesGroup(title="Installation &amp; underhåll")
@@ -175,15 +214,6 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     paths.add(_kv("Loggar", str(config.log_dir)))
     page.add(paths)
 
-    # --- Diagnostics -----------------------------------------------------
-    host = distro.detect()
-    diagnostics = Adw.PreferencesGroup(title="Diagnostik")
-    diagnostics.add(_kv("Distro", host.distro))
-    diagnostics.add(_kv("Session", f"{host.session} · {host.desktop}"))
-    diagnostics.add(_kv("Kernel", host.kernel))
-    diagnostics.add(_kv("GPU", host.gpu or "-"))
-    page.add(diagnostics)
-
     # --- About -----------------------------------------------------------
     about = Adw.PreferencesGroup(title="Om")
     row = Adw.ActionRow(title="Frostfire Installer")
@@ -195,7 +225,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     page.add(about)
 
     # --- Advanced: hidden by default to keep the app simple --------------
-    advanced = [performance, runners, paths, diagnostics, about]
+    advanced = [performance, runners, paths, about]
     for group in advanced:
         group.set_visible(False)
 
@@ -223,6 +253,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         frame.set_child(picture)
         frame.set_hexpand(True)
         column.append(frame)
+    column.append(_info_strip(config))
     page.set_vexpand(True)
     column.append(page)
     return _toolbar_page("Frostfire Installer", column)

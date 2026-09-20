@@ -12,7 +12,24 @@ from .window import MainWindow  # noqa: E402
 
 APP_ID = "io.github.frostfireinstaller"
 
-_CSS = ".cover-frame { border-radius: 10px; }"
+_CSS = """
+.info-strip {
+    background-color: #0b1c30;
+    color: #eaf9ff;
+    padding: 14px 18px;
+}
+.info-title {
+    font-weight: bold;
+    color: #8fd8ff;
+    margin-bottom: 4px;
+}
+.info-key {
+    opacity: 0.65;
+}
+.info-value {
+    font-weight: bold;
+}
+"""
 
 
 class FrostyApplication(Adw.Application):
