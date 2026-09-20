@@ -16,17 +16,16 @@ from .window import MainWindow  # noqa: E402
 
 APP_ID = "io.github.frostfireinstaller"
 
-# Bundled dot-matrix font used in the info strip (overridable for testing).
-INFO_FONT = os.environ.get("FROSTFIRE_INFO_FONT", "Doto")
+# Bundled font used in the info strip (overridable for testing).
+INFO_FONT = os.environ.get("FROSTFIRE_INFO_FONT", "Saira")
 
 _CSS = f"""
 .info-strip {{
     background-color: #00070f;
     color: #eaf9ff;
     padding: 12px 18px;
-    font-family: "{INFO_FONT}", monospace;
-    font-size: 0.85em;
-    text-transform: uppercase;
+    font-family: "{INFO_FONT}", sans-serif;
+    font-size: 0.9em;
 }}
 .info-title {{
     color: #8fd8ff;
