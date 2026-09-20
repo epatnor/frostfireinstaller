@@ -216,17 +216,16 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         return row
 
     installed = battlenet.installed(config)
-    maintenance.add(
-        action(
-            "Installera / verifiera",
-            "Idempotent – gör bara det som saknas",
-            "Verifiera" if installed else "Installera",
-            lambda b: _ensure(window, b),
-            suggested=True,
-            icon=MATERIAL["download"],
-            tone="ice",
-        )
+    install_row = action(
+        "Verifiera Battle.net" if installed else "Installera Battle.net",
+        "Klienten är installerad" if installed else "Klienten är inte installerad",
+        "Verifiera" if installed else "Installera",
+        lambda b: _ensure(window, b, install_row),
+        suggested=True,
+        icon=MATERIAL["download"],
+        tone="ice",
     )
+    maintenance.add(install_row)
     maintenance.add(
         action(
             "Reparera",
@@ -369,7 +368,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
 
 
 # --- Handlers ------------------------------------------------------------
-def _ensure(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
+def _ensure(window: Adw.ApplicationWindow, button: Gtk.Button, row: Adw.ActionRow) -> None:
     button.set_sensitive(False)
     window.toast("Verifierar/installerar ...")  # type: ignore[attr-defined]
 
@@ -378,6 +377,8 @@ def _ensure(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
 
     def done(build: str) -> None:
         button.set_sensitive(True)
+        row.set_title("Verifiera Battle.net")
+        row.set_subtitle("Klienten är installerad")
         button.set_label("Verifiera")
         window.toast(f"Klart – Proton: {build}")  # type: ignore[attr-defined]
 
