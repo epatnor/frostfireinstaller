@@ -25,7 +25,7 @@ _CSS = f"""
     color: #eaf9ff;
     padding: 12px 18px;
     font-family: "{INFO_FONT}", sans-serif;
-    font-size: 0.9em;
+    font-size: 1em;
 }}
 .info-title {{
     color: #8fd8ff;
