@@ -18,6 +18,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   experimental Flatpak manifest + AppStream metadata.
 - Docs: `docs/architecture.md`, `docs/install.md`.
 
+### Changed
+- Refocused the project: a **stable, compatible platform to install Battle.net**;
+  games are launched from Blizzard's own launcher.
+- GUI: first page renamed to "Hem" (compatibility overview) and a new
+  **Prestanda** page with MangoHud / GameMode / Gamescope toggles.
+- Performance settings are applied when launching Battle.net via `frostylauncher`.
+
 ### Notes
 - Ported from the verified `bnetstarter` bash prototype (umu-launcher + GE-Proton on Bazzite).
 

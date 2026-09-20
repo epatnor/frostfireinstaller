@@ -11,7 +11,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk  # noqa: E402
 
 from .. import service  # noqa: E402
-from ..config import Config, save_proton_override  # noqa: E402
+from ..config import Config  # noqa: E402
 from ..core import battlenet, distro, profiles, proton  # noqa: E402
 from .helpers import data_file, run_async  # noqa: E402
 
@@ -68,14 +68,17 @@ def _game_card(profile: profiles.GameProfile) -> Gtk.Widget:
     return box
 
 
-def build_library(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
+def build_home(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
     for margin in ("top", "bottom", "start", "end"):
         getattr(content, f"set_margin_{margin}")(18)
 
     group = Adw.PreferencesGroup()
     group.set_title("frostylauncher")
-    group.set_description("Installera och starta Blizzards spel via umu + Proton.")
+    group.set_description(
+        "Stabil och kompatibel Battle.net-installation via umu + Proton. "
+        "Spelen startar du i Blizzards launcher."
+    )
     row = Adw.ActionRow(title="Battle.net", subtitle="Blizzard-launchern")
     launch = Gtk.Button(label="Starta")
     launch.add_css_class("suggested-action")
@@ -85,7 +88,7 @@ def build_library(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     group.add(row)
     content.append(group)
 
-    heading = Gtk.Label(label="Spel", xalign=0)
+    heading = Gtk.Label(label="Kompatibilitet", xalign=0)
     heading.add_css_class("heading")
     content.append(heading)
 
@@ -99,7 +102,7 @@ def build_library(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     for profile in profiles.load_all().values():
         flow.append(_game_card(profile))
     content.append(_scrolled(flow))
-    return _toolbar_page("Bibliotek", content)
+    return _toolbar_page("Hem", content)
 
 
 def _on_launch(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
@@ -203,8 +206,65 @@ def build_runners(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
 
 
 def _on_pick_runner(window: Adw.ApplicationWindow, name: str) -> None:
-    save_proton_override(name)
+    config = Config.load()
+    config.proton_name = name
+    config.save()
     window.toast(f"Runner satt till {name}")  # type: ignore[attr-defined]
+
+
+# --- Performance ---------------------------------------------------------
+def build_performance(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
+    config = Config.load()
+    page = Adw.PreferencesPage()
+
+    group = Adw.PreferencesGroup(title="Prestanda")
+    group.set_description("Tillämpas när Battle.net startas via frostylauncher.")
+
+    def switch(title: str, subtitle: str, value: bool, key: str) -> Adw.SwitchRow:
+        row = Adw.SwitchRow(title=title, subtitle=subtitle)
+        row.set_active(value)
+
+        def on_active(row: Adw.SwitchRow, _pspec: object) -> None:
+            cfg = Config.load()
+            setattr(cfg.performance, key, row.get_active())
+            cfg.save()
+
+        row.connect("notify::active", on_active)
+        return row
+
+    group.add(
+        switch(
+            "MangoHud",
+            "FPS/GPU-overlay (kräver MangoHud)",
+            config.performance.mangohud,
+            "mangohud",
+        )
+    )
+    group.add(
+        switch(
+            "GameMode",
+            "Optimera systemet under spel (Feral GameMode)",
+            config.performance.gamemode,
+            "gamemode",
+        )
+    )
+    group.add(
+        switch(
+            "Gamescope",
+            "Kör i en nästlad compositor (kan hjälpa på Wayland)",
+            config.performance.gamescope,
+            "gamescope",
+        )
+    )
+    page.add(group)
+
+    stack = Adw.PreferencesGroup(title="Grafikstack")
+    stack.add(_kv("DXVK", "Levereras av Proton (DX9/10/11 → Vulkan)"))
+    stack.add(_kv("VKD3D-Proton", "Levereras av Proton (DX12 → Vulkan)"))
+    stack.add(_kv("NTSync", "Används automatiskt om kärnan stödjer det"))
+    page.add(stack)
+
+    return _toolbar_page("Prestanda", page)
 
 
 # --- Logs ----------------------------------------------------------------

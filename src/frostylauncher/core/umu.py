@@ -1,8 +1,13 @@
-"""Thin wrapper around the host's ``umu-run``."""
+"""Thin wrapper around the host's ``umu-run``.
+
+Also builds the launch command with optional performance wrappers
+(gamemode, gamescope) and the MangoHud environment variable.
+"""
 
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from typing import IO, Any
@@ -22,7 +27,19 @@ def build_env(config: Config, proton: Path) -> dict[str, str]:
     env["GAMEID"] = config.gameid
     env["PROTONPATH"] = str(proton)
     env.update(BASE_ENV)
+    if config.performance.mangohud:
+        env["MANGOHUD"] = "1"
     return env
+
+
+def launch_command(config: Config, exe: str, extra_args: list[str] | None = None) -> list[str]:
+    """Assemble the command line, applying performance wrappers if enabled."""
+    cmd = ["umu-run", exe, *(extra_args or [])]
+    if config.performance.gamescope and shutil.which("gamescope"):
+        cmd = ["gamescope", "-f", "--", *cmd]
+    if config.performance.gamemode and shutil.which("gamemode"):
+        cmd = ["gamemode", *cmd]
+    return cmd
 
 
 def spawn(
@@ -34,9 +51,8 @@ def spawn(
     stderr: IO[Any] | int | None = None,
 ) -> subprocess.Popen[bytes]:
     """Launch a Windows executable via umu-run in a new session (detached)."""
-    cmd = ["umu-run", exe, *(extra_args or [])]
     return subprocess.Popen(  # noqa: S603
-        cmd,
+        launch_command(config, exe, extra_args),
         env=build_env(config, proton),
         stdout=stdout,
         stderr=stderr,
@@ -47,5 +63,6 @@ def spawn(
 def run_blocking(
     config: Config, proton: Path, exe: str, extra_args: list[str] | None = None
 ) -> int:
-    cmd = ["umu-run", exe, *(extra_args or [])]
-    return subprocess.call(cmd, env=build_env(config, proton))  # noqa: S603
+    return subprocess.call(  # noqa: S603
+        launch_command(config, exe, extra_args), env=build_env(config, proton)
+    )

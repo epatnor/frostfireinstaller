@@ -22,11 +22,14 @@ Ett installationsverktyg **och** en launcher för Blizzards spel på Linux — m
 
 ## 2. Vision
 
-- Ett **seriöst open source-verktyg** för att installera och köra Blizzards spel på Linux, med **fokus på World of Warcraft**.
+- Ett **seriöst open source-verktyg** som ger en **stabil och kompatibel plattform för att installera
+  Battle.net** på Linux (fokus: World of Warcraft). **Vi bygger inte en spel-launcher** — spelen
+  startas i Blizzards egen launcher.
+- **Prestanda och kompatibilitet är kärnan**: rätt Proton-runner, nödvändiga env-fixar, per-spel-noter,
+  samt valfritt MangoHud/GameMode/Gamescope.
 - **Bred distrokompatibilitet** (Bazzite/Fedora atomic, Arch, Debian/Ubuntu, ...).
 - **Snyggt GUI** + kraftfull CLI, delad kärna.
-- Ska klara **alla Blizzards spel** så långt tekniken tillåter (per-spel-profiler).
-- Lätt att installera (GitHub, Flatpak/Bazaar på sikt).
+- Lätt att installera (pipx/curl/ujust/brew, Flatpak/Bazaar på sikt).
 
 ---
 

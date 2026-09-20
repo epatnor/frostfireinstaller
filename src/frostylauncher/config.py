@@ -6,6 +6,11 @@ Overridable via ``$XDG_CONFIG_HOME/frostylauncher/config.toml``:
     gameid = "umu-battlenet"
     proton = "GE-Proton11-7-x86_64"   # optional, else auto-detected
 
+    [performance]
+    mangohud = false
+    gamemode = false
+    gamescope = false
+
     [paths]
     bnet_dir = "~/Games/battlenet"
 """
@@ -25,9 +30,17 @@ def _xdg(var: str, default: str) -> Path:
 
 
 @dataclass(slots=True)
+class Performance:
+    mangohud: bool = False
+    gamemode: bool = False
+    gamescope: bool = False
+
+
+@dataclass(slots=True)
 class Config:
     gameid: str
     proton_name: str | None
+    performance: Performance
     bnet_dir: Path
     prefix: Path
     installer: Path
@@ -53,6 +66,10 @@ class Config:
             "?os=win&installer=Battle.net-Setup.exe"
         )
 
+    @property
+    def config_file(self) -> Path:
+        return self.config_dir / "config.toml"
+
     # --- factory -----------------------------------------------------------
     @classmethod
     def load(cls) -> Config:
@@ -63,6 +80,7 @@ class Config:
         bnet_dir = Path(os.environ.get("FROSTYLAUNCHER_BNET_DIR", "~/Games/battlenet")).expanduser()
         gameid = "umu-battlenet"
         proton_name: str | None = None
+        performance = Performance()
 
         cfg_file = config_dir / "config.toml"
         if cfg_file.is_file():
@@ -70,13 +88,20 @@ class Config:
                 data = tomllib.load(fh)
             runtime = data.get("runtime", {})
             paths = data.get("paths", {})
+            perf = data.get("performance", {})
             gameid = str(runtime.get("gameid", gameid))
             proton_name = runtime.get("proton") or None
             bnet_dir = Path(paths.get("bnet_dir", bnet_dir)).expanduser()
+            performance = Performance(
+                mangohud=bool(perf.get("mangohud", False)),
+                gamemode=bool(perf.get("gamemode", False)),
+                gamescope=bool(perf.get("gamescope", False)),
+            )
 
         return cls(
             gameid=gameid,
             proton_name=proton_name,
+            performance=performance,
             bnet_dir=bnet_dir,
             prefix=bnet_dir / "prefix",
             installer=bnet_dir / "Battle.net-Setup.exe",
@@ -86,14 +111,18 @@ class Config:
             log_dir=state_dir / "logs",
         )
 
-
-def save_proton_override(name: str | None) -> Path:
-    """Write a minimal config.toml selecting a Proton build by directory name."""
-    config_dir = _xdg("XDG_CONFIG_HOME", "~/.config") / APP
-    config_dir.mkdir(parents=True, exist_ok=True)
-    path = config_dir / "config.toml"
-    lines = ["[runtime]"]
-    if name:
-        lines.append(f'proton = "{name}"')
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return path
+    # --- persistence -------------------------------------------------------
+    def save(self) -> Path:
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+        lines = ["[runtime]", f'gameid = "{self.gameid}"']
+        if self.proton_name:
+            lines.append(f'proton = "{self.proton_name}"')
+        lines += [
+            "",
+            "[performance]",
+            f"mangohud = {str(self.performance.mangohud).lower()}",
+            f"gamemode = {str(self.performance.gamemode).lower()}",
+            f"gamescope = {str(self.performance.gamescope).lower()}",
+        ]
+        self.config_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return self.config_file

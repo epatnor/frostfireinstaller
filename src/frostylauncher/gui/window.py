@@ -13,9 +13,10 @@ from gi.repository import Adw, Gtk  # noqa: E402
 from . import pages  # noqa: E402
 
 _NAV = [
-    ("library", "Bibliotek", "view-grid-symbolic"),
+    ("home", "Hem", "go-home-symbolic"),
     ("install", "Installera", "folder-download-symbolic"),
     ("runners", "Runners", "applications-games-symbolic"),
+    ("performance", "Prestanda", "power-profile-performance-symbolic"),
     ("logs", "Loggar", "text-x-generic-symbolic"),
     ("settings", "Inställningar", "preferences-system-symbolic"),
 ]
@@ -35,9 +36,10 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
-        self.stack.add_named(pages.build_library(self), "library")
+        self.stack.add_named(pages.build_home(self), "home")
         self.stack.add_named(pages.build_install(self), "install")
         self.stack.add_named(pages.build_runners(self), "runners")
+        self.stack.add_named(pages.build_performance(self), "performance")
         self.stack.add_named(pages.build_logs(self), "logs")
         self.stack.add_named(pages.build_settings(self), "settings")
 
@@ -60,7 +62,7 @@ class MainWindow(Adw.ApplicationWindow):
             row.add_prefix(Gtk.Image.new_from_icon_name(icon))
             listbox.append(row)
         listbox.connect("row-selected", self._on_row_selected)
-        initial = os.environ.get("FROSTYLAUNCHER_GUI_PAGE", "library")
+        initial = os.environ.get("FROSTYLAUNCHER_GUI_PAGE", "home")
         names = [name for name, _, _ in _NAV]
         index = names.index(initial) if initial in names else 0
         listbox.select_row(listbox.get_row_at_index(index))
