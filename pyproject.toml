@@ -3,13 +3,13 @@ requires = ["hatchling>=1.24"]
 build-backend = "hatchling.build"
 
 [project]
-name = "frostylauncher"
+name = "frostfireinstaller"
 version = "0.1.0"
 description = "A Battle.net installer helper for Linux (umu-launcher + Proton)."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "frostylauncher contributors" }]
+authors = [{ name = "frostfireinstaller contributors" }]
 keywords = ["blizzard", "battlenet", "wow", "wine", "proton", "umu", "linux", "launcher"]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -30,16 +30,16 @@ gui = ["PyGObject>=3.42"]
 dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11"]
 
 [project.scripts]
-frostylauncher = "frostylauncher.cli:main"
-frostylauncher-gui = "frostylauncher.gui:main"
+frostfireinstaller = "frostfireinstaller.cli:main"
+frostfireinstaller-gui = "frostfireinstaller.gui:main"
 
 [project.urls]
-Homepage = "https://github.com/OWNER/frostylauncher"
-Repository = "https://github.com/OWNER/frostylauncher"
-Issues = "https://github.com/OWNER/frostylauncher/issues"
+Homepage = "https://github.com/OWNER/frostfireinstaller"
+Repository = "https://github.com/OWNER/frostfireinstaller"
+Issues = "https://github.com/OWNER/frostfireinstaller/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/frostylauncher"]
+packages = ["src/frostfireinstaller"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src", "tests", "README.md", "LICENSE", "CHANGELOG.md", "CONTRIBUTING.md"]
@@ -53,7 +53,7 @@ select = ["E", "F", "I", "UP", "B", "W"]
 
 [tool.mypy]
 python_version = "3.11"
-files = ["src/frostylauncher"]
+files = ["src/frostfireinstaller"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

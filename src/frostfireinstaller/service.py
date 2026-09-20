@@ -18,12 +18,12 @@ from .logsetup import get_logger
 
 log = get_logger()
 
-APP_ID = "io.github.frostylauncher"
+APP_ID = "io.github.frostfireinstaller"
 
 
 def _data_file(*parts: str) -> Path | None:
     try:
-        base = resources.files("frostylauncher.data")
+        base = resources.files("frostfireinstaller.data")
     except (ModuleNotFoundError, TypeError):
         return None
     target = base.joinpath(*parts)
@@ -46,7 +46,7 @@ def ensure_shortcut(config: Config) -> Path:
     apps.mkdir(parents=True, exist_ok=True)
     icons.mkdir(parents=True, exist_ok=True)
 
-    icon_src = _data_file("icons", "frostylauncher.svg")
+    icon_src = _data_file("icons", "frostfireinstaller.svg")
     if icon_src is not None:
         shutil.copyfile(icon_src, icons / f"{APP_ID}.svg")
 
@@ -57,13 +57,13 @@ def ensure_shortcut(config: Config) -> Path:
         if system_index.is_file():
             shutil.copyfile(system_index, theme_index)
 
-    exe = shutil.which("frostylauncher")
-    exec_line = f"{exe} gui" if exe else f"{sys.executable} -m frostylauncher gui"
+    exe = shutil.which("frostfireinstaller")
+    exec_line = f"{exe} gui" if exe else f"{sys.executable} -m frostfireinstaller gui"
 
     desktop = apps / f"{APP_ID}.desktop"
     desktop.write_text(
         "[Desktop Entry]\n"
-        "Name=frostylauncher\n"
+        "Name=Frostfire Installer\n"
         "Comment=Battle.net installer helper (umu + Proton)\n"
         f"Exec={exec_line}\n"
         f"Icon={APP_ID}\n"
@@ -73,7 +73,7 @@ def ensure_shortcut(config: Config) -> Path:
         f"StartupWMClass={APP_ID}\n",
         encoding="utf-8",
     )
-    (apps / "frostylauncher.desktop").unlink(missing_ok=True)
+    (apps / "frostfireinstaller.desktop").unlink(missing_ok=True)
 
     if shutil.which("update-desktop-database"):
         subprocess.run(["update-desktop-database", str(apps)], check=False)

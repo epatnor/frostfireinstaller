@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from frostylauncher.core import profiles
+from frostfireinstaller.core import profiles
 
 
 def test_load_all_contains_known_games() -> None:

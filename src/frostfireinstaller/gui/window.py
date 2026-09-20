@@ -14,7 +14,7 @@ from . import pages  # noqa: E402
 class MainWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
-        self.set_title("frostylauncher")
+        self.set_title("Frostfire Installer")
         self.set_default_size(760, 820)
 
         self.toasts = Adw.ToastOverlay()

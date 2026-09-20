@@ -1,0 +1,11 @@
+# ujust recipe for Bazzite / universal-blue images.
+#
+# Add this file to your image's justfile (e.g. ublue-os/bazzite), then users run:
+#   ujust install-frostfireinstaller
+
+install-frostfireinstaller:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Installerar frostfireinstaller (Battle.net + WoW via umu + Proton) ..."
+    curl -fsSL https://raw.githubusercontent.com/OWNER/frostfireinstaller/main/packaging/install.sh | bash
+    echo "Klart. Kör 'frostfireinstaller doctor' eller 'frostfireinstaller gui'."

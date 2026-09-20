@@ -1,12 +1,12 @@
 # Architecture
 
-`frostylauncher` is a thin, opinionated orchestrator. It does **not** bundle Wine or Proton;
+`frostfireinstaller` is a thin, opinionated orchestrator. It does **not** bundle Wine or Proton;
 it drives what is already on the host.
 
 ## Backend: umu-launcher + Proton
 
 ```
-frostylauncher
+frostfireinstaller
   └─ umu-run  (host binary, package `umu-launcher`)
        └─ Proton build (GE-Proton / UMU-Proton / Proton-CachyOS)
             └─ Wine prefix  (~/Games/battlenet/prefix)
@@ -56,10 +56,10 @@ asking the user to do it manually.
 | Purpose | Path |
 |---|---|
 | Prefix / game data | `~/Games/battlenet` |
-| Config | `~/.config/frostylauncher/config.toml` |
-| State | `~/.local/state/frostylauncher` |
-| Logs | `~/.local/state/frostylauncher/logs` |
-| Shortcut | `~/.local/share/applications/frostylauncher.desktop` |
+| Config | `~/.config/frostfireinstaller/config.toml` |
+| State | `~/.local/state/frostfireinstaller` |
+| Logs | `~/.local/state/frostfireinstaller/logs` |
+| Shortcut | `~/.local/share/applications/frostfireinstaller.desktop` |
 
 ## Logging
 

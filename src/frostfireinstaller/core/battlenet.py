@@ -131,7 +131,7 @@ def _write_header(path: Path, config: Config, proton: Path) -> None:
     prefix_new = "ja" if not config.prefix.is_dir() else "nej"
     lines = [
         "=" * 60,
-        " frostylauncher - INSTALLATIONSLOGG",
+        " frostfireinstaller - INSTALLATIONSLOGG",
         "=" * 60,
         f"date            : {datetime.now().isoformat(timespec='seconds')}",
         f"host            : {platform.node()}",

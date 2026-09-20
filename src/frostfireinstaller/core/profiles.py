@@ -20,7 +20,7 @@ class GameProfile:
 
 
 def _games_dir():
-    return resources.files("frostylauncher.data").joinpath("games")
+    return resources.files("frostfireinstaller.data").joinpath("games")
 
 
 def load_all() -> dict[str, GameProfile]:

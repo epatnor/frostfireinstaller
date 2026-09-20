@@ -37,7 +37,7 @@ def run_async(
 def data_file(*parts: str) -> Path | None:
     """Return a path to a bundled data file (icons, covers), or None."""
     try:
-        base = resources.files("frostylauncher.data")
+        base = resources.files("frostfireinstaller.data")
     except (ModuleNotFoundError, TypeError):
         return None
     target = base.joinpath(*parts)
@@ -49,7 +49,7 @@ def data_file(*parts: str) -> Path | None:
 
 def make_icon(pixel_size: int = 48) -> Gtk.Widget:
     """Return the app icon as a Gtk.Image, falling back to a themed icon."""
-    svg = data_file("icons", "frostylauncher.svg")
+    svg = data_file("icons", "frostfireinstaller.svg")
     if svg is not None:
         image = Gtk.Image.new_from_file(str(svg))
         image.set_pixel_size(pixel_size)

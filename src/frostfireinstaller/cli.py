@@ -1,4 +1,4 @@
-"""Command-line interface for frostylauncher."""
+"""Command-line interface for frostfireinstaller."""
 
 from __future__ import annotations
 
@@ -72,7 +72,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
     config = Config.load()
     setup_run_log(config.log_dir)
     host = distro.detect()
-    print(f"frostylauncher {__version__}")
+    print(f"frostfireinstaller {__version__}")
     print(f"distro     : {host.distro}")
     print(f"atomic     : {'ja' if host.atomic else 'nej'}")
     print(f"session    : {host.session}")
@@ -136,7 +136,7 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
     health.kill_all()
     shutil.rmtree(config.bnet_dir, ignore_errors=True)
     (apps / f"{service.APP_ID}.desktop").unlink(missing_ok=True)
-    (apps / "frostylauncher.desktop").unlink(missing_ok=True)
+    (apps / "frostfireinstaller.desktop").unlink(missing_ok=True)
     icon.unlink(missing_ok=True)
     log.info("Borttaget")
     return 0
@@ -144,7 +144,7 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="frostylauncher",
+        prog="frostfireinstaller",
         description="A Battle.net installer helper for Linux (umu-launcher + Proton).",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")

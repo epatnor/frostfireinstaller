@@ -1,6 +1,6 @@
-# frostylauncher — projektplan
+# Frostfire Installer — projektplan
 
-Arbetsnamn: **frostylauncher** (ihopskrivet). Kan ändras senare.
+Arbetsnamn: **frostfireinstaller** (ihopskrivet). Kan ändras senare.
 Ett installationsverktyg **och** en launcher för Blizzards spel på Linux — man "launchar sitt äventyr".
 
 > Detta dokument samlar vision, beslut och vägen framåt. Prototypen i denna mapp (`bnetstarter`, bash)
@@ -10,8 +10,8 @@ Ett installationsverktyg **och** en launcher för Blizzards spel på Linux — m
 
 ## 1. Namn
 
-- **frostylauncher** — vänligt, tydligt, "frost" blinkar mot Blizzard, "launcher" mot att starta sitt äventyr.
-- Tillgänglighet: **PyPI `frosty-launcher` ledigt**, **GitHub `frostylauncher` ledigt**.
+- **frostfireinstaller** — vänligt, tydligt, "frost" blinkar mot Blizzard, "launcher" mot att starta sitt äventyr.
+- Tillgänglighet: **PyPI `frosty-launcher` ledigt**, **GitHub `frostfireinstaller` ledigt**.
 - "Frosty" är i sig ett vanligt ord (Wendy's, Frosty the Snowman, **Frosty Mod Manager** för EA/Frostbite).
   Därför är namnet lätt att ta men svårt att varumärkesskydda — vi kan byta senare.
 - Ej valda (men kollade): frostgate (belamrat), frostforge (WoW-privatserver), rimeforge (spelstudio),
@@ -40,12 +40,12 @@ Ett installationsverktyg **och** en launcher för Blizzards spel på Linux — m
 | Backend | **umu-launcher + Proton** (GE-Proton/UMU-Proton/Proton-CachyOS) | Valves moderna körväg, bäst prestanda, ingen mellanhand. Verifierat fungerande. |
 | Språk | **Python** (≥3.10) | Paketering, testbarhet, JSON-config, GUI, Flatpak. |
 | GUI | **GTK4 + libadwaita** (rekommendation) alt. Qt6/Kirigami | Polerat, adaptivt, PyGObject finns i GNOME-runtime → smidig Flatpak. |
-| CLI | `typer`/`argparse` | Entry point `frostylauncher`. |
+| CLI | `typer`/`argparse` | Entry point `frostfireinstaller`. |
 | Kärna | Ren Python, GUI-oberoende | Testbar, återanvändbar. |
 
 **Arkitektur (förslag):**
 ```
-frostylauncher/
+frostfireinstaller/
   core/     # distro, proton-detektering, prefix, game-profiler, loggning, health
   cli.py    # kommandon
   gui/      # GTK4-vyer
@@ -69,7 +69,7 @@ frostylauncher/
 
 ## 5. Blizzard-spel — vad som går
 
-`frostylauncher` stödjer **allt som Battle.net kan köra under Wine/Proton**. Enda undantagen är spel
+`frostfireinstaller` stödjer **allt som Battle.net kan köra under Wine/Proton**. Enda undantagen är spel
 vars anti-cheat vägrar Linux på OS-nivå — det är en **tillverkarens/anti-cheatens begränsning, inte vår**.
 
 **Fungerar (via Battle.net i prefix):** WoW (retail/Forever), WoW Classic, Diablo II/III/IV, Hearthstone,
@@ -89,7 +89,7 @@ Enskilda titlar kan vilja ha specifik Proton-version/flaggor → hanteras via pe
 | GitHub + `curl \| bash` | 1 | Enklast, funkar överallt |
 | **ujust-recept** (Bazzite) | 1 | Mest native på Bazzite; kräver merge i ublue |
 | Homebrew (Bazzite har brew) | 1 | Användarnivå, ingen root |
-| PyPI / pipx | 1–2 | `pipx install frostylauncher` |
+| PyPI / pipx | 1–2 | `pipx install frostfireinstaller` |
 | AUR | 2 | Arch |
 | **Flatpak → Flathub → Bazaar** | 3 | Kräver bundlad umu+Proton i sandboxen |
 
@@ -146,7 +146,7 @@ umu-run
 
 ## 9. Beslut kvar att ta
 
-1. **Projektmapp:** `~/Projects/frostylauncher`? (nuvarande prototyp ligger i `~/Skrivbord/bnetstarter`)
+1. **Projektmapp:** `~/Projects/frostfireinstaller`? (nuvarande prototyp ligger i `~/Skrivbord/bnetstarter`)
 2. **GUI-verktyg:** GTK4/libadwaita (rekommendation) eller Qt6/Kirigami?
 3. **Licens:** MIT eller GPL-3?
 4. **Flatpak-timing:** fas 3 (rekommendation) eller tidigare?

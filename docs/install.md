@@ -1,6 +1,6 @@
-# Installing frostylauncher
+# Installing frostfireinstaller
 
-frostylauncher drives the host's `umu-launcher` + a Proton build. It is **not**
+frostfireinstaller drives the host's `umu-launcher` + a Proton build. It is **not**
 a Flatpak-only app (yet); the recommended installs are below.
 
 ## Requirements
@@ -14,21 +14,21 @@ a Flatpak-only app (yet); the recommended installs are below.
 Check everything with:
 
 ```bash
-frostylauncher doctor
+frostfireinstaller doctor
 ```
 
 ## Channel 1 — pipx (recommended)
 
 ```bash
-pipx install frostylauncher
+pipx install frostfireinstaller
 # or straight from git:
-pipx install git+https://github.com/OWNER/frostylauncher
+pipx install git+https://github.com/OWNER/frostfireinstaller
 ```
 
 ## Channel 2 — curl | bash
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/OWNER/frostylauncher/main/packaging/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/OWNER/frostfireinstaller/main/packaging/install.sh | bash
 ```
 
 ## Channel 3 — Bazzite (`ujust`)
@@ -36,19 +36,19 @@ curl -fsSL https://raw.githubusercontent.com/OWNER/frostylauncher/main/packaging
 Once the recipe ships in your image:
 
 ```bash
-ujust install-frostylauncher
+ujust install-frostfireinstaller
 ```
 
-(Recipe source: `packaging/frostylauncher.ujust`.)
+(Recipe source: `packaging/frostfireinstaller.ujust`.)
 
 ## Channel 4 — Homebrew
 
 ```bash
-brew tap OWNER/frostylauncher
-brew install frostylauncher
+brew tap OWNER/frostfireinstaller
+brew install frostfireinstaller
 ```
 
-(Formula source: `packaging/brew/frostylauncher.rb`.)
+(Formula source: `packaging/brew/frostfireinstaller.rb`.)
 
 ## Channel 5 — Flatpak (experimental)
 
@@ -59,9 +59,9 @@ version will bundle umu + Proton inside the sandbox and ship on Flathub.
 ## After install
 
 ```bash
-frostylauncher          # ensure everything and launch Battle.net
-frostylauncher gui      # graphical interface
-frostylauncher doctor   # environment + status
+frostfireinstaller          # ensure everything and launch Battle.net
+frostfireinstaller gui      # graphical interface
+frostfireinstaller doctor   # environment + status
 ```
 
 First run downloads the Battle.net installer and installs it into

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from frostylauncher.core import proton
+from frostfireinstaller.core import proton
 
 
 def test_find_exact_name(tmp_path: Path, monkeypatch) -> None:

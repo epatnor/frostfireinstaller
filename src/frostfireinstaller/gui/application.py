@@ -10,7 +10,7 @@ from gi.repository import Adw, Gdk, Gio, Gtk  # noqa: E402
 
 from .window import MainWindow  # noqa: E402
 
-APP_ID = "io.github.frostylauncher"
+APP_ID = "io.github.frostfireinstaller"
 
 _CSS = ".cover-frame { border-radius: 10px; }"
 

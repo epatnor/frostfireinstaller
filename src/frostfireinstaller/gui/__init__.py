@@ -1,4 +1,4 @@
-"""GTK4 + libadwaita front-end for frostylauncher."""
+"""GTK4 + libadwaita front-end for frostfireinstaller."""
 
 from __future__ import annotations
 

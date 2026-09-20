@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from frostylauncher.config import Config, Performance
-from frostylauncher.core import battlenet
+from frostfireinstaller.config import Config, Performance
+from frostfireinstaller.core import battlenet
 
 
 def make_config(prefix: Path) -> Config:

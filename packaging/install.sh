@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# frostylauncher installer (curl | bash friendly).
+# frostfireinstaller installer (curl | bash friendly).
 #
-#   curl -fsSL https://raw.githubusercontent.com/OWNER/frostylauncher/main/packaging/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/OWNER/frostfireinstaller/main/packaging/install.sh | bash
 #
 # Installs the CLI (and GUI) into an isolated pipx environment.
 
 set -euo pipefail
 
-REPO="${FROSTYLAUNCHER_REPO:-https://github.com/OWNER/frostylauncher}"
+REPO="${FROSTYLAUNCHER_REPO:-https://github.com/OWNER/frostfireinstaller}"
 PIPX_BIN=""
 
-info() { printf '\033[34m[frostylauncher]\033[0m %s\n' "$*"; }
-fail() { printf '\033[31m[frostylauncher]\033[0m %s\n' "$*" >&2; exit 1; }
+info() { printf '\033[34m[frostfireinstaller]\033[0m %s\n' "$*"; }
+fail() { printf '\033[31m[frostfireinstaller]\033[0m %s\n' "$*" >&2; exit 1; }
 
 command -v python3 >/dev/null 2>&1 || fail "python3 saknas"
 python3 - <<'PY' || fail "Python 3.11+ krävs"
@@ -27,11 +27,11 @@ else
   PIPX_BIN="$(python3 -m site --user-base)/bin/pipx"
 fi
 
-info "Installerar frostylauncher ..."
+info "Installerar frostfireinstaller ..."
 if ! "$PIPX_BIN" install --force "$REPO"; then
   info "Föll tillbaka på lokal källa (om du kör från ett klonat repo)"
   "$PIPX_BIN" install --force .
 fi
 
-info "Klart. Verifiera med: frostylauncher doctor"
-info "Starta GUI: frostylauncher gui"
+info "Klart. Verifiera med: frostfireinstaller doctor"
+info "Starta GUI: frostfireinstaller gui"

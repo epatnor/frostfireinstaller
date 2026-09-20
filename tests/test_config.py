@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from frostylauncher.config import Config
+from frostfireinstaller.config import Config
 
 
 def test_load_derives_paths() -> None:

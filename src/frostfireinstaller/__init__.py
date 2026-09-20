@@ -1,4 +1,4 @@
-"""frostylauncher - install and launch Blizzard games on Linux.
+"""frostfireinstaller - install and launch Blizzard games on Linux.
 
 Backend: umu-launcher + Proton. See PLAN.md and docs/ for details.
 """

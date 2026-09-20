@@ -7,7 +7,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-LOGGER_NAME = "frostylauncher"
+LOGGER_NAME = "frostfireinstaller"
 
 _COLORS = {
     logging.DEBUG: "\033[2m",

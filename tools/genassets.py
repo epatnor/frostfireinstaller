@@ -2,13 +2,13 @@
 """Generate raster assets (banners, hero art, textures) via the OpenAI Images API.
 
 The API key is NEVER stored in this repository. Provide it via (first match wins):
-  - ``--key-file PATH`` (e.g. ``~/.config/frostylauncher/openai.key``, chmod 600)
+  - ``--key-file PATH`` (e.g. ``~/.config/frostfireinstaller/openai.key``, chmod 600)
   - environment variable ``OPENAI_API_KEY``
-  - a ``.env`` file in the project root or ``~/.config/frostylauncher/.env``
+  - a ``.env`` file in the project root or ``~/.config/frostfireinstaller/.env``
 
 Examples:
     OPENAI_API_KEY=... python tools/genassets.py --prompt "..." --out assets/generated/hero.png
-    python tools/genassets.py --key-file ~/.config/frostylauncher/openai.key \
+    python tools/genassets.py --key-file ~/.config/frostfireinstaller/openai.key \
         --prompt "..." --out assets/generated/icon.png
 
 Note: for functional app icons prefer hand-written SVG; use this for concept/hero/banner art.
@@ -31,7 +31,7 @@ DEFAULT_MODEL = "gpt-image-2.5-sunburst"
 
 _DOTENV_CANDIDATES = (
     Path.cwd() / ".env",
-    Path.home() / ".config/frostylauncher/.env",
+    Path.home() / ".config/frostfireinstaller/.env",
 )
 
 

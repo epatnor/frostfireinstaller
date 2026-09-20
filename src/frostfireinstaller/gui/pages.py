@@ -48,8 +48,9 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     status.add(_kv("Prefix", str(config.prefix)))
     page.add(status)
 
-    # --- Actions ---------------------------------------------------------
-    actions = Adw.PreferencesGroup(title="Åtgärder")
+    # --- Maintenance (ice: preserve and keep running) --------------------
+    maintenance = Adw.PreferencesGroup(title="Installation & underhåll")
+    maintenance.set_description("Is – bevara och hålla igång.")
 
     def action(
         title: str,
@@ -67,7 +68,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         row.add_suffix(button)
         return row
 
-    actions.add(
+    maintenance.add(
         action(
             "Installera / verifiera",
             "Idempotent – gör bara det som saknas",
@@ -76,7 +77,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             suggested=True,
         )
     )
-    actions.add(
+    maintenance.add(
         action(
             "Starta Battle.net",
             "Startar Blizzard-launchern",
@@ -84,7 +85,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             lambda b: _launch(window, b),
         )
     )
-    actions.add(
+    maintenance.add(
         action(
             "Reparera",
             "Stoppa, rensa CEF/cache och starta om",
@@ -92,14 +93,22 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             lambda b: _repair(window, b),
         )
     )
+    maintenance.add(
+        action("Stoppa", "Dödar alla Battle.net-processer", "Stoppa", lambda b: _kill(window, b))
+    )
+    page.add(maintenance)
+
+    # --- Destructive (fire: reinstall / remove) --------------------------
+    destructive = Adw.PreferencesGroup(title="Återställ & ta bort")
+    destructive.set_description("Eld – förstörande åtgärder.")
 
     keep_games = Adw.SwitchRow(
         title="Behåll spel",
         subtitle="Behåll installerade spel vid återinstallation eller borttagning",
     )
     keep_games.set_active(True)
-    actions.add(keep_games)
-    actions.add(
+    destructive.add(keep_games)
+    destructive.add(
         action(
             "Återinstallera Battle.net",
             "Tar bort klienten och installerar om",
@@ -107,7 +116,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             lambda b: _reinstall(window, b, keep_games),
         )
     )
-    actions.add(
+    destructive.add(
         action(
             "Ta bort Battle.net",
             "Tar bort klienten (spelen behålls om växeln är på)",
@@ -115,14 +124,11 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             lambda b: _remove(window, b, keep_games),
         )
     )
-    actions.add(
-        action("Stoppa", "Dödar alla Battle.net-processer", "Stoppa", lambda b: _kill(window, b))
-    )
-    page.add(actions)
+    page.add(destructive)
 
     # --- Performance -----------------------------------------------------
     performance = Adw.PreferencesGroup(title="Prestanda")
-    performance.set_description("Tillämpas när Battle.net startas via frostylauncher.")
+    performance.set_description("Tillämpas när Battle.net startas via frostfireinstaller.")
     performance.add(_switch(config, "MangoHud", "FPS/GPU-overlay (kräver MangoHud)", "mangohud"))
     performance.add(_switch(config, "GameMode", "Optimera systemet under spel", "gamemode"))
     performance.add(
@@ -180,7 +186,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
 
     # --- About -----------------------------------------------------------
     about = Adw.PreferencesGroup(title="Om")
-    row = Adw.ActionRow(title="frostylauncher")
+    row = Adw.ActionRow(title="Frostfire Installer")
     button = Gtk.Button(label="Om")
     button.set_valign(Gtk.Align.CENTER)
     button.connect("clicked", lambda *_: _show_about(window))
@@ -200,7 +206,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         column.append(frame)
     page.set_vexpand(True)
     column.append(page)
-    return _toolbar_page("frostylauncher", column)
+    return _toolbar_page("Frostfire Installer", column)
 
 
 # --- Handlers ------------------------------------------------------------
@@ -375,10 +381,10 @@ def _show_about(window: Adw.ApplicationWindow) -> None:
     from .. import __version__
 
     dialog = Adw.AboutDialog(
-        application_name="frostylauncher",
+        application_name="Frostfire Installer",
         application_icon="applications-games-symbolic",
         version=__version__,
-        developer_name="frostylauncher contributors",
+        developer_name="frostfireinstaller contributors",
         comments="A Battle.net installer helper for Linux (umu-launcher + Proton).",
         license_type=Gtk.License.MIT_X11,
     )

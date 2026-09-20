@@ -1,6 +1,6 @@
 """Configuration and XDG paths.
 
-Overridable via ``$XDG_CONFIG_HOME/frostylauncher/config.toml``:
+Overridable via ``$XDG_CONFIG_HOME/frostfireinstaller/config.toml``:
 
     [runtime]
     gameid = "umu-battlenet"
@@ -22,7 +22,7 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-APP = "frostylauncher"
+APP = "frostfireinstaller"
 
 
 def _xdg(var: str, default: str) -> Path:
