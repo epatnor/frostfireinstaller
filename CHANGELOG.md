@@ -24,6 +24,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
 - Scope: a **Battle.net installer helper** (not a game launcher or library).
 - GUI actions split into "Installation & underhåll" (ice) and "Återställ & ta bort" (fire).
 - Icon install now includes the hicolor `index.theme` so the app icon resolves.
+- New app icon: the frostfire gateway (half ice, half lava), installed as a full
+  hicolor PNG set (16-512 px) via `tools/make_icon.py`; help popovers on the
+  performance toggles.
 
 ### Notes
 - Ported from the verified `bnetstarter` bash prototype (umu-launcher + GE-Proton on Bazzite).

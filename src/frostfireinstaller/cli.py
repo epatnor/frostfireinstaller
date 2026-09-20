@@ -126,7 +126,9 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
     config = Config.load()
     apps = service.applications_dir()
     data_home = Path(os.environ.get("XDG_DATA_HOME", "~/.local/share")).expanduser()
-    icon = data_home / "icons/hicolor/scalable/apps" / f"{service.APP_ID}.svg"
+    sizes = (16, 24, 32, 48, 64, 128, 256, 512)
+    icons = [data_home / f"icons/hicolor/{size}x{size}/apps/{service.APP_ID}.png" for size in sizes]
+    icons.append(data_home / f"icons/hicolor/scalable/apps/{service.APP_ID}.svg")
     log.warning("Tar bort: %s, genväg och ikon", config.bnet_dir)
     if not args.yes:
         answer = input("Säker? [j/N] ").strip().lower()
@@ -137,7 +139,8 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
     shutil.rmtree(config.bnet_dir, ignore_errors=True)
     (apps / f"{service.APP_ID}.desktop").unlink(missing_ok=True)
     (apps / "frostfireinstaller.desktop").unlink(missing_ok=True)
-    icon.unlink(missing_ok=True)
+    for icon in icons:
+        icon.unlink(missing_ok=True)
     log.info("Borttaget")
     return 0
 
