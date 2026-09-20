@@ -44,6 +44,23 @@ _CSS = f"""
 .icon-fire {{
     color: #ff7a2f;
 }}
+.icon-red {{
+    color: #f66151;
+}}
+.icon-green {{
+    color: #57e389;
+}}
+.run-bar {{
+    background-color: #081a28;
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}}
+.run-status-on {{
+    color: #57e389;
+}}
+.run-status-off {{
+    opacity: 0.6;
+}}
 """
 
 

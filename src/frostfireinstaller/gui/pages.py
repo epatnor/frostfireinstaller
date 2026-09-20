@@ -54,6 +54,53 @@ def _toolbar_page(title: str, content: Gtk.Widget) -> Adw.ToolbarView:
     return view
 
 
+def _set_run_state(status: Gtk.Label, icon: Gtk.Label, button: Gtk.Button, running: bool) -> None:
+    status.set_label("Startat" if running else "Stoppat")
+    status.remove_css_class("run-status-on")
+    status.remove_css_class("run-status-off")
+    status.add_css_class("run-status-on" if running else "run-status-off")
+
+    icon.set_label(MATERIAL["stop"] if running else MATERIAL["play"])
+    icon.remove_css_class("icon-red")
+    icon.remove_css_class("icon-green")
+    icon.add_css_class("icon-red" if running else "icon-green")
+
+    button.set_label("Stoppa" if running else "Starta")
+    if running:
+        button.remove_css_class("suggested-action")
+    else:
+        button.add_css_class("suggested-action")
+
+
+def _run_bar() -> tuple[Gtk.Widget, Gtk.Label, Gtk.Label, Gtk.Button]:
+    """Standalone Battle.net start/stop bar (not part of any card)."""
+    bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+    bar.add_css_class("run-bar")
+
+    icon = _icon(MATERIAL["play"])
+    bar.append(icon)
+
+    text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    text.set_valign(Gtk.Align.CENTER)
+    title = Gtk.Label(label="Battle.net", xalign=0)
+    title.add_css_class("heading")
+    status = Gtk.Label(xalign=0)
+    text.append(title)
+    text.append(status)
+    bar.append(text)
+
+    spacer = Gtk.Box()
+    spacer.set_hexpand(True)
+    bar.append(spacer)
+
+    button = Gtk.Button()
+    button.set_valign(Gtk.Align.CENTER)
+    bar.append(button)
+
+    _set_run_state(status, icon, button, health.running())
+    return bar, icon, status, button
+
+
 def _info_strip(config: Config) -> Gtk.Widget:
     """Dark info strip below the banner: app + system information."""
     host = distro.detect()
@@ -142,18 +189,6 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             tone="ice",
         )
     )
-    running = health.running()
-    run_row = Adw.ActionRow(
-        title="Battle.net",
-        subtitle="Starta eller stoppa Blizzard-launchern",
-    )
-    run_row.add_prefix(_icon(MATERIAL["play"], "ice"))
-    run_button = Gtk.Button(label="Stoppa" if running else "Starta")
-    run_button.set_valign(Gtk.Align.CENTER)
-    run_button.connect("clicked", lambda b: _toggle_run(window, b))
-    run_row.add_suffix(run_button)
-    maintenance.add(run_row)
-
     maintenance.add(
         action(
             "Reparera",
@@ -289,6 +324,9 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         frame.set_hexpand(True)
         column.append(frame)
     column.append(_info_strip(config))
+    run_bar, run_icon, run_status, run_button = _run_bar()
+    run_button.connect("clicked", lambda b: _toggle_run(window, b, run_status, run_icon))
+    column.append(run_bar)
     page.set_vexpand(True)
     column.append(page)
     return _toolbar_page("Frostfire Installer", column)
@@ -313,11 +351,13 @@ def _ensure(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
     run_async(work, done, error)
 
 
-def _toggle_run(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
+def _toggle_run(
+    window: Adw.ApplicationWindow, button: Gtk.Button, status: Gtk.Label, icon: Gtk.Label
+) -> None:
     """One button for start/stop - two sides of the same coin."""
     if health.running():
         health.kill_all()
-        button.set_label("Starta")
+        _set_run_state(status, icon, button, False)
         window.toast("Stoppade Battle.net")  # type: ignore[attr-defined]
         return
 
@@ -329,8 +369,8 @@ def _toggle_run(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
         service.launch(config, service.ensure(config))
 
     def done(_result: object) -> None:
-        button.set_label("Stoppa")
         button.set_sensitive(True)
+        _set_run_state(status, icon, button, True)
         window.toast("Startar Battle.net")  # type: ignore[attr-defined]
 
     def error(exc: Exception) -> None:
