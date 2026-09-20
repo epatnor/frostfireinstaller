@@ -62,7 +62,7 @@ def ensure_shortcut(config: Config) -> Path:
         f"Icon={APP_ID}\n"
         "Terminal=false\n"
         "Type=Application\n"
-        "Categories=Game;Utility;\n"
+        "Categories=Game;\n"
         f"StartupWMClass={APP_ID}\n",
         encoding="utf-8",
     )
