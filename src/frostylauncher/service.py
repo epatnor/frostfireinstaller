@@ -50,6 +50,13 @@ def ensure_shortcut(config: Config) -> Path:
     if icon_src is not None:
         shutil.copyfile(icon_src, icons / f"{APP_ID}.svg")
 
+    # The user hicolor theme needs an index.theme, otherwise the icon is not found.
+    theme_index = data_home / "icons/hicolor/index.theme"
+    if not theme_index.is_file():
+        system_index = Path("/usr/share/icons/hicolor/index.theme")
+        if system_index.is_file():
+            shutil.copyfile(system_index, theme_index)
+
     exe = shutil.which("frostylauncher")
     exec_line = f"{exe} gui" if exe else f"{sys.executable} -m frostylauncher gui"
 
