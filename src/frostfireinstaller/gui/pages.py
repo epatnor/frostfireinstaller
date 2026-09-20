@@ -8,6 +8,8 @@ launcher, not here.
 
 from __future__ import annotations
 
+import shutil
+
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -273,10 +275,18 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     # --- Performance -----------------------------------------------------
     performance = Adw.PreferencesGroup(title="Prestanda")
     performance.set_description("Tillämpas när Battle.net startas via frostfireinstaller.")
-    performance.add(_switch(config, "MangoHud", "FPS/GPU-overlay (kräver MangoHud)", "mangohud"))
-    performance.add(_switch(config, "GameMode", "Optimera systemet under spel", "gamemode"))
+    performance.add(_switch(config, "MangoHud", "FPS/GPU-overlay", "mangohud", "mangohud"))
     performance.add(
-        _switch(config, "Gamescope", "Nästlad compositor (kan hjälpa på Wayland)", "gamescope")
+        _switch(config, "GameMode", "Optimera systemet under spel", "gamemode", "gamemode")
+    )
+    performance.add(
+        _switch(
+            config,
+            "Gamescope",
+            "Nästlad compositor (kan hjälpa på Wayland)",
+            "gamescope",
+            "gamescope",
+        )
     )
     page.add(performance)
 
@@ -458,9 +468,14 @@ def _pick_runner(window: Adw.ApplicationWindow, name: str) -> None:
     window.toast(f"Runner satt till {name}")  # type: ignore[attr-defined]
 
 
-def _switch(config: Config, title: str, subtitle: str, key: str) -> Adw.SwitchRow:
+def _switch(config: Config, title: str, subtitle: str, key: str, tool: str) -> Adw.SwitchRow:
     row = Adw.SwitchRow(title=title, subtitle=subtitle)
     row.set_active(bool(getattr(config.performance, key)))
+
+    if shutil.which(tool) is None:
+        row.set_sensitive(False)
+        row.set_subtitle(f"{subtitle} – {tool} är inte installerat")
+        return row
 
     def on_active(row: Adw.SwitchRow, _pspec: object) -> None:
         cfg = Config.load()
