@@ -194,6 +194,25 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     about.add(row)
     page.add(about)
 
+    # --- Advanced: hidden by default to keep the app simple --------------
+    advanced = [performance, runners, paths, diagnostics, about]
+    for group in advanced:
+        group.set_visible(False)
+
+    advanced_group = Adw.PreferencesGroup(title="Avancerat")
+    show_advanced = Adw.SwitchRow(
+        title="Visa avancerat",
+        subtitle="Prestanda, runner, sökvägar och diagnostik",
+    )
+
+    def on_show(row: Adw.SwitchRow, _pspec: object) -> None:
+        for group in advanced:
+            group.set_visible(row.get_active())
+
+    show_advanced.connect("notify::active", on_show)
+    advanced_group.add(show_advanced)
+    page.add(advanced_group)
+
     # --- Column: banner on top, everything else below --------------------
     column = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
     banner = data_file("header", "frostfire_installer_header_1.png")
