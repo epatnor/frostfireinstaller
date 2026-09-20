@@ -24,6 +24,25 @@ def _kv(title: str, value: str) -> Adw.ActionRow:
     return Adw.ActionRow(title=title, subtitle=value)
 
 
+# Material Symbols glyphs (subset of the variable font, see data/fonts).
+MATERIAL = {
+    "download": "\uf090",
+    "play": "\ue037",
+    "build": "\uf8cd",
+    "stop": "\ue047",
+    "refresh": "\ue5d5",
+    "delete": "\ue92e",
+    "log": "\ue873",
+    "info": "\ue88e",
+}
+
+
+def _icon(glyph: str) -> Gtk.Widget:
+    label = Gtk.Label(label=glyph)
+    label.add_css_class("material-icon")
+    return label
+
+
 def _toolbar_page(title: str, content: Gtk.Widget) -> Adw.ToolbarView:
     view = Adw.ToolbarView()
     header = Adw.HeaderBar()
@@ -100,7 +119,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     ) -> Adw.ActionRow:
         row = Adw.ActionRow(title=title, subtitle=subtitle)
         if icon is not None:
-            row.add_prefix(Gtk.Image.new_from_icon_name(icon))
+            row.add_prefix(_icon(icon))
         button = Gtk.Button(label=label)
         button.set_valign(Gtk.Align.CENTER)
         if suggested:
@@ -116,7 +135,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Kör",
             lambda b: _ensure(window, b),
             suggested=True,
-            icon="folder-download-symbolic",
+            icon=MATERIAL["download"],
         )
     )
     maintenance.add(
@@ -125,7 +144,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Startar Blizzard-launchern",
             "Starta",
             lambda b: _launch(window, b),
-            icon="media-playback-start-symbolic",
+            icon=MATERIAL["play"],
         )
     )
     maintenance.add(
@@ -134,7 +153,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Stoppa, rensa CEF/cache och starta om",
             "Reparera",
             lambda b: _repair(window, b),
-            icon="tools-symbolic",
+            icon=MATERIAL["build"],
         )
     )
     maintenance.add(
@@ -143,7 +162,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Dödar alla Battle.net-processer",
             "Stoppa",
             lambda b: _kill(window, b),
-            icon="process-stop-symbolic",
+            icon=MATERIAL["stop"],
         )
     )
     page.add(maintenance)
@@ -164,7 +183,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Tar bort klienten och installerar om",
             "Kör",
             lambda b: _reinstall(window, b, keep_games),
-            icon="view-refresh-symbolic",
+            icon=MATERIAL["refresh"],
         )
     )
     destructive.add(
@@ -173,7 +192,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Tar bort klienten (spelen behålls om växeln är på)",
             "Ta bort",
             lambda b: _remove(window, b, keep_games),
-            icon="user-trash-symbolic",
+            icon=MATERIAL["delete"],
         )
     )
     page.add(destructive)
@@ -216,7 +235,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Körnings- och installationsloggar",
             "Visa",
             lambda _b: _show_logs(window),
-            icon="text-x-generic-symbolic",
+            icon=MATERIAL["log"],
         )
     )
     page.add(logs)
@@ -231,7 +250,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     # --- About -----------------------------------------------------------
     about = Adw.PreferencesGroup(title="Om")
     row = Adw.ActionRow(title="Frostfire Installer")
-    row.add_prefix(Gtk.Image.new_from_icon_name("help-about-symbolic"))
+    row.add_prefix(_icon(MATERIAL["info"]))
     button = Gtk.Button(label="Om")
     button.set_valign(Gtk.Align.CENTER)
     button.connect("clicked", lambda *_: _show_about(window))

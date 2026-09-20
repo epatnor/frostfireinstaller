@@ -17,7 +17,7 @@ from .window import MainWindow  # noqa: E402
 APP_ID = "io.github.frostfireinstaller"
 
 # Bundled dot-matrix font used in the info strip (overridable for testing).
-INFO_FONT = os.environ.get("FROSTFIRE_INFO_FONT", "Silkscreen")
+INFO_FONT = os.environ.get("FROSTFIRE_INFO_FONT", "Doto")
 
 _CSS = f"""
 .info-strip {{
@@ -25,7 +25,7 @@ _CSS = f"""
     color: #eaf9ff;
     padding: 12px 18px;
     font-family: "{INFO_FONT}", monospace;
-    font-size: 0.75em;
+    font-size: 0.85em;
     text-transform: uppercase;
 }}
 .info-title {{
@@ -34,6 +34,10 @@ _CSS = f"""
 }}
 .info-key {{
     opacity: 0.65;
+}}
+.material-icon {{
+    font-family: "Material Symbols Outlined";
+    font-size: 18px;
 }}
 """
 
