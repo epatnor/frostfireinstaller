@@ -165,7 +165,7 @@ def _info_strip(config: Config) -> Gtk.Widget:
 
     state = "Installerat" if battlenet.installed(config) else "Ej installerat"
     if health.running():
-        state += " · körs"
+        state += ", körs"
     build = proton.find(config.proton_name)
     strip.append(
         column(
@@ -181,8 +181,8 @@ def _info_strip(config: Config) -> Gtk.Widget:
         column(
             "System",
             [
-                ("Distro", f"{host.distro} · {host.kernel}"),
-                ("Session", f"{host.session} · {host.desktop}"),
+                ("Distro", f"{host.distro}, {host.kernel}"),
+                ("Session", f"{host.session}, {host.desktop}"),
                 ("GPU", host.gpu or "-"),
             ],
         )

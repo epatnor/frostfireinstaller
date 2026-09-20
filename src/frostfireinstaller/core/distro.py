@@ -71,13 +71,13 @@ def _nvidia() -> str | None:
     name, _, rest = lines[0].partition(",")
     memory, _, driver = rest.partition(",")
     clean = name.strip().removeprefix("NVIDIA ").removesuffix(" Laptop GPU")
-    parts = [clean]
+    label = clean
     amount = memory.split()[0] if memory.split() else ""
     if amount.isdigit() and memory.strip().lower().endswith("mib"):
-        parts.append(_gib(int(amount) * 1024**2))
+        label = f"{clean}, {_gib(int(amount) * 1024**2)}"
     if driver.strip():
-        parts.append(driver.strip())
-    return " · ".join(parts)
+        label = f"{label} ({driver.strip()})"
+    return label
 
 
 def _pci() -> str | None:
@@ -94,7 +94,7 @@ def _pci() -> str | None:
             for prefix in ("Advanced Micro Devices, Inc. [AMD/ATI] ", "Intel Corporation "):
                 name = name.removeprefix(prefix)
             vram = _vram_sysfs()
-            return f"{name} · {vram}" if vram else name
+            return f"{name}, {vram}" if vram else name
     return None
 
 
@@ -102,11 +102,16 @@ def _gpu() -> str | None:
     return _nvidia() or _pci()
 
 
+def _session() -> str:
+    raw = os.environ.get("XDG_SESSION_TYPE", "unknown")
+    return {"wayland": "Wayland", "x11": "X11", "tty": "TTY"}.get(raw.lower(), raw)
+
+
 def detect() -> HostInfo:
     return HostInfo(
         distro=_os_release(),
         atomic=shutil.which("rpm-ostree") is not None,
-        session=os.environ.get("XDG_SESSION_TYPE", "unknown"),
+        session=_session(),
         desktop=os.environ.get("XDG_CURRENT_DESKTOP", "unknown"),
         kernel=platform.release(),
         gpu=_gpu(),

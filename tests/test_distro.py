@@ -23,7 +23,7 @@ def test_nvidia_formats_name_vram_and_driver(monkeypatch) -> None:
 
     monkeypatch.setattr(distro.shutil, "which", lambda _name: "/usr/bin/nvidia-smi")
     monkeypatch.setattr(distro.subprocess, "run", fake_run)
-    assert distro._nvidia() == "GeForce RTX 3050 Ti · 4 GB · 615.71.09"
+    assert distro._nvidia() == "GeForce RTX 3050 Ti, 4 GB (615.71.09)"
 
 
 def test_nvidia_returns_none_without_tool(monkeypatch) -> None:
@@ -43,3 +43,12 @@ def test_pci_strips_vendor_prefix(monkeypatch) -> None:
     monkeypatch.setattr(distro.subprocess, "run", fake_run)
     monkeypatch.setattr(distro, "_vram_sysfs", lambda: None)
     assert distro._pci() == "Raptor Lake-P [Iris Xe]"
+
+
+def test_session_is_normalised(monkeypatch) -> None:
+    monkeypatch.setenv("XDG_SESSION_TYPE", "wayland")
+    assert distro._session() == "Wayland"
+    monkeypatch.setenv("XDG_SESSION_TYPE", "x11")
+    assert distro._session() == "X11"
+    monkeypatch.delenv("XDG_SESSION_TYPE", raising=False)
+    assert distro._session() == "unknown"

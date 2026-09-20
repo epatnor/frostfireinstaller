@@ -28,7 +28,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   hicolor PNG set (16-512 px) via `tools/make_icon.py`; help popovers on the
   performance toggles.
 - Info strip: symmetric 3+3 layout; GPU row shows name, VRAM and driver
-  (`nvidia-smi`, with an `lspci`/sysfs fallback for AMD/Intel).
+  (`nvidia-smi`, with an `lspci`/sysfs fallback for AMD/Intel). Commas and
+  parentheses instead of `·`; session name normalised (`Wayland`, `X11`).
 
 ### Notes
 - Ported from the verified `bnetstarter` bash prototype (umu-launcher + GE-Proton on Bazzite).
