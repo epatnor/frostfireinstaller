@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=frostylauncher
+Comment=Launch Blizzard games on Linux
+Exec=frostylauncher gui
+Icon=io.github.frostylauncher
+Terminal=false
+Type=Application
+Categories=Game;
+Keywords=blizzard;battlenet;wow;world of warcraft;
+StartupNotify=true

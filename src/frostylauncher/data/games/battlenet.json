@@ -1,0 +1,13 @@
+{
+  "id": "battlenet",
+  "name": "Battle.net",
+  "product": null,
+  "proton": null,
+  "env": {
+    "WINE_SIMULATE_WRITECOPY": "1",
+    "WINEDLLOVERRIDES": "locationapi=d"
+  },
+  "args": [],
+  "anti_cheat": null,
+  "notes": "Blizzard launcher. Requires umu-launcher + a Proton build. First run after install should be closed before logging in."
+}

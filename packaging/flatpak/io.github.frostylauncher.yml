@@ -1,0 +1,33 @@
+# Flatpak manifest (EXPERIMENTAL - phase 3).
+#
+# frostylauncher drives the host's umu-launcher + Proton. A sandboxed app cannot
+# run host binaries directly, so this manifest uses `flatpak-spawn --host`
+# (needs --talk-name=org.freedesktop.Flatpak). The long-term plan is to bundle
+# umu + a Proton runtime inside the sandbox (like Bottles does).
+#
+# Build:  flatpak-builder --user --install --force-clean build-dir io.github.frostylauncher.yml
+
+app-id: io.github.frostylauncher
+runtime: org.gnome.Platform
+runtime-version: "49"
+sdk: org.gnome.Sdk
+command: frostylauncher
+base: org.gnome.Platform
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --share=network
+  - --filesystem=~/Games
+  - --filesystem=~/.local/share/Steam:ro
+  - --filesystem=~/.local/share/applications
+  - --talk-name=org.freedesktop.Flatpak
+modules:
+  - name: frostylauncher
+    buildsystem: simple
+    build-commands:
+      - pip3 install --prefix=/app .
+    sources:
+      - type: dir
+        path: ../..

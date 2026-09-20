@@ -1,0 +1,10 @@
+{
+  "id": "wow-classic",
+  "name": "World of Warcraft Classic",
+  "product": "wow_classic",
+  "proton": null,
+  "env": {},
+  "args": [],
+  "anti_cheat": null,
+  "notes": "Classic Era / Anniversary / Season realms."
+}

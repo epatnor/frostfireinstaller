@@ -1,0 +1,10 @@
+{
+  "id": "wow",
+  "name": "World of Warcraft",
+  "product": "wow",
+  "proton": null,
+  "env": {},
+  "args": [],
+  "anti_cheat": null,
+  "notes": "Retail and Forever. In Battle.net use the Game Version menu: during the beta choose 'World of Warcraft: Forever Beta' under In Development."
+}
