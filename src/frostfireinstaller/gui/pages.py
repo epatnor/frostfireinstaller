@@ -148,6 +148,8 @@ def _info_strip(config: Config) -> Gtk.Widget:
 
     def column(title: str, rows: list[tuple[str, str]]) -> Gtk.Widget:
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        box.set_hexpand(True)
+        box.set_halign(Gtk.Align.START)
         heading = Gtk.Label(label=title, xalign=0)
         heading.add_css_class("info-title")
         box.append(heading)
@@ -179,9 +181,8 @@ def _info_strip(config: Config) -> Gtk.Widget:
         column(
             "System",
             [
-                ("Distro", host.distro),
+                ("Distro", f"{host.distro} · {host.kernel}"),
                 ("Session", f"{host.session} · {host.desktop}"),
-                ("Kernel", host.kernel),
                 ("GPU", host.gpu or "-"),
             ],
         )
