@@ -138,15 +138,18 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             icon=MATERIAL["download"],
         )
     )
-    maintenance.add(
-        action(
-            "Starta Battle.net",
-            "Startar Blizzard-launchern",
-            "Starta",
-            lambda b: _launch(window, b),
-            icon=MATERIAL["play"],
-        )
+    running = health.running()
+    run_row = Adw.ActionRow(
+        title="Battle.net",
+        subtitle="Starta eller stoppa Blizzard-launchern",
     )
+    run_row.add_prefix(_icon(MATERIAL["play"]))
+    run_button = Gtk.Button(label="Stoppa" if running else "Starta")
+    run_button.set_valign(Gtk.Align.CENTER)
+    run_button.connect("clicked", lambda b: _toggle_run(window, b))
+    run_row.add_suffix(run_button)
+    maintenance.add(run_row)
+
     maintenance.add(
         action(
             "Reparera",
@@ -154,15 +157,6 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Reparera",
             lambda b: _repair(window, b),
             icon=MATERIAL["build"],
-        )
-    )
-    maintenance.add(
-        action(
-            "Stoppa",
-            "Dödar alla Battle.net-processer",
-            "Stoppa",
-            lambda b: _kill(window, b),
-            icon=MATERIAL["stop"],
         )
     )
     page.add(maintenance)
@@ -312,14 +306,23 @@ def _ensure(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
     run_async(work, done, error)
 
 
-def _launch(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
+def _toggle_run(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
+    """One button for start/stop - two sides of the same coin."""
+    if health.running():
+        health.kill_all()
+        button.set_label("Starta")
+        window.toast("Stoppade Battle.net")  # type: ignore[attr-defined]
+        return
+
     button.set_sensitive(False)
+    window.toast("Startar Battle.net ...")  # type: ignore[attr-defined]
 
     def work() -> None:
         config = Config.load()
         service.launch(config, service.ensure(config))
 
     def done(_result: object) -> None:
+        button.set_label("Stoppa")
         button.set_sensitive(True)
         window.toast("Startar Battle.net")  # type: ignore[attr-defined]
 
@@ -390,11 +393,6 @@ def _remove(window: Adw.ApplicationWindow, button: Gtk.Button, keep: Adw.SwitchR
         window.toast(f"Fel: {exc}")  # type: ignore[attr-defined]
 
     run_async(work, done, error)
-
-
-def _kill(window: Adw.ApplicationWindow, _button: Gtk.Button) -> None:
-    health.kill_all()
-    window.toast("Stoppade Battle.net")  # type: ignore[attr-defined]
 
 
 def _pick_runner(window: Adw.ApplicationWindow, name: str) -> None:
