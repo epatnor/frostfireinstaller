@@ -7,7 +7,7 @@
 
 set -euo pipefail
 
-REPO="${FROSTYLAUNCHER_REPO:-https://github.com/OWNER/frostfireinstaller}"
+REPO="${FROSTFIREINSTALLER_REPO:-https://github.com/OWNER/frostfireinstaller}"
 PIPX_BIN=""
 
 info() { printf '\033[34m[frostfireinstaller]\033[0m %s\n' "$*"; }

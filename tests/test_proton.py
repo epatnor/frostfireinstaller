@@ -23,3 +23,9 @@ def test_find_prefers_ge_proton(tmp_path: Path, monkeypatch) -> None:
 def test_find_missing_returns_none(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(proton, "SEARCH_DIRS", (tmp_path,))
     assert proton.find() is None
+
+
+def test_find_rejects_traversal(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(proton, "SEARCH_DIRS", (tmp_path,))
+    for name in ("../etc", "a/b", ".", "..", "", "a\\b"):
+        assert proton.find(name) is None

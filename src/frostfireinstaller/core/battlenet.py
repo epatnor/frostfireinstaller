@@ -22,21 +22,35 @@ def installed(config: Config) -> bool:
     return config.battlenet_exe_unix.is_file()
 
 
-def client_log_dir(config: Config) -> Path | None:
+def _wine_user_dir(config: Config, *parts: str) -> Path | None:
+    """First existing ``drive_c/users/<user>/<parts...>`` (user name varies)."""
     users = config.prefix / "drive_c" / "users"
     if not users.is_dir():
         return None
-    for path in users.glob("*/AppData/Local/Battle.net/Logs"):
-        if path.is_dir():
-            return path
+    for path in sorted(users.iterdir()):
+        candidate = path.joinpath(*parts)
+        if candidate.exists():
+            return candidate
     return None
+
+
+def client_log_dir(config: Config) -> Path | None:
+    path = _wine_user_dir(config, "AppData", "Local", "Battle.net", "Logs")
+    return path if path and path.is_dir() else None
+
+
+def _mtime(path: Path) -> float:
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
 
 
 def latest_client_log(config: Config) -> Path | None:
     directory = client_log_dir(config)
     if not directory:
         return None
-    logs = sorted(directory.glob("battle.net-*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
+    logs = sorted(directory.glob("battle.net-*.log"), key=_mtime, reverse=True)
     return logs[0] if logs else None
 
 
@@ -112,8 +126,8 @@ def install(config: Config, proton: Path) -> Path:
 # --- config --------------------------------------------------------------
 def ensure_config(config: Config) -> bool:
     """Turn off 'start minimized' so the login window shows. Returns True if changed."""
-    cfg = config.prefix / "drive_c/users/steamuser/AppData/Roaming/Battle.net/Battle.net.config"
-    if not cfg.is_file():
+    cfg = _wine_user_dir(config, "AppData", "Roaming", "Battle.net", "Battle.net.config")
+    if cfg is None:
         return False
     text = cfg.read_text(encoding="utf-8", errors="ignore")
     if '"MinimizedOnStartup": "true"' not in text:

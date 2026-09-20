@@ -15,6 +15,11 @@ SEARCH_DIRS: tuple[Path, ...] = (
 PREFERRED: tuple[str, ...] = ("GE-Proton", "UMU-Proton", "Proton")
 
 
+def _safe_name(name: str) -> bool:
+    """Reject anything that is not a plain directory name (no traversal)."""
+    return bool(name) and "/" not in name and "\\" not in name and name not in {".", ".."}
+
+
 def find(proton_name: str | None = None) -> Path | None:
     """Return the path to a Proton build, or ``None``.
 
@@ -22,6 +27,8 @@ def find(proton_name: str | None = None) -> Path | None:
     Otherwise builds are searched preferring GE-Proton, then UMU-Proton, then Proton.
     """
     if proton_name:
+        if not _safe_name(proton_name):
+            return None
         for directory in SEARCH_DIRS:
             candidate = directory / proton_name
             if candidate.is_dir():

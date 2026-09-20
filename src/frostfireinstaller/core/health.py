@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import time
@@ -29,14 +30,22 @@ def running() -> bool:
 
 
 def kill_all() -> None:
+    """Stop the client and its helpers (SIGTERM first, then SIGKILL)."""
+    for pattern in _KILL_PATTERNS:
+        subprocess.run(["pkill", "-f", pattern], check=False)  # noqa: S603, S607
+    time.sleep(1)
     for pattern in _KILL_PATTERNS:
         subprocess.run(["pkill", "-9", "-f", pattern], check=False)  # noqa: S603, S607
-    time.sleep(1)
     log.info("Dödade Battle.net-processer")
 
 
 def ui_window_present() -> bool:
-    if not shutil.which("xwininfo"):
+    """True if the Battle.net window is on screen — or if we cannot tell.
+
+    Pure Wayland sessions have no usable X window tree, so a failed or
+    impossible check must never be read as "the client is broken".
+    """
+    if not shutil.which("xwininfo") or not os.environ.get("DISPLAY"):
         return True  # cannot tell; assume fine
     try:
         out = subprocess.run(
@@ -47,6 +56,8 @@ def ui_window_present() -> bool:
         )
     except OSError:
         return True
+    if out.returncode != 0:
+        return True  # no X display available; cannot tell
     return "Battle.net Login" in out.stdout or '"Battle.net"' in out.stdout
 
 

@@ -29,6 +29,18 @@ def _xdg(var: str, default: str) -> Path:
     return Path(os.environ.get(var, default)).expanduser()
 
 
+def _toml_value(value: object) -> str:
+    """Render a scalar as TOML (strings are escaped; no silent injection)."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+    raise TypeError(f"cannot serialise {type(value).__name__} to TOML")
+
+
 @dataclass(slots=True)
 class Performance:
     mangohud: bool = False
@@ -77,7 +89,9 @@ class Config:
         config_dir = _xdg("XDG_CONFIG_HOME", "~/.config") / APP
         state_dir = _xdg("XDG_STATE_HOME", "~/.local/state") / APP
 
-        bnet_dir = Path(os.environ.get("FROSTYLAUNCHER_BNET_DIR", "~/Games/battlenet")).expanduser()
+        bnet_dir = Path(
+            os.environ.get("FROSTFIREINSTALLER_BNET_DIR", "~/Games/battlenet")
+        ).expanduser()
         gameid = "umu-battlenet"
         proton_name: str | None = None
         performance = Performance()
@@ -113,16 +127,30 @@ class Config:
 
     # --- persistence -------------------------------------------------------
     def save(self) -> Path:
+        """Write ``config.toml``, keeping keys and sections we do not manage."""
         self.config_dir.mkdir(parents=True, exist_ok=True)
-        lines = ["[runtime]", f'gameid = "{self.gameid}"']
+        data: dict[str, dict[str, object]] = {}
+        if self.config_file.is_file():
+            with self.config_file.open("rb") as fh:
+                data = tomllib.load(fh)
+
+        runtime = data.setdefault("runtime", {})
+        runtime["gameid"] = self.gameid
         if self.proton_name:
-            lines.append(f'proton = "{self.proton_name}"')
-        lines += [
-            "",
-            "[performance]",
-            f"mangohud = {str(self.performance.mangohud).lower()}",
-            f"gamemode = {str(self.performance.gamemode).lower()}",
-            f"gamescope = {str(self.performance.gamescope).lower()}",
-        ]
-        self.config_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            runtime["proton"] = self.proton_name
+        data.setdefault("performance", {}).update(
+            {
+                "mangohud": self.performance.mangohud,
+                "gamemode": self.performance.gamemode,
+                "gamescope": self.performance.gamescope,
+            }
+        )
+
+        lines: list[str] = []
+        for section, values in data.items():
+            lines.append(f"[{section}]")
+            for key, value in values.items():
+                lines.append(f"{key} = {_toml_value(value)}")
+            lines.append("")
+        self.config_file.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
         return self.config_file

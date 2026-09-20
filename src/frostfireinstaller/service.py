@@ -38,17 +38,24 @@ def applications_dir() -> Path:
     return base / "applications"
 
 
+def _desktop_exec(*parts: str) -> str:
+    """Quote argv parts for a .desktop Exec line (double quotes per the spec)."""
+    return " ".join(f'"{part}"' if " " in part else part for part in parts)
+
+
 def ensure_shortcut(config: Config) -> Path:
     """Install the app icon and a .desktop entry that opens the GUI."""
     data_home = Path(os.environ.get("XDG_DATA_HOME", "~/.local/share")).expanduser()
     apps = applications_dir()
-    icons = data_home / "icons/hicolor/scalable/apps"
+    icons = data_home / "icons/hicolor/512x512/apps"
     apps.mkdir(parents=True, exist_ok=True)
     icons.mkdir(parents=True, exist_ok=True)
 
-    icon_src = _data_file("icons", "frostfireinstaller.svg")
+    icon_src = _data_file("icons", "frostfireinstaller.png")
     if icon_src is not None:
-        shutil.copyfile(icon_src, icons / f"{APP_ID}.svg")
+        shutil.copyfile(icon_src, icons / f"{APP_ID}.png")
+    # Icons from the pre-0.1 SVG were installed here; drop any stale copy.
+    (data_home / "icons/hicolor/scalable/apps" / f"{APP_ID}.svg").unlink(missing_ok=True)
 
     # The user hicolor theme needs an index.theme, otherwise the icon is not found.
     theme_index = data_home / "icons/hicolor/index.theme"
@@ -58,7 +65,10 @@ def ensure_shortcut(config: Config) -> Path:
             shutil.copyfile(system_index, theme_index)
 
     exe = shutil.which("frostfireinstaller")
-    exec_line = f"{exe} gui" if exe else f"{sys.executable} -m frostfireinstaller gui"
+    if exe:
+        exec_line = _desktop_exec(exe, "gui")
+    else:
+        exec_line = _desktop_exec(sys.executable, "-m", "frostfireinstaller", "gui")
 
     desktop = apps / f"{APP_ID}.desktop"
     desktop.write_text(
