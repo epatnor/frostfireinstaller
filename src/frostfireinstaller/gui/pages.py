@@ -274,10 +274,32 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
 
     # --- Performance -----------------------------------------------------
     performance = Adw.PreferencesGroup(title="Prestanda")
-    performance.set_description("Tillämpas när Battle.net startas via frostfireinstaller.")
-    performance.add(_switch(config, "MangoHud", "FPS/GPU-overlay", "mangohud", "mangohud"))
+    performance.set_description(
+        "Gäller spelen du startar från Battle.net (samma Wine-session), inte bara launchern."
+    )
     performance.add(
-        _switch(config, "GameMode", "Optimera systemet under spel", "gamemode", "gamemode")
+        _switch(
+            config,
+            "MangoHud",
+            "FPS/GPU-overlay",
+            "mangohud",
+            "mangohud",
+            "Visar FPS, frame time, GPU/CPU-last och temperatur ovanpå spelet. "
+            "Påverkar inte prestandan, bara diagnostik. Följer med ner i spelen "
+            "eftersom de kör i samma Wine-session.",
+        )
+    )
+    performance.add(
+        _switch(
+            config,
+            "GameMode",
+            "Optimera systemet under spel",
+            "gamemode",
+            "gamemode",
+            "Justerar systemet tillfälligt medan Battle.net och spelen kör: "
+            "CPU-governor till performance och mindre bakgrundsstök. Kan ge några "
+            "procent jämnare FPS. Kräver paketet gamemode.",
+        )
     )
     performance.add(
         _switch(
@@ -286,6 +308,9 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Nästlad compositor (kan hjälpa på Wayland)",
             "gamescope",
             "gamescope",
+            "Kör Battle.net och spelen i en nästlad compositor. Kan skala "
+            "upplösning, köra FSR-uppskalning och låsa FPS, samt lösa "
+            "Wayland-fönsterproblem. Låt vara av om allt fungerar.",
         )
     )
     page.add(performance)
@@ -468,9 +493,37 @@ def _pick_runner(window: Adw.ApplicationWindow, name: str) -> None:
     window.toast(f"Runner satt till {name}")  # type: ignore[attr-defined]
 
 
-def _switch(config: Config, title: str, subtitle: str, key: str, tool: str) -> Adw.SwitchRow:
+def _help_button(text: str) -> Gtk.Widget:
+    label = Gtk.Label(label=text)
+    label.set_wrap(True)
+    label.set_max_width_chars(42)
+    label.set_margin_top(10)
+    label.set_margin_bottom(10)
+    label.set_margin_start(10)
+    label.set_margin_end(10)
+
+    popover = Gtk.Popover()
+    popover.set_child(label)
+
+    button = Gtk.MenuButton()
+    button.set_icon_name("help-about-symbolic")
+    button.add_css_class("flat")
+    button.set_valign(Gtk.Align.CENTER)
+    button.set_popover(popover)
+    return button
+
+
+def _switch(
+    config: Config,
+    title: str,
+    subtitle: str,
+    key: str,
+    tool: str,
+    help_text: str,
+) -> Adw.SwitchRow:
     row = Adw.SwitchRow(title=title, subtitle=subtitle)
     row.set_active(bool(getattr(config.performance, key)))
+    row.add_suffix(_help_button(help_text))
 
     if shutil.which(tool) is None:
         row.set_sensitive(False)
