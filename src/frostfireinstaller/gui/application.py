@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import ctypes
+import os
+from importlib import resources
 
 import gi
 
@@ -10,46 +12,46 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, Gtk  # noqa: E402
 
-from .helpers import data_file  # noqa: E402
 from .window import MainWindow  # noqa: E402
 
 APP_ID = "io.github.frostfireinstaller"
 
-_CSS = """
-.info-strip {
+# Bundled dot-matrix font used in the info strip (overridable for testing).
+INFO_FONT = os.environ.get("FROSTFIRE_INFO_FONT", "Silkscreen")
+
+_CSS = f"""
+.info-strip {{
     background-color: #00070f;
     color: #eaf9ff;
-    padding: 14px 18px;
-    font-family: "Doto", monospace;
-    font-size: 1.05em;
-}
-.info-title {
-    font-weight: bold;
+    padding: 12px 18px;
+    font-family: "{INFO_FONT}", monospace;
+    font-size: 0.75em;
+    text-transform: uppercase;
+}}
+.info-title {{
     color: #8fd8ff;
     margin-bottom: 4px;
-}
-.info-key {
+}}
+.info-key {{
     opacity: 0.65;
-}
-.info-value {
-    font-weight: bold;
-}
+}}
 """
 
 
 def _register_fonts() -> None:
     """Register bundled fonts with fontconfig so Pango can use them."""
-    font = data_file("fonts", "Doto.ttf")
-    if font is None:
-        return
     try:
+        fonts = resources.files("frostfireinstaller.data").joinpath("fonts")
         fontconfig = ctypes.CDLL("libfontconfig.so.1")
-    except OSError:
+    except (ModuleNotFoundError, OSError, TypeError):
         return
     fontconfig.FcConfigGetCurrent.restype = ctypes.c_void_p
     fontconfig.FcConfigAppFontAddFile.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
     fontconfig.FcConfigAppFontAddFile.restype = ctypes.c_int
-    fontconfig.FcConfigAppFontAddFile(fontconfig.FcConfigGetCurrent(), str(font).encode())
+    config = fontconfig.FcConfigGetCurrent()
+    for entry in fonts.iterdir():
+        if entry.name.endswith(".ttf"):
+            fontconfig.FcConfigAppFontAddFile(config, str(entry).encode())
 
 
 class FrostyApplication(Adw.Application):

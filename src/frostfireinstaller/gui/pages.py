@@ -49,7 +49,6 @@ def _info_strip(config: Config) -> Gtk.Widget:
             key_label = Gtk.Label(label=key, xalign=0)
             key_label.add_css_class("info-key")
             value_label = Gtk.Label(label=value, xalign=0)
-            value_label.add_css_class("info-value")
             line.append(key_label)
             line.append(value_label)
             box.append(line)
@@ -97,8 +96,11 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         label: str,
         callback: object,
         suggested: bool = False,
+        icon: str | None = None,
     ) -> Adw.ActionRow:
         row = Adw.ActionRow(title=title, subtitle=subtitle)
+        if icon is not None:
+            row.add_prefix(Gtk.Image.new_from_icon_name(icon))
         button = Gtk.Button(label=label)
         button.set_valign(Gtk.Align.CENTER)
         if suggested:
@@ -114,6 +116,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Kör",
             lambda b: _ensure(window, b),
             suggested=True,
+            icon="folder-download-symbolic",
         )
     )
     maintenance.add(
@@ -122,6 +125,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Startar Blizzard-launchern",
             "Starta",
             lambda b: _launch(window, b),
+            icon="media-playback-start-symbolic",
         )
     )
     maintenance.add(
@@ -130,10 +134,17 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Stoppa, rensa CEF/cache och starta om",
             "Reparera",
             lambda b: _repair(window, b),
+            icon="tools-symbolic",
         )
     )
     maintenance.add(
-        action("Stoppa", "Dödar alla Battle.net-processer", "Stoppa", lambda b: _kill(window, b))
+        action(
+            "Stoppa",
+            "Dödar alla Battle.net-processer",
+            "Stoppa",
+            lambda b: _kill(window, b),
+            icon="process-stop-symbolic",
+        )
     )
     page.add(maintenance)
 
@@ -153,6 +164,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Tar bort klienten och installerar om",
             "Kör",
             lambda b: _reinstall(window, b, keep_games),
+            icon="view-refresh-symbolic",
         )
     )
     destructive.add(
@@ -161,6 +173,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Tar bort klienten (spelen behålls om växeln är på)",
             "Ta bort",
             lambda b: _remove(window, b, keep_games),
+            icon="user-trash-symbolic",
         )
     )
     page.add(destructive)
@@ -203,6 +216,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Körnings- och installationsloggar",
             "Visa",
             lambda _b: _show_logs(window),
+            icon="text-x-generic-symbolic",
         )
     )
     page.add(logs)
@@ -217,6 +231,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     # --- About -----------------------------------------------------------
     about = Adw.PreferencesGroup(title="Om")
     row = Adw.ActionRow(title="Frostfire Installer")
+    row.add_prefix(Gtk.Image.new_from_icon_name("help-about-symbolic"))
     button = Gtk.Button(label="Om")
     button.set_valign(Gtk.Align.CENTER)
     button.connect("clicked", lambda *_: _show_about(window))
