@@ -27,6 +27,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
 - New app icon: the frostfire gateway (half ice, half lava), installed as a full
   hicolor PNG set (16-512 px) via `tools/make_icon.py`; help popovers on the
   performance toggles.
+- Info strip: symmetric 3+3 layout; GPU row shows name, VRAM and driver
+  (`nvidia-smi`, with an `lspci`/sysfs fallback for AMD/Intel).
 
 ### Notes
 - Ported from the verified `bnetstarter` bash prototype (umu-launcher + GE-Proton on Bazzite).
