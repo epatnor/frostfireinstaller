@@ -14,7 +14,7 @@ APP_ID = "io.github.frostfireinstaller"
 
 _CSS = """
 .info-strip {
-    background-color: #0b1c30;
+    background-color: #00070f;
     color: #eaf9ff;
     padding: 14px 18px;
 }
