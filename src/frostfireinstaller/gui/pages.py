@@ -216,7 +216,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         return row
 
     installed = battlenet.installed(config)
-    install_row = action(
+    install_row: Adw.ActionRow = action(
         "Verifiera Battle.net" if installed else "Installera Battle.net",
         "Klienten är installerad" if installed else "Klienten är inte installerad",
         "Verifiera" if installed else "Installera",
