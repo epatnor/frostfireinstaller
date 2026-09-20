@@ -47,6 +47,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   parentheses instead of `·`; session name normalised (`Wayland`, `X11`).
 
 ### Notes
+- Project URLs and packaging point at `epatnor/frostfireinstaller`; the repo is not
+  pushed yet, so install from a clone until it is.
 - Ported from the verified `bnetstarter` bash prototype (umu-launcher + GE-Proton on Bazzite).
 
 ## [0.1.0] - 2026-09-20

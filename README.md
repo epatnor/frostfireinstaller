@@ -51,11 +51,12 @@ frostfireinstaller gui
 ## Install
 
 ```bash
-pipx install frostfireinstaller          # CLI (once published)
-# or from source:
-git clone https://github.com/OWNER/frostfireinstaller
+git clone https://github.com/epatnor/frostfireinstaller
 cd frostfireinstaller
-pipx install .
+pipx install .                           # or: pip install --user .
+
+# once published:
+pipx install frostfireinstaller
 ```
 
 ## Usage

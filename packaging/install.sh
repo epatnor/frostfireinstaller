@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # frostfireinstaller installer (curl | bash friendly).
 #
-#   curl -fsSL https://raw.githubusercontent.com/OWNER/frostfireinstaller/main/packaging/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/epatnor/frostfireinstaller/main/packaging/install.sh | bash
 #
 # Installs the CLI (and GUI) into an isolated pipx environment.
 
 set -euo pipefail
 
-REPO="${FROSTFIREINSTALLER_REPO:-https://github.com/OWNER/frostfireinstaller}"
+REPO="${FROSTFIREINSTALLER_REPO:-https://github.com/epatnor/frostfireinstaller}"
 PIPX_BIN=""
 
 info() { printf '\033[34m[frostfireinstaller]\033[0m %s\n' "$*"; }

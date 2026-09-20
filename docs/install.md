@@ -22,13 +22,13 @@ frostfireinstaller doctor
 ```bash
 pipx install frostfireinstaller
 # or straight from git:
-pipx install git+https://github.com/OWNER/frostfireinstaller
+pipx install git+https://github.com/epatnor/frostfireinstaller
 ```
 
 ## Channel 2 — curl | bash
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/OWNER/frostfireinstaller/main/packaging/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/epatnor/frostfireinstaller/main/packaging/install.sh | bash
 ```
 
 ## Channel 3 — Bazzite (`ujust`)
@@ -44,7 +44,7 @@ ujust install-frostfireinstaller
 ## Channel 4 — Homebrew
 
 ```bash
-brew tap OWNER/frostfireinstaller
+brew tap epatnor/frostfireinstaller
 brew install frostfireinstaller
 ```
 
@@ -99,5 +99,12 @@ frostfireinstaller remove --purge
 frostfireinstaller uninstall    # remove prefix, desktop entry and icon
 ```
 
-> The `OWNER/frostfireinstaller` URLs above are placeholders until the project is
-> published; until then install from a local clone (`pipx install .`).
+> The project is not published yet, so the PyPI/curl/brew commands only work once
+> `epatnor/frostfireinstaller` is pushed. Until then, install from a clone:
+>
+> ```bash
+> git clone https://github.com/epatnor/frostfireinstaller
+> cd frostfireinstaller && pipx install .
+> ```
+>
+> The Homebrew tap expects a companion repo named `homebrew-frostfireinstaller`.

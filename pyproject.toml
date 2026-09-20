@@ -9,7 +9,7 @@ description = "A Battle.net installer helper for Linux (umu-launcher + Proton)."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "frostfireinstaller contributors" }]
+authors = [{ name = "Patrik Nordlund (@epatnor)" }]
 keywords = ["blizzard", "battlenet", "wow", "wine", "proton", "umu", "linux", "launcher"]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -34,9 +34,9 @@ frostfireinstaller = "frostfireinstaller.cli:main"
 frostfireinstaller-gui = "frostfireinstaller.gui:main"
 
 [project.urls]
-Homepage = "https://github.com/OWNER/frostfireinstaller"
-Repository = "https://github.com/OWNER/frostfireinstaller"
-Issues = "https://github.com/OWNER/frostfireinstaller/issues"
+Homepage = "https://github.com/epatnor/frostfireinstaller"
+Repository = "https://github.com/epatnor/frostfireinstaller"
+Issues = "https://github.com/epatnor/frostfireinstaller/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/frostfireinstaller"]

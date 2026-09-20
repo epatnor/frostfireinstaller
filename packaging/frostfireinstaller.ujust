@@ -7,5 +7,5 @@ install-frostfireinstaller:
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Installerar frostfireinstaller (Battle.net + WoW via umu + Proton) ..."
-    curl -fsSL https://raw.githubusercontent.com/OWNER/frostfireinstaller/main/packaging/install.sh | bash
+    curl -fsSL https://raw.githubusercontent.com/epatnor/frostfireinstaller/main/packaging/install.sh | bash
     echo "Klart. Kör 'frostfireinstaller doctor' eller 'frostfireinstaller gui'."

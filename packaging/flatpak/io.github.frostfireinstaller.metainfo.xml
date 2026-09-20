@@ -18,7 +18,7 @@
     <category>Game</category>
     <category>Utility</category>
   </categories>
-  <url type="homepage">https://github.com/OWNER/frostfireinstaller</url>
-  <url type="bugtracker">https://github.com/OWNER/frostfireinstaller/issues</url>
+  <url type="homepage">https://github.com/epatnor/frostfireinstaller</url>
+  <url type="bugtracker">https://github.com/epatnor/frostfireinstaller/issues</url>
   <content_rating type="oars-1.1"/>
 </component>

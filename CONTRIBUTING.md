@@ -5,7 +5,7 @@ Thanks for wanting to help! `frostfireinstaller` aims to be a stable, well-teste
 ## Development setup
 
 ```bash
-git clone https://github.com/OWNER/frostfireinstaller
+git clone https://github.com/epatnor/frostfireinstaller
 cd frostfireinstaller
 python -m venv .venv && . .venv/bin/activate
 pip install -e ".[dev]"
