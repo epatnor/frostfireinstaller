@@ -48,18 +48,61 @@ asking the user to do it manually.
 ### Health / self-healing
 
 - `ui_window_present()` checks the X window tree (`xwininfo`) for `Battle.net` /
-  `Battle.net Login`.
+  `Battle.net Login`. On a pure Wayland session there is no usable X tree, so the
+  check reports "fine" rather than risking a false positive.
+- `kill_all()` sends `SIGTERM` first and only then `SIGKILL` (lets Wine flush state).
 - On failure: kill processes, clear `Cache`/`CEF`, fix config, relaunch.
+
+## GUI
+
+GTK4 + libadwaita (`frostfireinstaller gui`), one column:
+
+1. **Banner** — full-bleed header art.
+2. **Info strip** — App (status/Proton/prefix) and System (distro/kernel, session,
+   GPU) in two equal-width columns.
+3. **Run bar** — start/stop Battle.net, state icon inside the button.
+4. **Preferences** — "Installation & underhåll" (ice), "Återställ & ta bort" (fire,
+   with *Behåll spel*), "Loggar", and an **Avancerat** switch that reveals
+   Prestanda / Runner / Sökvägar / Om.
+
+Long-running work runs in worker threads and reports through toasts.
+
+### Performance wrappers
+
+| Option | Effect |
+|---|---|
+| MangoHud | sets `MANGOHUD=1` (overlay/diagnostics) |
+| GameMode | wraps the command in `gamemode` (system tuning while running) |
+| Gamescope | wraps the command in `gamescope -f --` (nested compositor, FSR, FPS cap) |
+
+Because Battle.net and the games it starts share one Wine session, these settings
+follow into the games — not just the launcher. Toggles whose tool is missing are
+disabled in the UI.
+
+## Security and robustness
+
+- **No secrets at rest.** The tool needs none; `tools/genassets.py` (image generation)
+  is developer-only and reads `OPENAI_API_KEY` from the environment or a gitignored
+  `.env`/key file.
+- **No shell.** Every subprocess call passes an argument list (`shell=False`).
+- **No string injection into TOML.** `Config.save()` escapes values and merges with the
+  existing file, so hand-written keys and sections survive.
+- **Path guards.** `proton.find()` accepts plain directory names only.
+- **Quoted `.desktop` Exec** when paths contain spaces.
+- **Network:** the only download is Battle.net's official installer over HTTPS
+  (`www.battle.net`); its size and SHA-256 are recorded in the installation log.
+  Wine/Proton components come from the host, not from us.
 
 ## Paths (XDG)
 
 | Purpose | Path |
 |---|---|
-| Prefix / game data | `~/Games/battlenet` |
+| Prefix / game data | `~/Games/battlenet` (override: `FROSTFIREINSTALLER_BNET_DIR`, or `[paths] bnet_dir`) |
 | Config | `~/.config/frostfireinstaller/config.toml` |
 | State | `~/.local/state/frostfireinstaller` |
 | Logs | `~/.local/state/frostfireinstaller/logs` |
-| Shortcut | `~/.local/share/applications/frostfireinstaller.desktop` |
+| Desktop entry | `~/.local/share/applications/io.github.frostfireinstaller.desktop` |
+| Icon | `~/.local/share/icons/hicolor/512x512/apps/io.github.frostfireinstaller.png` |
 
 ## Logging
 

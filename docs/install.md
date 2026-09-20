@@ -67,3 +67,37 @@ frostfireinstaller doctor   # environment + status
 First run downloads the Battle.net installer and installs it into
 `~/Games/battlenet/prefix`. When the launcher appears, close it once (the tool
 does this automatically) and then start it again before logging in.
+
+## Custom prefix location
+
+The prefix lives in `~/Games/battlenet` by default. Override it with an environment
+variable or a config entry (the config wins):
+
+```bash
+export FROSTFIREINSTALLER_BNET_DIR=/mnt/games/battlenet
+```
+
+```toml
+# ~/.config/frostfireinstaller/config.toml
+[paths]
+bnet_dir = "/mnt/games/battlenet"
+```
+
+## Updating
+
+```bash
+pipx upgrade frostfireinstaller     # or: pipx install --force .
+```
+
+`frostfireinstaller` keeps the prefix, games and settings; only the code changes.
+
+## Removing
+
+```bash
+frostfireinstaller remove       # remove the client, keep installed games
+frostfireinstaller remove --purge
+frostfireinstaller uninstall    # remove prefix, desktop entry and icon
+```
+
+> The `OWNER/frostfireinstaller` URLs above are placeholders until the project is
+> published; until then install from a local clone (`pipx install .`).

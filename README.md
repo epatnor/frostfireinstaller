@@ -14,12 +14,28 @@ Blizzard's own Battle.net launcher — `frostfireinstaller` is the helper undern
 
 - **Install, verify and repair Battle.net** reliably (dedicated prefix, idempotent).
 - **Compatibility**: correct Proton runner and the required environment fixes.
-- **Performance**: optional MangoHud, GameMode and Gamescope wrappers, plus
-  Proton's DXVK/VKD3D/NTSync.
+- **Performance**: optional MangoHud, GameMode and Gamescope wrappers that follow the
+  games (same Wine session), plus Proton's DXVK/VKD3D/NTSync.
 - **Broad distro support** (Bazzite/Fedora atomic, Arch, Debian/Ubuntu, ...).
-- **Looks cool**: GTK4/libadwaita UI with a frosty identity.
+- **Looks cool**: GTK4/libadwaita UI with a frosty identity — banner, info strip
+  (App/System at a glance), a single start/stop bar, and ice/fire themed sections.
 
 Born from a working recipe on Bazzite: `umu-launcher` + GE-Proton (see `docs/`).
+
+---
+
+## GUI
+
+```bash
+frostfireinstaller gui
+```
+
+- **Infofält**: Battle.net-status, Proton och prefix sida vid sida med distro, kernel,
+  session och GPU (namn, VRAM, drivrutin).
+- **Installation & underhåll** (is): Installera/Verifiera, Reparera, Starta/Stoppa.
+- **Återställ & ta bort** (eld): Behåll spel, Återinstallera, Ta bort.
+- **Loggar**: visa kör- och installationsloggar direkt i appen.
+- **Avancerat**: Prestanda (med "?"-förklaring per växel), Runner, Sökvägar, Om.
 
 ---
 
@@ -29,6 +45,8 @@ Born from a working recipe on Bazzite: `umu-launcher` + GE-Proton (see `docs/`).
 - [`umu-launcher`](https://github.com/Open-Wine-Components/umu-launcher) (`umu-run`)
 - A Proton build (GE-Proton, UMU-Proton or Proton-CachyOS) in a `compatibilitytools.d` dir
 - GPU drivers (Vulkan)
+- Optional GUI extras: `python3-gobject` (GTK4 + libadwaita); MangoHud / GameMode /
+  Gamescope if you want the performance toggles
 
 ## Install
 
@@ -44,12 +62,48 @@ pipx install .
 
 ```bash
 frostfireinstaller              # ensure + launch Battle.net
+frostfireinstaller gui          # graphical interface
 frostfireinstaller ensure       # set up/verify only
 frostfireinstaller doctor       # show environment and status
+frostfireinstaller reinstall    # reinstall the client (keeps games)
+frostfireinstaller remove       # remove the client (keeps games)
 frostfireinstaller logs         # latest run log
 frostfireinstaller install-logs # latest installation log
 frostfireinstaller kill         # stop all Battle.net processes
 frostfireinstaller uninstall    # remove prefix, shortcut, icon
+```
+
+## Security
+
+- No secrets are stored or required at runtime.
+- No shell: every subprocess call passes an argument list.
+- The only download is Blizzard's official installer over HTTPS; size and SHA-256 are
+  recorded in the installation log.
+- Wine/Proton come from your host — nothing is bundled or patched.
+- See `docs/architecture.md` for the full model.
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| `docs/architecture.md` | backend, lifecycle, GUI, security, paths |
+| `docs/install.md` | install channels, prefix override, update/remove |
+| `docs/design.md` | naming, ice/fire concept, assets, iconography |
+
+## Development
+
+```bash
+python -m venv .venv && . .venv/bin/activate
+pip install -e ".[dev]"
+ruff check . && ruff format --check . && mypy && pytest
+```
+
+Developer tools (never bundled, never needed at runtime):
+
+```bash
+python tools/genassets.py --prompt "..." --out assets/generated/x.png  # concept art
+python tools/make_icon.py --src assets/icon/frostfireinstaller.png --install --repo-copy \
+    src/frostfireinstaller/data/icons/frostfireinstaller.png
 ```
 
 ## How it works

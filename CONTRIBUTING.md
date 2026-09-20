@@ -18,7 +18,21 @@ ruff check .
 ruff format --check .
 mypy
 pytest
+python -m build          # wheel + sdist must build
 ```
+
+## Tools (developer-only, never bundled)
+
+```bash
+# Concept/hero art via the OpenAI Images API (key from env or a gitignored file)
+python tools/genassets.py --prompt "..." --out assets/generated/hero.png
+
+# Derive the app icon set from a square master PNG
+python tools/make_icon.py --src assets/icon/frostfireinstaller.png \
+    --install --repo-copy src/frostfireinstaller/data/icons/frostfireinstaller.png
+```
+
+Never commit API keys: `.env`, `*.key` and `assets/generated/` are gitignored.
 
 ## Guidelines
 

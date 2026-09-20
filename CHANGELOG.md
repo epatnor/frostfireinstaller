@@ -17,6 +17,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
 - Docs: `docs/architecture.md`, `docs/install.md`, `docs/design.md`.
 - Tests (pytest) and CI (ruff / mypy / pytest).
 
+### Fixed
+- **Icon install** referenced the removed SVG, so a fresh setup got no app icon;
+  the packaged PNG is now installed (and a stale SVG is cleaned up).
+- **Config save** dropped hand-written keys (e.g. `[paths] bnet_dir`) and did not
+  escape strings; it now merges with the existing file and escapes values.
+- **Health check** treated "no X display" as a failure on Wayland, which could kill
+  the client and wipe its CEF cache for no reason; unknown now means "fine".
+- `kill_all()` sends SIGTERM before SIGKILL; the Wine user directory is discovered
+  instead of assuming `steamuser`.
+
+### Security
+- Subprocess calls all pass argument lists (no shell); `proton.find()` rejects path
+  traversal; `.desktop` Exec paths are quoted when they contain spaces.
+- Renamed the leftover `FROSTYLAUNCHER_*` env vars to `FROSTFIREINSTALLER_*`.
+
 ### Changed
 - **Renamed to Frostfire Installer** (`frostfireinstaller`): package, CLI
   (`frostfireinstaller`, `frostfireinstaller-gui`), app id `io.github.frostfireinstaller`,
