@@ -1,7 +1,9 @@
-"""Content pages for the main window.
+"""Single-column content for the main window.
 
-Scope: a Battle.net installer helper. Install / verify / repair the launcher.
-Games are started from Blizzard's own launcher, not here.
+Layout: window header bar (top) -> Frostfire banner -> all features as rows.
+
+Scope: a Battle.net installer helper. Games are started from Blizzard's own
+launcher, not here.
 """
 
 from __future__ import annotations
@@ -18,6 +20,10 @@ from ..core import battlenet, distro, health, proton  # noqa: E402
 from .helpers import data_file, run_async  # noqa: E402
 
 
+def _kv(title: str, value: str) -> Adw.ActionRow:
+    return Adw.ActionRow(title=title, subtitle=value)
+
+
 def _toolbar_page(title: str, content: Gtk.Widget) -> Adw.ToolbarView:
     view = Adw.ToolbarView()
     header = Adw.HeaderBar()
@@ -27,30 +33,22 @@ def _toolbar_page(title: str, content: Gtk.Widget) -> Adw.ToolbarView:
     return view
 
 
-def _scrolled(child: Gtk.Widget) -> Gtk.ScrolledWindow:
-    scroller = Gtk.ScrolledWindow(vexpand=True, hexpand=True)
-    scroller.set_child(child)
-    return scroller
-
-
-def _kv(title: str, value: str) -> Adw.ActionRow:
-    return Adw.ActionRow(title=title, subtitle=value)
-
-
-# --- Home ----------------------------------------------------------------
-def build_home(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
+def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     config = Config.load()
     page = Adw.PreferencesPage()
 
+    # --- Status (compact) ------------------------------------------------
     status = Adw.PreferencesGroup(title="Status")
-    status.add(
-        _kv("Battle.net", "Installerat" if battlenet.installed(config) else "Ej installerat")
-    )
+    state = "Installerat" if battlenet.installed(config) else "Ej installerat"
+    if health.running():
+        state += " · körs"
+    status.add(_kv("Battle.net", state))
+    build = proton.find(config.proton_name)
+    status.add(_kv("Proton", build.name if build else "saknas"))
     status.add(_kv("Prefix", str(config.prefix)))
-    status.add(_kv("Proton", str(proton.find(config.proton_name) or "saknas")))
-    status.add(_kv("Körs", "ja" if health.running() else "nej"))
     page.add(status)
 
+    # --- Actions ---------------------------------------------------------
     actions = Adw.PreferencesGroup(title="Åtgärder")
 
     def action(
@@ -122,22 +120,90 @@ def build_home(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     )
     page.add(actions)
 
-    content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+    # --- Performance -----------------------------------------------------
+    performance = Adw.PreferencesGroup(title="Prestanda")
+    performance.set_description("Tillämpas när Battle.net startas via frostylauncher.")
+    performance.add(_switch(config, "MangoHud", "FPS/GPU-overlay (kräver MangoHud)", "mangohud"))
+    performance.add(_switch(config, "GameMode", "Optimera systemet under spel", "gamemode"))
+    performance.add(
+        _switch(config, "Gamescope", "Nästlad compositor (kan hjälpa på Wayland)", "gamescope")
+    )
+    page.add(performance)
+
+    # --- Runner ----------------------------------------------------------
+    runners = Adw.PreferencesGroup(title="Runner")
+    runners.set_description("Vilken Proton som används. Sparas i config.toml.")
+    current = proton.find(config.proton_name)
+    builds = proton.all_builds()
+    if not builds:
+        runners.add(
+            Adw.ActionRow(title="Inga Proton-byggen hittades", subtitle="Installera via ProtonPlus")
+        )
+    for candidate in builds:
+        row = Adw.ActionRow(title=candidate.name, subtitle=str(candidate))
+        if candidate == current:
+            row.add_suffix(Gtk.Image.new_from_icon_name("object-select-symbolic"))
+        button = Gtk.Button(label="Använd")
+        button.set_valign(Gtk.Align.CENTER)
+        button.connect("clicked", lambda _b, name=candidate.name: _pick_runner(window, name))
+        row.add_suffix(button)
+        runners.add(row)
+    page.add(runners)
+
+    # --- Logs ------------------------------------------------------------
+    logs = Adw.PreferencesGroup(title="Loggar")
+    logs.add(
+        action(
+            "Visa loggar",
+            "Körnings- och installationsloggar",
+            "Visa",
+            lambda _b: _show_logs(window),
+        )
+    )
+    page.add(logs)
+
+    # --- Paths -----------------------------------------------------------
+    paths = Adw.PreferencesGroup(title="Sökvägar")
+    paths.add(_kv("Installerare", str(config.installer)))
+    paths.add(_kv("Config", str(config.config_file)))
+    paths.add(_kv("Loggar", str(config.log_dir)))
+    page.add(paths)
+
+    # --- Diagnostics -----------------------------------------------------
+    host = distro.detect()
+    diagnostics = Adw.PreferencesGroup(title="Diagnostik")
+    diagnostics.add(_kv("Distro", host.distro))
+    diagnostics.add(_kv("Session", f"{host.session} · {host.desktop}"))
+    diagnostics.add(_kv("Kernel", host.kernel))
+    diagnostics.add(_kv("GPU", host.gpu or "-"))
+    page.add(diagnostics)
+
+    # --- About -----------------------------------------------------------
+    about = Adw.PreferencesGroup(title="Om")
+    row = Adw.ActionRow(title="frostylauncher")
+    button = Gtk.Button(label="Om")
+    button.set_valign(Gtk.Align.CENTER)
+    button.connect("clicked", lambda *_: _show_about(window))
+    row.add_suffix(button)
+    about.add(row)
+    page.add(about)
+
+    # --- Column: banner on top, everything else below --------------------
+    column = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
     banner = data_file("header", "frostfire_installer_header_1.png")
     if banner is not None:
         picture = Gtk.Picture.new_for_filename(str(banner))
-        picture.set_content_fit(Gtk.ContentFit.CONTAIN)
-        picture.set_size_request(-1, 170)
-        picture.set_margin_top(12)
-        picture.set_margin_bottom(6)
-        picture.set_margin_start(18)
-        picture.set_margin_end(18)
-        content.append(picture)
+        picture.set_content_fit(Gtk.ContentFit.FILL)
+        frame = Gtk.AspectFrame(ratio=1600 / 515, obey_child=False)
+        frame.set_child(picture)
+        frame.set_hexpand(True)
+        column.append(frame)
     page.set_vexpand(True)
-    content.append(page)
-    return _toolbar_page("Hem", content)
+    column.append(page)
+    return _toolbar_page("frostylauncher", column)
 
 
+# --- Handlers ------------------------------------------------------------
 def _ensure(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
     button.set_sensitive(False)
     window.toast("Verifierar/installerar ...")  # type: ignore[attr-defined]
@@ -194,11 +260,6 @@ def _repair(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
     run_async(work, done, error)
 
 
-def _kill(window: Adw.ApplicationWindow, _button: Gtk.Button) -> None:
-    health.kill_all()
-    window.toast("Stoppade Battle.net")  # type: ignore[attr-defined]
-
-
 def _reinstall(window: Adw.ApplicationWindow, button: Gtk.Button, keep: Adw.SwitchRow) -> None:
     button.set_sensitive(False)
     keep_games = keep.get_active()
@@ -241,99 +302,16 @@ def _remove(window: Adw.ApplicationWindow, button: Gtk.Button, keep: Adw.SwitchR
     run_async(work, done, error)
 
 
-# --- Logs ----------------------------------------------------------------
-def build_logs(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
+def _kill(window: Adw.ApplicationWindow, _button: Gtk.Button) -> None:
+    health.kill_all()
+    window.toast("Stoppade Battle.net")  # type: ignore[attr-defined]
+
+
+def _pick_runner(window: Adw.ApplicationWindow, name: str) -> None:
     config = Config.load()
-    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-    for margin in ("top", "bottom", "start", "end"):
-        getattr(box, f"set_margin_{margin}")(12)
-
-    logs = (
-        sorted(config.log_dir.glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
-        if config.log_dir.is_dir()
-        else []
-    )
-    names = [path.name for path in logs]
-    dropdown = Gtk.DropDown.new_from_strings(names or ["(inga loggar)"])
-    box.append(dropdown)
-
-    view = Gtk.TextView()
-    view.set_monospace(True)
-    view.set_editable(False)
-    buffer = view.get_buffer()
-    box.append(_scrolled(view))
-
-    def show() -> None:
-        index = dropdown.get_selected()
-        if logs and 0 <= index < len(logs):
-            text = logs[index].read_text(encoding="utf-8", errors="ignore")
-            buffer.set_text(text[-20000:])
-
-    dropdown.connect("notify::selected", lambda *_: show())
-    show()
-    return _toolbar_page("Loggar", box)
-
-
-# --- Settings ------------------------------------------------------------
-def build_settings(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
-    config = Config.load()
-    host = distro.detect()
-    page = Adw.PreferencesPage()
-
-    runners = Adw.PreferencesGroup(title="Runner")
-    runners.set_description("Vilken Proton som används. Sparas i config.toml.")
-    current = proton.find(config.proton_name)
-    builds = proton.all_builds()
-    if not builds:
-        runners.add(
-            Adw.ActionRow(title="Inga Proton-byggen hittades", subtitle="Installera via ProtonPlus")
-        )
-    for build in builds:
-        row = Adw.ActionRow(title=build.name, subtitle=str(build))
-        if build == current:
-            row.add_suffix(Gtk.Image.new_from_icon_name("object-select-symbolic"))
-        button = Gtk.Button(label="Använd")
-        button.set_valign(Gtk.Align.CENTER)
-        button.connect("clicked", lambda _b, name=build.name: _pick_runner(window, name))
-        row.add_suffix(button)
-        runners.add(row)
-    page.add(runners)
-
-    performance = Adw.PreferencesGroup(title="Prestanda")
-    performance.set_description("Tillämpas när Battle.net startas via frostylauncher.")
-    performance.add(_switch(config, "MangoHud", "FPS/GPU-overlay (kräver MangoHud)", "mangohud"))
-    performance.add(_switch(config, "GameMode", "Optimera systemet under spel", "gamemode"))
-    performance.add(
-        _switch(config, "Gamescope", "Nästlad compositor (kan hjälpa på Wayland)", "gamescope")
-    )
-    page.add(performance)
-
-    paths = Adw.PreferencesGroup(title="Sökvägar")
-    paths.add(_kv("Prefix", str(config.prefix)))
-    paths.add(_kv("Installerare", str(config.installer)))
-    paths.add(_kv("Config", str(config.config_file)))
-    paths.add(_kv("Loggar", str(config.log_dir)))
-    page.add(paths)
-
-    diagnostics = Adw.PreferencesGroup(title="Diagnostik")
-    diagnostics.add(_kv("Distro", host.distro))
-    diagnostics.add(_kv("Atomic", "ja" if host.atomic else "nej"))
-    diagnostics.add(_kv("Session", host.session))
-    diagnostics.add(_kv("Desktop", host.desktop))
-    diagnostics.add(_kv("Kernel", host.kernel))
-    diagnostics.add(_kv("GPU", host.gpu or "-"))
-    page.add(diagnostics)
-
-    about = Adw.PreferencesGroup(title="Om")
-    row = Adw.ActionRow(title="frostylauncher")
-    button = Gtk.Button(label="Om")
-    button.set_valign(Gtk.Align.CENTER)
-    button.connect("clicked", lambda *_: _show_about(window))
-    row.add_suffix(button)
-    about.add(row)
-    page.add(about)
-
-    return _toolbar_page("Inställningar", page)
+    config.proton_name = name
+    config.save()
+    window.toast(f"Runner satt till {name}")  # type: ignore[attr-defined]
 
 
 def _switch(config: Config, title: str, subtitle: str, key: str) -> Adw.SwitchRow:
@@ -349,11 +327,48 @@ def _switch(config: Config, title: str, subtitle: str, key: str) -> Adw.SwitchRo
     return row
 
 
-def _pick_runner(window: Adw.ApplicationWindow, name: str) -> None:
+def _show_logs(window: Adw.ApplicationWindow) -> None:
     config = Config.load()
-    config.proton_name = name
-    config.save()
-    window.toast(f"Runner satt till {name}")  # type: ignore[attr-defined]
+    logs = (
+        sorted(config.log_dir.glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if config.log_dir.is_dir()
+        else []
+    )
+    names = [path.name for path in logs]
+
+    dropdown = Gtk.DropDown.new_from_strings(names or ["(inga loggar)"])
+    view = Gtk.TextView()
+    view.set_monospace(True)
+    view.set_editable(False)
+    buffer = view.get_buffer()
+
+    def show() -> None:
+        index = dropdown.get_selected()
+        if logs and 0 <= index < len(logs):
+            text = logs[index].read_text(encoding="utf-8", errors="ignore")
+            buffer.set_text(text[-50000:])
+
+    dropdown.connect("notify::selected", lambda *_: show())
+    show()
+
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+    for margin in ("top", "bottom", "start", "end"):
+        getattr(box, f"set_margin_{margin}")(12)
+    box.append(dropdown)
+    scroller = Gtk.ScrolledWindow(vexpand=True)
+    scroller.set_child(view)
+    box.append(scroller)
+
+    toolbar = Adw.ToolbarView()
+    toolbar.add_top_bar(Adw.HeaderBar())
+    toolbar.set_content(box)
+
+    dialog = Adw.Dialog()
+    dialog.set_title("Loggar")
+    dialog.set_content_width(820)
+    dialog.set_content_height(600)
+    dialog.set_child(toolbar)
+    dialog.present(window)
 
 
 def _show_about(window: Adw.ApplicationWindow) -> None:
