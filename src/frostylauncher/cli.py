@@ -21,7 +21,7 @@ def _show_log(path: Path) -> int:
     if not path.is_file():
         log.error("Ingen logg hittad: %s", path)
         return 1
-    if shutil.which("less"):
+    if sys.stdout.isatty() and shutil.which("less"):
         subprocess.run(["less", "-R", str(path)], check=False)
     else:
         sys.stdout.write(path.read_text(encoding="utf-8", errors="ignore"))
