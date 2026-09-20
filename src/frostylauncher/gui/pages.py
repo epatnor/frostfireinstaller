@@ -15,7 +15,7 @@ from gi.repository import Adw, Gtk  # noqa: E402
 from .. import service  # noqa: E402
 from ..config import Config  # noqa: E402
 from ..core import battlenet, distro, health, proton  # noqa: E402
-from .helpers import run_async  # noqa: E402
+from .helpers import data_file, run_async  # noqa: E402
 
 
 def _toolbar_page(title: str, content: Gtk.Widget) -> Adw.ToolbarView:
@@ -94,14 +94,6 @@ def build_home(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             lambda b: _repair(window, b),
         )
     )
-    actions.add(
-        action(
-            "Reparera",
-            "Stoppa, rensa CEF/cache och starta om",
-            "Reparera",
-            lambda b: _repair(window, b),
-        )
-    )
 
     keep_games = Adw.SwitchRow(
         title="Behåll spel",
@@ -130,7 +122,20 @@ def build_home(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     )
     page.add(actions)
 
-    return _toolbar_page("Hem", page)
+    content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+    banner = data_file("header", "frostfire_installer_header_1.png")
+    if banner is not None:
+        picture = Gtk.Picture.new_for_filename(str(banner))
+        picture.set_content_fit(Gtk.ContentFit.CONTAIN)
+        picture.set_size_request(-1, 170)
+        picture.set_margin_top(12)
+        picture.set_margin_bottom(6)
+        picture.set_margin_start(18)
+        picture.set_margin_end(18)
+        content.append(picture)
+    page.set_vexpand(True)
+    content.append(page)
+    return _toolbar_page("Hem", content)
 
 
 def _ensure(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
