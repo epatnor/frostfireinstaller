@@ -9,6 +9,7 @@ import os
 import shutil
 import subprocess
 import sys
+from importlib import resources
 from pathlib import Path
 
 from .config import Config
@@ -17,6 +18,20 @@ from .logsetup import get_logger
 
 log = get_logger()
 
+APP_ID = "io.github.frostylauncher"
+
+
+def _data_file(*parts: str) -> Path | None:
+    try:
+        base = resources.files("frostylauncher.data")
+    except (ModuleNotFoundError, TypeError):
+        return None
+    target = base.joinpath(*parts)
+    try:
+        return Path(str(target)) if target.is_file() else None
+    except (FileNotFoundError, OSError):
+        return None
+
 
 def applications_dir() -> Path:
     base = Path(os.environ.get("XDG_DATA_HOME", "~/.local/share")).expanduser()
@@ -24,24 +39,42 @@ def applications_dir() -> Path:
 
 
 def ensure_shortcut(config: Config) -> Path:
+    """Install the app icon and a .desktop entry that opens the GUI."""
+    data_home = Path(os.environ.get("XDG_DATA_HOME", "~/.local/share")).expanduser()
     apps = applications_dir()
+    icons = data_home / "icons/hicolor/scalable/apps"
     apps.mkdir(parents=True, exist_ok=True)
-    desktop = apps / "frostylauncher.desktop"
+    icons.mkdir(parents=True, exist_ok=True)
+
+    icon_src = _data_file("icons", "frostylauncher.svg")
+    if icon_src is not None:
+        shutil.copyfile(icon_src, icons / f"{APP_ID}.svg")
+
     exe = shutil.which("frostylauncher")
-    exec_line = f"{exe} run" if exe else f"{sys.executable} -m frostylauncher run"
+    exec_line = f"{exe} gui" if exe else f"{sys.executable} -m frostylauncher gui"
+
+    desktop = apps / f"{APP_ID}.desktop"
     desktop.write_text(
         "[Desktop Entry]\n"
         "Name=frostylauncher\n"
         "Comment=Battle.net installer helper (umu + Proton)\n"
         f"Exec={exec_line}\n"
+        f"Icon={APP_ID}\n"
         "Terminal=false\n"
         "Type=Application\n"
-        "Categories=Game;\n"
-        f"StartupWMClass=steam_app_{config.gameid}\n",
+        "Categories=Game;Utility;\n"
+        f"StartupWMClass={APP_ID}\n",
         encoding="utf-8",
     )
+    (apps / "frostylauncher.desktop").unlink(missing_ok=True)
+
     if shutil.which("update-desktop-database"):
         subprocess.run(["update-desktop-database", str(apps)], check=False)
+    if shutil.which("gtk-update-icon-cache"):
+        subprocess.run(
+            ["gtk-update-icon-cache", "-f", "-t", str(data_home / "icons/hicolor")],
+            check=False,
+        )
     return desktop
 
 

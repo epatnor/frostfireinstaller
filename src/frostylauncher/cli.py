@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import shutil
 import subprocess
 import sys
@@ -106,8 +107,10 @@ def cmd_gui(_args: argparse.Namespace) -> int:
 
 def cmd_uninstall(args: argparse.Namespace) -> int:
     config = Config.load()
-    desktop = service.applications_dir() / "frostylauncher.desktop"
-    log.warning("Tar bort: %s och %s", config.bnet_dir, desktop)
+    apps = service.applications_dir()
+    data_home = Path(os.environ.get("XDG_DATA_HOME", "~/.local/share")).expanduser()
+    icon = data_home / "icons/hicolor/scalable/apps" / f"{service.APP_ID}.svg"
+    log.warning("Tar bort: %s, genväg och ikon", config.bnet_dir)
     if not args.yes:
         answer = input("Säker? [j/N] ").strip().lower()
         if answer not in ("j", "ja", "y", "yes"):
@@ -115,7 +118,9 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
             return 0
     health.kill_all()
     shutil.rmtree(config.bnet_dir, ignore_errors=True)
-    desktop.unlink(missing_ok=True)
+    (apps / f"{service.APP_ID}.desktop").unlink(missing_ok=True)
+    (apps / "frostylauncher.desktop").unlink(missing_ok=True)
+    icon.unlink(missing_ok=True)
     log.info("Borttaget")
     return 0
 
