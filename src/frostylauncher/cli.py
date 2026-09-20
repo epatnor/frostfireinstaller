@@ -51,6 +51,23 @@ def cmd_ensure(_args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_reinstall(args: argparse.Namespace) -> int:
+    config = Config.load()
+    setup_run_log(config.log_dir)
+    build = service.find_proton(config)
+    log_path = battlenet.reinstall(config, build, keep_games=not args.purge)
+    log.info("Installationslogg: %s", log_path)
+    return 0
+
+
+def cmd_remove(args: argparse.Namespace) -> int:
+    config = Config.load()
+    setup_run_log(config.log_dir)
+    battlenet.remove(config, keep_games=not args.purge)
+    log.info("Battle.net borttaget%s", "" if args.purge else " (spel behållna)")
+    return 0
+
+
 def cmd_doctor(_args: argparse.Namespace) -> int:
     config = Config.load()
     setup_run_log(config.log_dir)
@@ -136,6 +153,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("run", help="ensure everything and launch (default)")
     sub.add_parser("ensure", help="set up/verify only, do not launch")
+    reinstall = sub.add_parser("reinstall", help="reinstall Battle.net (keeps games by default)")
+    reinstall.add_argument("--purge", action="store_true", help="also remove installed games")
+    remove = sub.add_parser("remove", help="remove the Battle.net client (keeps games by default)")
+    remove.add_argument("--purge", action="store_true", help="also remove installed games")
     sub.add_parser("doctor", help="show environment and status")
     sub.add_parser("logs", help="show the latest run log")
     sub.add_parser("install-logs", help="show the latest installation log")
@@ -154,6 +175,8 @@ def main(argv: list[str] | None = None) -> int:
     handlers = {
         "run": cmd_run,
         "ensure": cmd_ensure,
+        "reinstall": cmd_reinstall,
+        "remove": cmd_remove,
         "doctor": cmd_doctor,
         "logs": cmd_logs,
         "install-logs": cmd_install_logs,

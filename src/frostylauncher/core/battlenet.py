@@ -175,3 +175,70 @@ def _append_result(path: Path, ready: bool, ok: bool) -> None:
         out.write("\n--- Resultat ---\n")
         out.write(f"status          : {'OK - Battle.net installerat' if ok else 'MISSLYCKAT'}\n")
         out.write(f"finished        : {datetime.now().isoformat(timespec='seconds')}\n")
+
+
+# --- reinstall -----------------------------------------------------------
+GAME_DIR_NAMES: tuple[str, ...] = (
+    "World of Warcraft",
+    "Diablo II Resurrected",
+    "Diablo III",
+    "Diablo IV",
+    "Overwatch",
+    "Hearthstone",
+    "StarCraft",
+    "StarCraft II",
+    "Heroes of the Storm",
+    "Warcraft III",
+    "Call of Duty",
+)
+
+CLIENT_DIRS: tuple[str, ...] = (
+    "drive_c/Program Files (x86)/Battle.net",
+    "drive_c/ProgramData/Battle.net",
+    "drive_c/users/steamuser/AppData/Local/Battle.net",
+    "drive_c/users/steamuser/AppData/Roaming/Battle.net",
+)
+
+
+def installed_games(config: Config) -> list[Path]:
+    """Return game directories found inside the prefix."""
+    found: list[Path] = []
+    roots = (
+        config.prefix / "drive_c/Program Files (x86)",
+        config.prefix / "drive_c/Program Files",
+    )
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for name in GAME_DIR_NAMES:
+            candidate = root / name
+            if candidate.is_dir():
+                found.append(candidate)
+    return found
+
+
+def remove(config: Config, keep_games: bool = True) -> None:
+    """Remove the Battle.net client.
+
+    With *keep_games* the installed games (and their data) are preserved;
+    only the client, Agent and caches are removed. Otherwise the whole
+    prefix (including games) is deleted.
+    """
+    health.kill_all()
+    if keep_games:
+        kept = installed_games(config)
+        log.info("Behåller %d spelinstallation(er)", len(kept))
+        for rel in CLIENT_DIRS:
+            shutil.rmtree(config.prefix / rel, ignore_errors=True)
+    else:
+        log.info("Tar bort hela prefixen (inkl. spel)")
+        shutil.rmtree(config.prefix, ignore_errors=True)
+
+
+def reinstall(config: Config, proton: Path, keep_games: bool = True) -> Path:
+    """Reinstall Battle.net, optionally keeping installed games.
+
+    Returns the installation log path.
+    """
+    remove(config, keep_games)
+    return install(config, proton)

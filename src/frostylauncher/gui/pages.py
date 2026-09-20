@@ -95,6 +95,37 @@ def build_home(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         )
     )
     actions.add(
+        action(
+            "Reparera",
+            "Stoppa, rensa CEF/cache och starta om",
+            "Reparera",
+            lambda b: _repair(window, b),
+        )
+    )
+
+    keep_games = Adw.SwitchRow(
+        title="Behåll spel",
+        subtitle="Behåll installerade spel vid återinstallation eller borttagning",
+    )
+    keep_games.set_active(True)
+    actions.add(keep_games)
+    actions.add(
+        action(
+            "Återinstallera Battle.net",
+            "Tar bort klienten och installerar om",
+            "Kör",
+            lambda b: _reinstall(window, b, keep_games),
+        )
+    )
+    actions.add(
+        action(
+            "Ta bort Battle.net",
+            "Tar bort klienten (spelen behålls om växeln är på)",
+            "Ta bort",
+            lambda b: _remove(window, b, keep_games),
+        )
+    )
+    actions.add(
         action("Stoppa", "Dödar alla Battle.net-processer", "Stoppa", lambda b: _kill(window, b))
     )
     page.add(actions)
@@ -161,6 +192,48 @@ def _repair(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
 def _kill(window: Adw.ApplicationWindow, _button: Gtk.Button) -> None:
     health.kill_all()
     window.toast("Stoppade Battle.net")  # type: ignore[attr-defined]
+
+
+def _reinstall(window: Adw.ApplicationWindow, button: Gtk.Button, keep: Adw.SwitchRow) -> None:
+    button.set_sensitive(False)
+    keep_games = keep.get_active()
+    window.toast("Återinstallerar Battle.net ...")  # type: ignore[attr-defined]
+
+    def work() -> str:
+        config = Config.load()
+        build = proton.find(config.proton_name)
+        if build is None:
+            raise RuntimeError("Ingen Proton hittad")
+        return str(battlenet.reinstall(config, build, keep_games=keep_games))
+
+    def done(_log_path: str) -> None:
+        button.set_sensitive(True)
+        window.toast("Återinstallerat" + (" (spel behållna)" if keep_games else ""))  # type: ignore[attr-defined]
+
+    def error(exc: Exception) -> None:
+        button.set_sensitive(True)
+        window.toast(f"Fel: {exc}")  # type: ignore[attr-defined]
+
+    run_async(work, done, error)
+
+
+def _remove(window: Adw.ApplicationWindow, button: Gtk.Button, keep: Adw.SwitchRow) -> None:
+    button.set_sensitive(False)
+    keep_games = keep.get_active()
+    window.toast("Tar bort Battle.net ...")  # type: ignore[attr-defined]
+
+    def work() -> None:
+        battlenet.remove(Config.load(), keep_games=keep_games)
+
+    def done(_result: object) -> None:
+        button.set_sensitive(True)
+        window.toast("Battle.net borttaget" + (" (spel behållna)" if keep_games else ""))  # type: ignore[attr-defined]
+
+    def error(exc: Exception) -> None:
+        button.set_sensitive(True)
+        window.toast(f"Fel: {exc}")  # type: ignore[attr-defined]
+
+    run_async(work, done, error)
 
 
 # --- Logs ----------------------------------------------------------------
