@@ -54,51 +54,88 @@ def _toolbar_page(title: str, content: Gtk.Widget) -> Adw.ToolbarView:
     return view
 
 
-def _set_run_state(status: Gtk.Label, icon: Gtk.Label, button: Gtk.Button, running: bool) -> None:
-    status.set_label("Startat" if running else "Stoppat")
-    status.remove_css_class("run-status-on")
-    status.remove_css_class("run-status-off")
-    status.add_css_class("run-status-on" if running else "run-status-off")
+class RunBar(Gtk.Box):
+    """Standalone Battle.net start/stop control (not part of any card)."""
 
-    icon.set_label(MATERIAL["stop"] if running else MATERIAL["play"])
-    icon.remove_css_class("icon-red")
-    icon.remove_css_class("icon-green")
-    icon.add_css_class("icon-red" if running else "icon-green")
+    def __init__(self) -> None:
+        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        self.add_css_class("run-bar")
 
-    button.set_label("Stoppa" if running else "Starta")
-    if running:
-        button.remove_css_class("suggested-action")
-    else:
-        button.add_css_class("suggested-action")
+        text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        text.set_valign(Gtk.Align.CENTER)
+        title = Gtk.Label(label="Battle.net", xalign=0)
+        title.add_css_class("heading")
+        self.status = Gtk.Label(xalign=0)
+        text.append(title)
+        text.append(self.status)
+        self.append(text)
 
+        spacer = Gtk.Box()
+        spacer.set_hexpand(True)
+        self.append(spacer)
 
-def _run_bar() -> tuple[Gtk.Widget, Gtk.Label, Gtk.Label, Gtk.Button]:
-    """Standalone Battle.net start/stop bar (not part of any card)."""
-    bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-    bar.add_css_class("run-bar")
+        self.icon = _icon(MATERIAL["play"])
+        self.label = Gtk.Label()
+        content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        content.append(self.icon)
+        content.append(self.label)
 
-    icon = _icon(MATERIAL["play"])
-    bar.append(icon)
+        self.button = Gtk.Button()
+        self.button.set_valign(Gtk.Align.CENTER)
+        self.button.set_child(content)
+        self.button.connect("clicked", self._on_clicked)
+        self.append(self.button)
 
-    text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-    text.set_valign(Gtk.Align.CENTER)
-    title = Gtk.Label(label="Battle.net", xalign=0)
-    title.add_css_class("heading")
-    status = Gtk.Label(xalign=0)
-    text.append(title)
-    text.append(status)
-    bar.append(text)
+        self.refresh()
 
-    spacer = Gtk.Box()
-    spacer.set_hexpand(True)
-    bar.append(spacer)
+    def _toast(self, message: str) -> None:
+        root = self.get_root()
+        if root is not None and hasattr(root, "toast"):
+            root.toast(message)  # type: ignore[attr-defined]
 
-    button = Gtk.Button()
-    button.set_valign(Gtk.Align.CENTER)
-    bar.append(button)
+    def refresh(self) -> None:
+        running = health.running()
 
-    _set_run_state(status, icon, button, health.running())
-    return bar, icon, status, button
+        self.status.set_label("Startat" if running else "Stoppat")
+        self.status.remove_css_class("run-status-on")
+        self.status.remove_css_class("run-status-off")
+        self.status.add_css_class("run-status-on" if running else "run-status-off")
+
+        self.icon.set_label(MATERIAL["stop"] if running else MATERIAL["play"])
+        self.icon.remove_css_class("icon-red")
+        self.icon.remove_css_class("icon-green")
+        self.icon.add_css_class("icon-red" if running else "icon-green")
+
+        self.label.set_label("Stoppa" if running else "Starta")
+        if running:
+            self.button.remove_css_class("suggested-action")
+        else:
+            self.button.add_css_class("suggested-action")
+
+    def _on_clicked(self, button: Gtk.Button) -> None:
+        if health.running():
+            health.kill_all()
+            self.refresh()
+            self._toast("Stoppade Battle.net")
+            return
+
+        button.set_sensitive(False)
+        self._toast("Startar Battle.net ...")
+
+        def work() -> None:
+            config = Config.load()
+            service.launch(config, service.ensure(config))
+
+        def done(_result: object) -> None:
+            button.set_sensitive(True)
+            self.refresh()
+            self._toast("Startar Battle.net")
+
+        def error(exc: Exception) -> None:
+            button.set_sensitive(True)
+            self._toast(f"Fel: {exc}")
+
+        run_async(work, done, error)
 
 
 def _info_strip(config: Config) -> Gtk.Widget:
@@ -324,9 +361,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         frame.set_hexpand(True)
         column.append(frame)
     column.append(_info_strip(config))
-    run_bar, run_icon, run_status, run_button = _run_bar()
-    run_button.connect("clicked", lambda b: _toggle_run(window, b, run_status, run_icon))
-    column.append(run_bar)
+    column.append(RunBar())
     page.set_vexpand(True)
     column.append(page)
     return _toolbar_page("Frostfire Installer", column)
@@ -343,35 +378,6 @@ def _ensure(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
     def done(build: str) -> None:
         button.set_sensitive(True)
         window.toast(f"Klart – Proton: {build}")  # type: ignore[attr-defined]
-
-    def error(exc: Exception) -> None:
-        button.set_sensitive(True)
-        window.toast(f"Fel: {exc}")  # type: ignore[attr-defined]
-
-    run_async(work, done, error)
-
-
-def _toggle_run(
-    window: Adw.ApplicationWindow, button: Gtk.Button, status: Gtk.Label, icon: Gtk.Label
-) -> None:
-    """One button for start/stop - two sides of the same coin."""
-    if health.running():
-        health.kill_all()
-        _set_run_state(status, icon, button, False)
-        window.toast("Stoppade Battle.net")  # type: ignore[attr-defined]
-        return
-
-    button.set_sensitive(False)
-    window.toast("Startar Battle.net ...")  # type: ignore[attr-defined]
-
-    def work() -> None:
-        config = Config.load()
-        service.launch(config, service.ensure(config))
-
-    def done(_result: object) -> None:
-        button.set_sensitive(True)
-        _set_run_state(status, icon, button, True)
-        window.toast("Startar Battle.net")  # type: ignore[attr-defined]
 
     def error(exc: Exception) -> None:
         button.set_sensitive(True)
