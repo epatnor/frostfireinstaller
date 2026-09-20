@@ -49,7 +49,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     page.add(status)
 
     # --- Maintenance (ice: preserve and keep running) --------------------
-    maintenance = Adw.PreferencesGroup(title="Installation & underhåll")
+    maintenance = Adw.PreferencesGroup(title="Installation &amp; underhåll")
     maintenance.set_description("Is – bevara och hålla igång.")
 
     def action(
@@ -99,7 +99,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     page.add(maintenance)
 
     # --- Destructive (fire: reinstall / remove) --------------------------
-    destructive = Adw.PreferencesGroup(title="Återställ & ta bort")
+    destructive = Adw.PreferencesGroup(title="Återställ &amp; ta bort")
     destructive.set_description("Eld – förstörande åtgärder.")
 
     keep_games = Adw.SwitchRow(
