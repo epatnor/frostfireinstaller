@@ -215,11 +215,12 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         row.add_suffix(button)
         return row
 
+    installed = battlenet.installed(config)
     maintenance.add(
         action(
             "Installera / verifiera",
             "Idempotent – gör bara det som saknas",
-            "Kör",
+            "Verifiera" if installed else "Installera",
             lambda b: _ensure(window, b),
             suggested=True,
             icon=MATERIAL["download"],
@@ -252,7 +253,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         action(
             "Återinstallera Battle.net",
             "Tar bort klienten och installerar om",
-            "Kör",
+            "Återinstallera",
             lambda b: _reinstall(window, b, keep_games),
             icon=MATERIAL["refresh"],
             tone="fire",
@@ -377,6 +378,7 @@ def _ensure(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
 
     def done(build: str) -> None:
         button.set_sensitive(True)
+        button.set_label("Verifiera")
         window.toast(f"Klart – Proton: {build}")  # type: ignore[attr-defined]
 
     def error(exc: Exception) -> None:
