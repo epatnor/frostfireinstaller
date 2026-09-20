@@ -38,6 +38,12 @@ _CSS = f"""
     font-family: "Material Symbols Outlined";
     font-size: 22px;
 }}
+.icon-ice {{
+    color: #74d8ff;
+}}
+.icon-fire {{
+    color: #ff7a2f;
+}}
 """
 
 

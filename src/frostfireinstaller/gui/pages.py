@@ -37,9 +37,11 @@ MATERIAL = {
 }
 
 
-def _icon(glyph: str) -> Gtk.Widget:
+def _icon(glyph: str, tone: str | None = None) -> Gtk.Widget:
     label = Gtk.Label(label=glyph)
     label.add_css_class("material-icon")
+    if tone is not None:
+        label.add_css_class(f"icon-{tone}")
     return label
 
 
@@ -116,10 +118,11 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         callback: object,
         suggested: bool = False,
         icon: str | None = None,
+        tone: str | None = None,
     ) -> Adw.ActionRow:
         row = Adw.ActionRow(title=title, subtitle=subtitle)
         if icon is not None:
-            row.add_prefix(_icon(icon))
+            row.add_prefix(_icon(icon, tone))
         button = Gtk.Button(label=label)
         button.set_valign(Gtk.Align.CENTER)
         if suggested:
@@ -136,6 +139,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             lambda b: _ensure(window, b),
             suggested=True,
             icon=MATERIAL["download"],
+            tone="ice",
         )
     )
     running = health.running()
@@ -143,7 +147,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         title="Battle.net",
         subtitle="Starta eller stoppa Blizzard-launchern",
     )
-    run_row.add_prefix(_icon(MATERIAL["play"]))
+    run_row.add_prefix(_icon(MATERIAL["play"], "ice"))
     run_button = Gtk.Button(label="Stoppa" if running else "Starta")
     run_button.set_valign(Gtk.Align.CENTER)
     run_button.connect("clicked", lambda b: _toggle_run(window, b))
@@ -157,6 +161,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Reparera",
             lambda b: _repair(window, b),
             icon=MATERIAL["build"],
+            tone="ice",
         )
     )
     page.add(maintenance)
@@ -178,6 +183,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Kör",
             lambda b: _reinstall(window, b, keep_games),
             icon=MATERIAL["refresh"],
+            tone="fire",
         )
     )
     destructive.add(
@@ -187,6 +193,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Ta bort",
             lambda b: _remove(window, b, keep_games),
             icon=MATERIAL["delete"],
+            tone="fire",
         )
     )
     page.add(destructive)
