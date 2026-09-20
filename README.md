@@ -1,8 +1,7 @@
 # frostylauncher
 
-> A stable, compatible way to install **Battle.net** (and run Blizzard games,
-> focus: **World of Warcraft**) on Linux — with a cool GUI. Backend:
-> **umu-launcher + Proton**.
+> A **Battle.net installer helper** for Linux — stable and compatible, with a
+> cool GUI. Backend: **umu-launcher + Proton**.
 
 **Status:** early development (v0.1, Python port of a verified prototype).
 
@@ -10,11 +9,11 @@
 
 ## Focus
 
-We are **not** building a game launcher. Games are launched from Blizzard's own
-Battle.net launcher — `frostylauncher` is the platform underneath:
+We are **not** building a game launcher or a game library. Games are started from
+Blizzard's own Battle.net launcher — `frostylauncher` is the helper underneath:
 
-- **Install & maintain Battle.net** reliably (dedicated prefix, idempotent setup).
-- **Compatibility**: correct Proton runner, required env fixes, per-title notes.
+- **Install, verify and repair Battle.net** reliably (dedicated prefix, idempotent).
+- **Compatibility**: correct Proton runner and the required environment fixes.
 - **Performance**: optional MangoHud, GameMode and Gamescope wrappers, plus
   Proton's DXVK/VKD3D/NTSync.
 - **Broad distro support** (Bazzite/Fedora atomic, Arch, Debian/Ubuntu, ...).

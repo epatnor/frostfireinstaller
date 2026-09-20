@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "frostylauncher"
 version = "0.1.0"
-description = "Install and launch Blizzard games (focus: World of Warcraft) on Linux via umu-launcher + Proton."
+description = "A Battle.net installer helper for Linux (umu-launcher + Proton)."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }

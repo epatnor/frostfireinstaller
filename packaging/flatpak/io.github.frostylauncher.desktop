@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=frostylauncher
-Comment=Launch Blizzard games on Linux
+Comment=Battle.net installer helper (umu + Proton)
 Exec=frostylauncher gui
 Icon=io.github.frostylauncher
 Terminal=false

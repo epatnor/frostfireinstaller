@@ -32,7 +32,7 @@ def ensure_shortcut(config: Config) -> Path:
     desktop.write_text(
         "[Desktop Entry]\n"
         "Name=frostylauncher\n"
-        "Comment=Launch Blizzard games on Linux\n"
+        "Comment=Battle.net installer helper (umu + Proton)\n"
         f"Exec={exec_line}\n"
         "Terminal=false\n"
         "Type=Application\n"

@@ -1,8 +1,10 @@
-"""Content pages for the main window."""
+"""Content pages for the main window.
+
+Scope: a Battle.net installer helper. Install / verify / repair the launcher.
+Games are started from Blizzard's own launcher, not here.
+"""
 
 from __future__ import annotations
-
-import shutil
 
 import gi
 
@@ -12,8 +14,8 @@ from gi.repository import Adw, Gtk  # noqa: E402
 
 from .. import service  # noqa: E402
 from ..config import Config  # noqa: E402
-from ..core import battlenet, distro, profiles, proton  # noqa: E402
-from .helpers import data_file, run_async  # noqa: E402
+from ..core import battlenet, distro, health, proton  # noqa: E402
+from .helpers import run_async  # noqa: E402
 
 
 def _toolbar_page(title: str, content: Gtk.Widget) -> Adw.ToolbarView:
@@ -31,102 +33,12 @@ def _scrolled(child: Gtk.Widget) -> Gtk.ScrolledWindow:
     return scroller
 
 
-# --- Library -------------------------------------------------------------
-def _game_card(profile: profiles.GameProfile) -> Gtk.Widget:
-    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-    box.add_css_class("card")
-    box.set_size_request(180, 210)
-    for margin in ("top", "bottom", "start", "end"):
-        getattr(box, f"set_margin_{margin}")(6)
-
-    cover = data_file("covers", f"{profile.id}.png")
-    if cover is not None:
-        picture = Gtk.Picture.new_for_filename(str(cover))
-        picture.set_content_fit(Gtk.ContentFit.COVER)
-        picture.set_size_request(168, 104)
-        frame = Gtk.Box()
-        frame.add_css_class("cover-frame")
-        frame.set_overflow(Gtk.Overflow.HIDDEN)
-        frame.append(picture)
-        box.append(frame)
-    else:
-        icon = Gtk.Image.new_from_icon_name("applications-games-symbolic")
-        icon.set_pixel_size(56)
-        icon.set_margin_top(12)
-        box.append(icon)
-
-    name = Gtk.Label(label=profile.name)
-    name.set_wrap(True)
-    name.set_justify(Gtk.Justification.CENTER)
-    name.add_css_class("heading")
-    box.append(name)
-
-    subtitle = Gtk.Label(label=profile.anti_cheat or "Battle.net")
-    subtitle.add_css_class("dim-label")
-    subtitle.set_wrap(True)
-    box.append(subtitle)
-    return box
+def _kv(title: str, value: str) -> Adw.ActionRow:
+    return Adw.ActionRow(title=title, subtitle=value)
 
 
+# --- Home ----------------------------------------------------------------
 def build_home(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
-    content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-    for margin in ("top", "bottom", "start", "end"):
-        getattr(content, f"set_margin_{margin}")(18)
-
-    group = Adw.PreferencesGroup()
-    group.set_title("frostylauncher")
-    group.set_description(
-        "Stabil och kompatibel Battle.net-installation via umu + Proton. "
-        "Spelen startar du i Blizzards launcher."
-    )
-    row = Adw.ActionRow(title="Battle.net", subtitle="Blizzard-launchern")
-    launch = Gtk.Button(label="Starta")
-    launch.add_css_class("suggested-action")
-    launch.set_valign(Gtk.Align.CENTER)
-    launch.connect("clicked", lambda *_: _on_launch(window, launch))
-    row.add_suffix(launch)
-    group.add(row)
-    content.append(group)
-
-    heading = Gtk.Label(label="Kompatibilitet", xalign=0)
-    heading.add_css_class("heading")
-    content.append(heading)
-
-    flow = Gtk.FlowBox()
-    flow.set_selection_mode(Gtk.SelectionMode.NONE)
-    flow.set_max_children_per_line(6)
-    flow.set_min_children_per_line(2)
-    flow.set_row_spacing(12)
-    flow.set_column_spacing(12)
-    flow.set_homogeneous(True)
-    for profile in profiles.load_all().values():
-        flow.append(_game_card(profile))
-    content.append(_scrolled(flow))
-    return _toolbar_page("Hem", content)
-
-
-def _on_launch(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
-    button.set_sensitive(False)
-    window.toast("Förbereder och startar Battle.net ...")  # type: ignore[attr-defined]
-
-    def work() -> None:
-        config = Config.load()
-        build = service.ensure(config)
-        service.launch(config, build)
-
-    def done(_result: object) -> None:
-        button.set_sensitive(True)
-        window.toast("Klart")  # type: ignore[attr-defined]
-
-    def error(exc: Exception) -> None:
-        button.set_sensitive(True)
-        window.toast(f"Fel: {exc}")  # type: ignore[attr-defined]
-
-    run_async(work, done, error)
-
-
-# --- Install -------------------------------------------------------------
-def build_install(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     config = Config.load()
     page = Adw.PreferencesPage()
 
@@ -136,36 +48,66 @@ def build_install(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     )
     status.add(_kv("Prefix", str(config.prefix)))
     status.add(_kv("Proton", str(proton.find(config.proton_name) or "saknas")))
-    status.add(_kv("umu-run", shutil.which("umu-run") or "saknas"))
+    status.add(_kv("Körs", "ja" if health.running() else "nej"))
     page.add(status)
 
     actions = Adw.PreferencesGroup(title="Åtgärder")
-    row = Adw.ActionRow(
-        title="Installera / verifiera", subtitle="Idempotent – gör bara det som saknas"
+
+    def action(
+        title: str,
+        subtitle: str,
+        label: str,
+        callback: object,
+        suggested: bool = False,
+    ) -> Adw.ActionRow:
+        row = Adw.ActionRow(title=title, subtitle=subtitle)
+        button = Gtk.Button(label=label)
+        button.set_valign(Gtk.Align.CENTER)
+        if suggested:
+            button.add_css_class("suggested-action")
+        button.connect("clicked", lambda *_: callback(button))  # type: ignore[operator]
+        row.add_suffix(button)
+        return row
+
+    actions.add(
+        action(
+            "Installera / verifiera",
+            "Idempotent – gör bara det som saknas",
+            "Kör",
+            lambda b: _ensure(window, b),
+            suggested=True,
+        )
     )
-    button = Gtk.Button(label="Kör")
-    button.add_css_class("suggested-action")
-    button.set_valign(Gtk.Align.CENTER)
-    button.connect("clicked", lambda *_: _on_ensure(window, button))
-    row.add_suffix(button)
-    actions.add(row)
+    actions.add(
+        action(
+            "Starta Battle.net",
+            "Startar Blizzard-launchern",
+            "Starta",
+            lambda b: _launch(window, b),
+        )
+    )
+    actions.add(
+        action(
+            "Reparera",
+            "Stoppa, rensa CEF/cache och starta om",
+            "Reparera",
+            lambda b: _repair(window, b),
+        )
+    )
+    actions.add(
+        action("Stoppa", "Dödar alla Battle.net-processer", "Stoppa", lambda b: _kill(window, b))
+    )
     page.add(actions)
 
-    return _toolbar_page("Installera", page)
+    return _toolbar_page("Hem", page)
 
 
-def _kv(title: str, value: str) -> Adw.ActionRow:
-    return Adw.ActionRow(title=title, subtitle=value)
-
-
-def _on_ensure(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
+def _ensure(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
     button.set_sensitive(False)
     window.toast("Verifierar/installerar ...")  # type: ignore[attr-defined]
 
     def work() -> str:
-        config = Config.load()
-        build = service.ensure(config)
-        return str(build)
+        return str(service.ensure(Config.load()))
 
     def done(build: str) -> None:
         button.set_sensitive(True)
@@ -178,93 +120,47 @@ def _on_ensure(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
     run_async(work, done, error)
 
 
-# --- Runners -------------------------------------------------------------
-def build_runners(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
-    config = Config.load()
-    page = Adw.PreferencesPage()
+def _launch(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
+    button.set_sensitive(False)
 
-    group = Adw.PreferencesGroup(title="Proton-byggen")
-    group.set_description("Välj vilken runner som används. Sparas i config.toml.")
+    def work() -> None:
+        config = Config.load()
+        service.launch(config, service.ensure(config))
 
-    current = proton.find(config.proton_name)
-    builds = proton.all_builds()
-    if not builds:
-        group.add(
-            Adw.ActionRow(title="Inga Proton-byggen hittades", subtitle="Installera via ProtonPlus")
-        )
-    for build in builds:
-        row = Adw.ActionRow(title=build.name, subtitle=str(build))
-        if build == current:
-            row.add_suffix(Gtk.Image.new_from_icon_name("object-select-symbolic"))
-        button = Gtk.Button(label="Använd")
-        button.set_valign(Gtk.Align.CENTER)
-        button.connect("clicked", lambda _b, name=build.name: _on_pick_runner(window, name))
-        row.add_suffix(button)
-        group.add(row)
-    page.add(group)
-    return _toolbar_page("Runners", page)
+    def done(_result: object) -> None:
+        button.set_sensitive(True)
+        window.toast("Startar Battle.net")  # type: ignore[attr-defined]
+
+    def error(exc: Exception) -> None:
+        button.set_sensitive(True)
+        window.toast(f"Fel: {exc}")  # type: ignore[attr-defined]
+
+    run_async(work, done, error)
 
 
-def _on_pick_runner(window: Adw.ApplicationWindow, name: str) -> None:
-    config = Config.load()
-    config.proton_name = name
-    config.save()
-    window.toast(f"Runner satt till {name}")  # type: ignore[attr-defined]
+def _repair(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
+    button.set_sensitive(False)
+    window.toast("Reparerar ...")  # type: ignore[attr-defined]
+
+    def work() -> None:
+        config = Config.load()
+        health.remediate(config)
+        service.launch(config, service.ensure(config))
+
+    def done(_result: object) -> None:
+        button.set_sensitive(True)
+        window.toast("Reparerat och startat")  # type: ignore[attr-defined]
+
+    def error(exc: Exception) -> None:
+        button.set_sensitive(True)
+        window.toast(f"Fel: {exc}")  # type: ignore[attr-defined]
+
+    run_async(work, done, error)
 
 
-# --- Performance ---------------------------------------------------------
-def build_performance(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
-    config = Config.load()
-    page = Adw.PreferencesPage()
-
-    group = Adw.PreferencesGroup(title="Prestanda")
-    group.set_description("Tillämpas när Battle.net startas via frostylauncher.")
-
-    def switch(title: str, subtitle: str, value: bool, key: str) -> Adw.SwitchRow:
-        row = Adw.SwitchRow(title=title, subtitle=subtitle)
-        row.set_active(value)
-
-        def on_active(row: Adw.SwitchRow, _pspec: object) -> None:
-            cfg = Config.load()
-            setattr(cfg.performance, key, row.get_active())
-            cfg.save()
-
-        row.connect("notify::active", on_active)
-        return row
-
-    group.add(
-        switch(
-            "MangoHud",
-            "FPS/GPU-overlay (kräver MangoHud)",
-            config.performance.mangohud,
-            "mangohud",
-        )
-    )
-    group.add(
-        switch(
-            "GameMode",
-            "Optimera systemet under spel (Feral GameMode)",
-            config.performance.gamemode,
-            "gamemode",
-        )
-    )
-    group.add(
-        switch(
-            "Gamescope",
-            "Kör i en nästlad compositor (kan hjälpa på Wayland)",
-            config.performance.gamescope,
-            "gamescope",
-        )
-    )
-    page.add(group)
-
-    stack = Adw.PreferencesGroup(title="Grafikstack")
-    stack.add(_kv("DXVK", "Levereras av Proton (DX9/10/11 → Vulkan)"))
-    stack.add(_kv("VKD3D-Proton", "Levereras av Proton (DX12 → Vulkan)"))
-    stack.add(_kv("NTSync", "Används automatiskt om kärnan stödjer det"))
-    page.add(stack)
-
-    return _toolbar_page("Prestanda", page)
+def _kill(window: Adw.ApplicationWindow, _button: Gtk.Button) -> None:
+    health.kill_all()
+    window.toast("Stoppade Battle.net")  # type: ignore[attr-defined]
 
 
 # --- Logs ----------------------------------------------------------------
@@ -306,10 +202,38 @@ def build_settings(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     host = distro.detect()
     page = Adw.PreferencesPage()
 
+    runners = Adw.PreferencesGroup(title="Runner")
+    runners.set_description("Vilken Proton som används. Sparas i config.toml.")
+    current = proton.find(config.proton_name)
+    builds = proton.all_builds()
+    if not builds:
+        runners.add(
+            Adw.ActionRow(title="Inga Proton-byggen hittades", subtitle="Installera via ProtonPlus")
+        )
+    for build in builds:
+        row = Adw.ActionRow(title=build.name, subtitle=str(build))
+        if build == current:
+            row.add_suffix(Gtk.Image.new_from_icon_name("object-select-symbolic"))
+        button = Gtk.Button(label="Använd")
+        button.set_valign(Gtk.Align.CENTER)
+        button.connect("clicked", lambda _b, name=build.name: _pick_runner(window, name))
+        row.add_suffix(button)
+        runners.add(row)
+    page.add(runners)
+
+    performance = Adw.PreferencesGroup(title="Prestanda")
+    performance.set_description("Tillämpas när Battle.net startas via frostylauncher.")
+    performance.add(_switch(config, "MangoHud", "FPS/GPU-overlay (kräver MangoHud)", "mangohud"))
+    performance.add(_switch(config, "GameMode", "Optimera systemet under spel", "gamemode"))
+    performance.add(
+        _switch(config, "Gamescope", "Nästlad compositor (kan hjälpa på Wayland)", "gamescope")
+    )
+    page.add(performance)
+
     paths = Adw.PreferencesGroup(title="Sökvägar")
     paths.add(_kv("Prefix", str(config.prefix)))
     paths.add(_kv("Installerare", str(config.installer)))
-    paths.add(_kv("Config", str(config.config_dir / "config.toml")))
+    paths.add(_kv("Config", str(config.config_file)))
     paths.add(_kv("Loggar", str(config.log_dir)))
     page.add(paths)
 
@@ -334,6 +258,26 @@ def build_settings(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     return _toolbar_page("Inställningar", page)
 
 
+def _switch(config: Config, title: str, subtitle: str, key: str) -> Adw.SwitchRow:
+    row = Adw.SwitchRow(title=title, subtitle=subtitle)
+    row.set_active(bool(getattr(config.performance, key)))
+
+    def on_active(row: Adw.SwitchRow, _pspec: object) -> None:
+        cfg = Config.load()
+        setattr(cfg.performance, key, row.get_active())
+        cfg.save()
+
+    row.connect("notify::active", on_active)
+    return row
+
+
+def _pick_runner(window: Adw.ApplicationWindow, name: str) -> None:
+    config = Config.load()
+    config.proton_name = name
+    config.save()
+    window.toast(f"Runner satt till {name}")  # type: ignore[attr-defined]
+
+
 def _show_about(window: Adw.ApplicationWindow) -> None:
     from .. import __version__
 
@@ -342,7 +286,7 @@ def _show_about(window: Adw.ApplicationWindow) -> None:
         application_icon="applications-games-symbolic",
         version=__version__,
         developer_name="frostylauncher contributors",
-        comments="Install and launch Blizzard games on Linux via umu + Proton.",
+        comments="A Battle.net installer helper for Linux (umu-launcher + Proton).",
         license_type=Gtk.License.MIT_X11,
     )
     dialog.present(window)

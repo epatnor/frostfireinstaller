@@ -123,7 +123,7 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="frostylauncher",
-        description="Install and launch Blizzard games on Linux via umu-launcher + Proton.",
+        description="A Battle.net installer helper for Linux (umu-launcher + Proton).",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("-v", "--verbose", action="store_true", help="verbose output")
