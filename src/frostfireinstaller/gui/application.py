@@ -36,7 +36,7 @@ _CSS = f"""
 }}
 .material-icon {{
     font-family: "Material Symbols Outlined";
-    font-size: 18px;
+    font-size: 22px;
 }}
 """
 

@@ -50,12 +50,17 @@ def spawn(
     stdout: IO[Any] | int | None = None,
     stderr: IO[Any] | int | None = None,
 ) -> subprocess.Popen[bytes]:
-    """Launch a Windows executable via umu-run in a new session (detached)."""
+    """Launch a Windows executable via umu-run in a new session (detached).
+
+    By default the child's stdio is detached (/dev/null) so it never holds the
+    caller's terminal or pipes open.
+    """
     return subprocess.Popen(  # noqa: S603
         launch_command(config, exe, extra_args),
         env=build_env(config, proton),
-        stdout=stdout,
-        stderr=stderr,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL if stdout is None else stdout,
+        stderr=subprocess.DEVNULL if stderr is None else stderr,
         start_new_session=True,
     )
 
