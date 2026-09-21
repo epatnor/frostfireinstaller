@@ -61,7 +61,7 @@ GTK4 + libadwaita (`frostfireinstaller gui`), one column:
 2. **Info strip** — one line of system info (distro + kernel, session, GPU).
 3. **Battle.net band** — client state (coloured), Proton and prefix on a dimmed
    second line, plus the install/start/stop button. The button runs `ensure()` first,
-   so a missing client is installed ("Installera & starta") before launching.
+   so a missing client is installed ("Installera") before launching.
 4. **Preferences** — "Installation & underhåll" (ice: client status + *Reparera*),
    "Återställ & ta bort" (fire: *Behåll spel*, *Återinstallera*, *Ta bort* with the
    *Även installeraren* checkbox), and an **Avancerat** switch that reveals

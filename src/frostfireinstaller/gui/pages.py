@@ -162,12 +162,15 @@ class RunBar(Gtk.Box):
 
         if running:
             self.label.set_label("Stoppa")
+            self.button.set_tooltip_text("Stoppar Battle.net")
             self.button.remove_css_class("suggested-action")
         elif installed:
             self.label.set_label("Starta")
+            self.button.set_tooltip_text("Startar Battle.net")
             self.button.add_css_class("suggested-action")
         else:
-            self.label.set_label("Installera & starta")
+            self.label.set_label("Installera")
+            self.button.set_tooltip_text("Installerar Battle.net och startar klienten")
             self.button.add_css_class("suggested-action")
 
         proton_name = build.name if build else "Proton saknas"

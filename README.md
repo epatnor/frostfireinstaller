@@ -31,7 +31,7 @@ frostfireinstaller gui
 ```
 
 - **Battle.net-bandet**: status (färgad), Proton och prefix på en dämpad andra rad,
-  plus åtgärdsknappen (*Installera & starta* / *Starta* / *Stoppa*).
+  plus åtgärdsknappen (*Installera* / *Starta* / *Stoppa*).
 - **Infofält** (en rad): distro + kernel, session + skrivbord, GPU (namn, VRAM, drivrutin).
 - **Startknappen gör allt** (is): startar Battle.net — och installerar klienten om den
   saknas. Status + *Reparera* delar rad i underhållet.

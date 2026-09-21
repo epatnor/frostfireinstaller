@@ -15,9 +15,9 @@
 | **Installation & underhåll** | **Is** (bevara, hålla igång) | Battle.net-status + Reparera (samma rad) |
 | **Återställ & ta bort** | **Eld** (förstörande) | Behåll spel, Återinstallera, Ta bort |
 
-- **Startknappen gör allt**: den kör `ensure()` först — saknas klienten säger den
-  *"Installera & starta"* och installerar, annars bara *"Starta"*. Ingen separat
-  installationsknapp behövs (den var en dublett).
+- **Startknappen gör allt**: den kör `ensure()` först — saknas klienten heter den
+  *"Installera"* (installerar och startar), annars *"Starta"*/*"Stoppa"*. Ingen
+  separat installationsknapp behövs (den var en dublett).
 - **Kompakt men logiskt**: val som hör till en åtgärd ligger i samma rad — *Även
   installeraren* är en kryssruta bredvid *Ta bort*, inte en egen rad. Status och
   *Reparera* delar rad.
