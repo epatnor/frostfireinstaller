@@ -9,6 +9,7 @@ launcher, not here.
 from __future__ import annotations
 
 import shutil
+from collections.abc import Callable
 from pathlib import Path
 
 import gi
@@ -72,12 +73,17 @@ def _refresh_root(widget: Gtk.Widget) -> None:
         root.refresh_state()  # type: ignore[attr-defined]
 
 
-class ClientStatusRow(Adw.ActionRow):
-    """Status-only row: is the client installed?"""
+class ClientRow(Adw.ActionRow):
+    """Client state with the repair action in the same row."""
 
-    def __init__(self) -> None:
+    def __init__(self, on_repair: Callable[[Gtk.Button], None]) -> None:
         super().__init__(title="Battle.net")
-        self.add_prefix(_icon(MATERIAL["download"], "ice"))
+        self.add_prefix(_icon(MATERIAL["build"], "ice"))
+        button = Gtk.Button(label="Reparera")
+        button.set_valign(Gtk.Align.CENTER)
+        button.set_tooltip_text("Stoppa, rensa CEF/cache och starta om")
+        button.connect("clicked", lambda *_: on_repair(button))
+        self.add_suffix(button)
         self.refresh()
 
     def refresh(self) -> None:
@@ -180,54 +186,66 @@ class RunBar(Gtk.Box):
         run_async(work, done, error)
 
 
-def _info_strip(config: Config) -> Gtk.Widget:
-    """Dark info strip below the banner: app + system information."""
-    host = distro.detect()
-    strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=48)
-    strip.add_css_class("info-strip")
+def _label(text: str) -> Gtk.Label:
+    return Gtk.Label(label=text, xalign=0)
 
-    def column(title: str, rows: list[tuple[str, str]]) -> Gtk.Widget:
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
-        box.set_hexpand(True)
-        box.set_halign(Gtk.Align.START)
-        heading = Gtk.Label(label=title, xalign=0)
-        heading.add_css_class("info-title")
-        box.append(heading)
-        for key, value in rows:
-            line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-            key_label = Gtk.Label(label=key, xalign=0)
-            key_label.add_css_class("info-key")
-            value_label = Gtk.Label(label=value, xalign=0)
-            line.append(key_label)
-            line.append(value_label)
-            box.append(line)
-        return box
 
-    state = "Installerat" if battlenet.installed(config) else "Ej installerat"
-    if health.running():
-        state += ", körs"
-    build = proton.find(config.proton_name)
-    strip.append(
-        column(
-            "App",
-            [
-                ("Battle.net", state),
-                ("Proton", build.name if build else "saknas"),
-                ("Prefix", str(config.prefix)),
-            ],
+def _info_column(title: str, rows: list[tuple[str, Gtk.Widget]]) -> Gtk.Widget:
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+    box.set_hexpand(True)
+    box.set_halign(Gtk.Align.START)
+    heading = Gtk.Label(label=title, xalign=0)
+    heading.add_css_class("info-title")
+    box.append(heading)
+    for key, value in rows:
+        line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        key_label = Gtk.Label(label=key, xalign=0)
+        key_label.add_css_class("info-key")
+        line.append(key_label)
+        line.append(value)
+        box.append(line)
+    return box
+
+
+class InfoStrip(Gtk.Box):
+    """Dark strip below the banner: app + system information (kept live)."""
+
+    def __init__(self, config: Config) -> None:
+        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=48)
+        self.add_css_class("info-strip")
+        self._config = config
+
+        host = distro.detect()
+        build = proton.find(config.proton_name)
+
+        self.bnet = _label("")
+        self.append(
+            _info_column(
+                "App",
+                [
+                    ("Battle.net", self.bnet),
+                    ("Proton", _label(build.name if build else "saknas")),
+                    ("Prefix", _label(str(config.prefix))),
+                ],
+            )
         )
-    )
-    strip.append(
-        column(
-            "System",
-            [
-                ("Distro", f"{host.distro}, {host.kernel}"),
-                ("Session", f"{host.session}, {host.desktop}"),
-                ("GPU", host.gpu or "-"),
-            ],
+        self.append(
+            _info_column(
+                "System",
+                [
+                    ("Distro", _label(f"{host.distro}, {host.kernel}")),
+                    ("Session", _label(f"{host.session}, {host.desktop}")),
+                    ("GPU", _label(host.gpu or "-")),
+                ],
+            )
         )
-    )
-    return strip
+        self.refresh()
+
+    def refresh(self) -> None:
+        state = "Installerat" if battlenet.installed(self._config) else "Ej installerat"
+        if health.running():
+            state += ", körs"
+        self.bnet.set_label(state)
 
 
 def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
@@ -246,10 +264,13 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         suggested: bool = False,
         icon: str | None = None,
         tone: str | None = None,
+        options: list[Gtk.Widget] | None = None,
     ) -> Adw.ActionRow:
         row = Adw.ActionRow(title=title, subtitle=subtitle)
         if icon is not None:
             row.add_prefix(_icon(icon, tone))
+        for widget in options or []:
+            row.add_suffix(widget)
         button = Gtk.Button(label=label)
         button.set_valign(Gtk.Align.CENTER)
         if suggested:
@@ -258,18 +279,8 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         row.add_suffix(button)
         return row
 
-    status_row = ClientStatusRow()
-    maintenance.add(status_row)
-    maintenance.add(
-        action(
-            "Reparera",
-            "Stoppa, rensa CEF/cache och starta om",
-            "Reparera",
-            lambda b: _repair(window, b),
-            icon=MATERIAL["build"],
-            tone="ice",
-        )
-    )
+    client_row = ClientRow(lambda b: _repair(window, b))
+    maintenance.add(client_row)
     page.add(maintenance)
 
     # --- Destructive (fire: reinstall / remove) --------------------------
@@ -283,19 +294,18 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     keep_games.set_active(True)
     destructive.add(keep_games)
 
-    drop_installer = Adw.SwitchRow(
-        title="Ta bort installeraren",
-        subtitle="Raderar nedladdad Battle.net-Setup.exe – nästa start laddar ner den igen",
+    drop_installer = Gtk.CheckButton(label="Även installeraren")
+    drop_installer.set_valign(Gtk.Align.CENTER)
+    drop_installer.set_tooltip_text(
+        "Raderar nedladdad Battle.net-Setup.exe – nästa start laddar ner den igen"
     )
-    drop_installer.set_active(False)
-    destructive.add(drop_installer)
 
     destructive.add(
         action(
             "Återinstallera Battle.net",
             "Tar bort klienten och installerar om",
             "Återinstallera",
-            lambda b: _reinstall(window, b, keep_games, drop_installer),
+            lambda b: _reinstall(window, b, keep_games),
             icon=MATERIAL["refresh"],
             tone="fire",
         )
@@ -308,6 +318,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             lambda b: _remove(window, b, keep_games, drop_installer),
             icon=MATERIAL["delete"],
             tone="fire",
+            options=[drop_installer],
         )
     )
     page.add(destructive)
@@ -436,14 +447,16 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         frame.set_child(picture)
         frame.set_hexpand(True)
         column.append(frame)
-    column.append(_info_strip(config))
+    strip = InfoStrip(config)
+    column.append(strip)
     run_bar = RunBar()
     column.append(run_bar)
     page.set_vexpand(True)
     column.append(page)
 
     if hasattr(window, "register_state"):
-        window.register_state(status_row.refresh)  # type: ignore[attr-defined]
+        window.register_state(strip.refresh)  # type: ignore[attr-defined]
+        window.register_state(client_row.refresh)  # type: ignore[attr-defined]
         window.register_state(run_bar.refresh)  # type: ignore[attr-defined]
     return _toolbar_page("Frostfire Installer", column)
 
@@ -470,15 +483,9 @@ def _repair(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
     run_async(work, done, error)
 
 
-def _reinstall(
-    window: Adw.ApplicationWindow,
-    button: Gtk.Button,
-    keep: Adw.SwitchRow,
-    drop: Adw.SwitchRow,
-) -> None:
+def _reinstall(window: Adw.ApplicationWindow, button: Gtk.Button, keep: Adw.SwitchRow) -> None:
     button.set_sensitive(False)
     keep_games = keep.get_active()
-    remove_installer = drop.get_active()
     window.toast("Återinstallerar Battle.net ...")  # type: ignore[attr-defined]
 
     def work() -> str:
@@ -486,11 +493,7 @@ def _reinstall(
         build = proton.find(config.proton_name)
         if build is None:
             raise RuntimeError("Ingen Proton hittad")
-        return str(
-            battlenet.reinstall(
-                config, build, keep_games=keep_games, remove_installer=remove_installer
-            )
-        )
+        return str(battlenet.reinstall(config, build, keep_games=keep_games))
 
     def done(_log_path: str) -> None:
         button.set_sensitive(True)
@@ -508,7 +511,7 @@ def _remove(
     window: Adw.ApplicationWindow,
     button: Gtk.Button,
     keep: Adw.SwitchRow,
-    drop: Adw.SwitchRow,
+    drop: Gtk.CheckButton,
 ) -> None:
     button.set_sensitive(False)
     keep_games = keep.get_active()

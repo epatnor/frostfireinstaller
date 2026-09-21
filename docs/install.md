@@ -67,7 +67,7 @@ frostfireinstaller doctor   # environment + status
 First run downloads the Battle.net installer (cached at
 `~/Games/battlenet/Battle.net-Setup.exe`) and installs it into
 `~/Games/battlenet/prefix`. The cached installer is reused on reinstall; use
-`--purge-installer` or the *Ta bort installeraren* switch to force a fresh download. When the launcher appears, close it once (the tool
+`--purge-installer` or the *Även installeraren* checkbox to force a fresh download. When the launcher appears, close it once (the tool
 does this automatically) and then start it again before logging in.
 
 ## Custom prefix location
