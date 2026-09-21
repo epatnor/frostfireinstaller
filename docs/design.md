@@ -41,9 +41,11 @@
 - Bannern når kant-till-kant (AspectFrame, inga marginaler).
 - **Infofältet** (mörkt, `#00070f`) är en rad systeminfo: distro + kernel, session,
   GPU (namn, VRAM, drivrutin).
-- **Battle.net-bandet** (`#081a28`) bär appdetaljerna: status (grön/röd), Proton och
-  prefix på en dämpad andra rad, plus åtgärdsknappen. Detaljerat utan att skrika —
-  andra raden är `opacity: 0.7` och `0.92em`.
+- **Konfigurationsbandet** (`#051320`, smalt) visar Proton och prefix — hur appen är
+  uppsatt — så att bandet nedanför bara behöver bära tillstånd. Saknad Proton visas i
+  eld-orange (`#ff7a2f`).
+- **Battle.net-bandet** (`#081a28`) bär tillståndet (grön/röd/dämpad) och
+  åtgärdsknappen.
 - GTK4 + libadwaita; mörkt/ljust följer systemet.
 
 ## Tillgångar (assets)

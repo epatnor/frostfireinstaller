@@ -34,6 +34,18 @@ _CSS = f"""
 .info-key {{
     opacity: 0.65;
 }}
+.config-strip {{
+    background-color: #051320;
+    color: #eaf9ff;
+    padding: 7px 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    font-family: "{INFO_FONT}", sans-serif;
+    font-size: 0.92em;
+}}
+.config-warn {{
+    color: #ff7a2f;
+}}
 .material-icon {{
     font-family: "Material Symbols Outlined";
     font-size: 22px;

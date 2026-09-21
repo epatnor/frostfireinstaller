@@ -105,16 +105,10 @@ class RunBar(Gtk.Box):
         title = Gtk.Label(label="Battle.net", xalign=0)
         title.add_css_class("heading")
 
-        detail = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         self.status = Gtk.Label(xalign=0)
-        self.details = Gtk.Label(xalign=0)
-        self.details.add_css_class("run-details")
-        self.details.set_ellipsize(Pango.EllipsizeMode.END)
-        detail.append(self.status)
-        detail.append(self.details)
 
         text.append(title)
-        text.append(detail)
+        text.append(self.status)
         self.append(text)
 
         spacer = Gtk.Box()
@@ -144,7 +138,6 @@ class RunBar(Gtk.Box):
         config = Config.load()
         running = health.running()
         installed = battlenet.installed(config)
-        build = proton.find(config.proton_name)
 
         if running:
             state = "Startat"
@@ -179,11 +172,6 @@ class RunBar(Gtk.Box):
             self.button.set_tooltip_text("Installerar Battle.net och startar klienten")
             self.button.add_css_class("suggested-action")
 
-        proton_name = build.name if build else "Proton saknas"
-        prefix = str(config.prefix).replace(str(Path.home()), "~", 1)
-        self.details.set_label(f", {proton_name}, {prefix}")
-        self.details.set_tooltip_text(f"Proton: {build or 'saknas'}\nPrefix: {config.prefix}")
-
     def _on_clicked(self, button: Gtk.Button) -> None:
         if health.running():
             health.kill_all()
@@ -212,6 +200,43 @@ class RunBar(Gtk.Box):
 
 def _label(text: str) -> Gtk.Label:
     return Gtk.Label(label=text, xalign=0)
+
+
+class ConfigStrip(Gtk.Box):
+    """Narrow band: how the app is configured (runner and prefix)."""
+
+    def __init__(self, config: Config) -> None:
+        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=24)
+        self.add_css_class("config-strip")
+        self._config = config
+
+        self.proton = _label("")
+        self.prefix = _label(str(config.prefix).replace(str(Path.home()), "~", 1))
+        self.prefix.set_ellipsize(Pango.EllipsizeMode.END)
+        self.prefix.set_hexpand(True)
+        self.prefix.set_halign(Gtk.Align.START)
+        self.prefix.set_tooltip_text(str(config.prefix))
+
+        self.append(_info_column_inline("Proton", self.proton))
+        self.append(_info_column_inline("Prefix", self.prefix))
+        self.refresh()
+
+    def refresh(self) -> None:
+        build = proton.find(self._config.proton_name)
+        self.proton.set_label(build.name if build else "saknas")
+        self.proton.remove_css_class("config-warn")
+        self.proton.set_tooltip_text(str(build) if build else "Ingen Proton hittad")
+        if build is None:
+            self.proton.add_css_class("config-warn")
+
+
+def _info_column_inline(key: str, value: Gtk.Widget) -> Gtk.Widget:
+    item = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+    key_label = Gtk.Label(label=key, xalign=0)
+    key_label.add_css_class("info-key")
+    item.append(key_label)
+    item.append(value)
+    return item
 
 
 def _system_strip() -> Gtk.Widget:
@@ -436,6 +461,8 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         frame.set_hexpand(True)
         column.append(frame)
     column.append(_system_strip())
+    config_strip = ConfigStrip(config)
+    column.append(config_strip)
     run_bar = RunBar()
     column.append(run_bar)
     page.set_vexpand(True)
@@ -443,6 +470,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
 
     if hasattr(window, "register_state"):
         window.register_state(client_row.refresh)  # type: ignore[attr-defined]
+        window.register_state(config_strip.refresh)  # type: ignore[attr-defined]
         window.register_state(run_bar.refresh)  # type: ignore[attr-defined]
     return _toolbar_page("Frostfire Installer", column)
 
