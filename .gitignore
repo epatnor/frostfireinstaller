@@ -37,3 +37,6 @@ htmlcov/
 
 # Generated raster assets
 assets/generated/
+
+# Local previews (screenshots, banner candidates)
+preview/

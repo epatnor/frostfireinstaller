@@ -342,6 +342,22 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     )
     page.add(destructive)
 
+    # --- Advanced switch (stays put above the groups it reveals) ---------
+    advanced: list[Adw.PreferencesGroup] = []
+    advanced_group = Adw.PreferencesGroup(title="Avancerat")
+    show_advanced = Adw.SwitchRow(
+        title="Visa avancerat",
+        subtitle="Prestanda, runner, sökvägar och diagnostik",
+    )
+
+    def on_show(row: Adw.SwitchRow, _pspec: object) -> None:
+        for group in advanced:
+            group.set_visible(row.get_active())
+
+    show_advanced.connect("notify::active", on_show)
+    advanced_group.add(show_advanced)
+    page.add(advanced_group)
+
     # --- Performance -----------------------------------------------------
     performance = Adw.PreferencesGroup(title="Prestanda")
     performance.set_description(
@@ -384,6 +400,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         )
     )
     page.add(performance)
+    advanced.append(performance)
 
     # --- Runner ----------------------------------------------------------
     runners = Adw.PreferencesGroup(title="Runner")
@@ -394,16 +411,27 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         runners.add(
             Adw.ActionRow(title="Inga Proton-byggen hittades", subtitle="Installera via ProtonPlus")
         )
+    group: Gtk.CheckButton | None = None
     for candidate in builds:
         row = Adw.ActionRow(title=candidate.name, subtitle=str(candidate))
-        if candidate == current:
-            row.add_suffix(Gtk.Image.new_from_icon_name("object-select-symbolic"))
-        button = Gtk.Button(label="Använd")
-        button.set_valign(Gtk.Align.CENTER)
-        button.connect("clicked", lambda _b, name=candidate.name: _pick_runner(window, name))
-        row.add_suffix(button)
+        radio = Gtk.CheckButton()
+        radio.set_valign(Gtk.Align.CENTER)
+        radio.set_tooltip_text(f"Använd {candidate.name}")
+        if group is None:
+            group = radio
+        else:
+            radio.set_group(group)
+        radio.set_active(candidate == current)
+        radio.connect(
+            "toggled",
+            lambda button, name=candidate.name: (
+                _pick_runner(window, name) if button.get_active() else None
+            ),
+        )
+        row.add_prefix(radio)
         runners.add(row)
     page.add(runners)
+    advanced.append(runners)
 
     # --- Paths (advanced) ------------------------------------------------
     paths = Adw.PreferencesGroup(title="Sökvägar")
@@ -419,6 +447,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     log_row.add_suffix(log_button)
     paths.add(log_row)
     page.add(paths)
+    advanced.append(paths)
 
     # --- About -----------------------------------------------------------
     about = Adw.PreferencesGroup(title="Om")
@@ -430,33 +459,19 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     row.add_suffix(button)
     about.add(row)
     page.add(about)
+    advanced.append(about)
 
     # --- Advanced: hidden by default to keep the app simple --------------
-    advanced = [performance, runners, paths, about]
     for group in advanced:
         group.set_visible(False)
 
-    advanced_group = Adw.PreferencesGroup(title="Avancerat")
-    show_advanced = Adw.SwitchRow(
-        title="Visa avancerat",
-        subtitle="Prestanda, runner, sökvägar och diagnostik",
-    )
-
-    def on_show(row: Adw.SwitchRow, _pspec: object) -> None:
-        for group in advanced:
-            group.set_visible(row.get_active())
-
-    show_advanced.connect("notify::active", on_show)
-    advanced_group.add(show_advanced)
-    page.add(advanced_group)
-
     # --- Column: banner on top, everything else below --------------------
     column = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-    banner = data_file("header", "frostfire_installer_header_1.png")
+    banner = data_file("header", "frostfire_installer_header.png")
     if banner is not None:
         picture = Gtk.Picture.new_for_filename(str(banner))
         picture.set_content_fit(Gtk.ContentFit.FILL)
-        frame = Gtk.AspectFrame(ratio=1600 / 515, obey_child=False)
+        frame = Gtk.AspectFrame(ratio=1600 / 521, obey_child=False)
         frame.set_child(picture)
         frame.set_hexpand(True)
         column.append(frame)

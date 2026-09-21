@@ -46,12 +46,16 @@ def find(proton_name: str | None = None) -> Path | None:
 
 
 def all_builds() -> list[Path]:
-    """Return every detected Proton build (deduplicated, sorted)."""
+    """Return every detected Proton build (deduplicated by real path, sorted)."""
     seen: dict[str, Path] = {}
     for directory in SEARCH_DIRS:
         if not directory.is_dir():
             continue
         for candidate in sorted(directory.iterdir()):
             if candidate.is_dir() and (candidate / "proton").exists():
-                seen[str(candidate)] = candidate
+                try:
+                    key = str(candidate.resolve())
+                except OSError:
+                    key = str(candidate)
+                seen.setdefault(key, candidate)
     return sorted(seen.values())
