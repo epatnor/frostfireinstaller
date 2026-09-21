@@ -22,6 +22,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
 - Avancerat → Sökvägar shows where the installer is cached and whether it is present.
 - GUI: client status and *Reparera* share one row; logs moved under Avancerat
   (a *Visa* button on the Loggar row).
+- Run bar status now has three states: *Startat* / *Stoppat* / *Ej installerat*.
 - **Battle.net band**: state, Proton and prefix moved from the info strip into the
   run bar (dimmed second line); the info strip is now a single line of system info.
 

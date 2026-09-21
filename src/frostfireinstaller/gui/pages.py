@@ -146,7 +146,13 @@ class RunBar(Gtk.Box):
         installed = battlenet.installed(config)
         build = proton.find(config.proton_name)
 
-        self.status.set_label("Startat" if running else "Stoppat")
+        if running:
+            state = "Startat"
+        elif installed:
+            state = "Stoppat"
+        else:
+            state = "Ej installerat"
+        self.status.set_label(state)
         self.status.remove_css_class("run-status-on")
         self.status.remove_css_class("run-status-off")
         self.status.add_css_class("run-status-on" if running else "run-status-off")
