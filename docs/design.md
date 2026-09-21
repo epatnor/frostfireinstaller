@@ -12,9 +12,12 @@
 
 | Område | Tema | Innehåll |
 |---|---|---|
-| **Installation & underhåll** | **Is** (bevara, hålla igång) | Installera/verifiera, Starta, Reparera, Stoppa |
+| **Installation & underhåll** | **Is** (bevara, hålla igång) | Statusrad, Reparera |
 | **Återställ & ta bort** | **Eld** (förstörande) | Behåll spel, Återinstallera, Ta bort |
 
+- **Startknappen gör allt**: den kör `ensure()` först — saknas klienten säger den
+  *"Installera & starta"* och installerar, annars bara *"Starta"*. Ingen separat
+  installationsknapp behövs (den var en dublett).
 - **Behåll spel** är is-sidan av de förstörande åtgärderna: elden tar klienten, isen räddar spelen.
 - **Framtid:** accentfärger per område — isblå för underhåll, glödbrand/orange för förstörande
   knappar; ev. tematiska sektionsrubriker och ikoner.

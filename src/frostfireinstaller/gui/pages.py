@@ -56,6 +56,28 @@ def _toolbar_page(title: str, content: Gtk.Widget) -> Adw.ToolbarView:
     return view
 
 
+def _refresh_root(widget: Gtk.Widget) -> None:
+    """Ask the window to refresh every widget that shows client state."""
+    root = widget.get_root()
+    if root is not None and hasattr(root, "refresh_state"):
+        root.refresh_state()  # type: ignore[attr-defined]
+
+
+class ClientStatusRow(Adw.ActionRow):
+    """Status-only row: is the client installed?"""
+
+    def __init__(self) -> None:
+        super().__init__(title="Battle.net")
+        self.add_prefix(_icon(MATERIAL["download"], "ice"))
+        self.refresh()
+
+    def refresh(self) -> None:
+        installed = battlenet.installed(Config.load())
+        self.set_subtitle(
+            "Klienten är installerad" if installed else "Klienten är inte installerad"
+        )
+
+
 class RunBar(Gtk.Box):
     """Standalone Battle.net start/stop control (not part of any card)."""
 
@@ -97,27 +119,36 @@ class RunBar(Gtk.Box):
 
     def refresh(self) -> None:
         running = health.running()
+        installed = battlenet.installed(Config.load())
 
         self.status.set_label("Startat" if running else "Stoppat")
         self.status.remove_css_class("run-status-on")
         self.status.remove_css_class("run-status-off")
         self.status.add_css_class("run-status-on" if running else "run-status-off")
 
-        self.icon.set_label(MATERIAL["stop"] if running else MATERIAL["play"])
+        if running:
+            glyph = MATERIAL["stop"]
+        else:
+            glyph = MATERIAL["play"] if installed else MATERIAL["download"]
+        self.icon.set_label(glyph)
         self.icon.remove_css_class("icon-red")
         self.icon.remove_css_class("icon-green")
         self.icon.add_css_class("icon-red" if running else "icon-green")
 
-        self.label.set_label("Stoppa" if running else "Starta")
         if running:
+            self.label.set_label("Stoppa")
             self.button.remove_css_class("suggested-action")
+        elif installed:
+            self.label.set_label("Starta")
+            self.button.add_css_class("suggested-action")
         else:
+            self.label.set_label("Installera & starta")
             self.button.add_css_class("suggested-action")
 
     def _on_clicked(self, button: Gtk.Button) -> None:
         if health.running():
             health.kill_all()
-            self.refresh()
+            _refresh_root(self)
             self._toast("Stoppade Battle.net")
             return
 
@@ -130,7 +161,7 @@ class RunBar(Gtk.Box):
 
         def done(_result: object) -> None:
             button.set_sensitive(True)
-            self.refresh()
+            _refresh_root(self)
             self._toast("Startar Battle.net")
 
         def error(exc: Exception) -> None:
@@ -218,17 +249,8 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         row.add_suffix(button)
         return row
 
-    installed = battlenet.installed(config)
-    install_row: Adw.ActionRow = action(
-        "Verifiera Battle.net" if installed else "Installera Battle.net",
-        "Klienten är installerad" if installed else "Klienten är inte installerad",
-        "Verifiera" if installed else "Installera",
-        lambda b: _ensure(window, b, install_row),
-        suggested=True,
-        icon=MATERIAL["download"],
-        tone="ice",
-    )
-    maintenance.add(install_row)
+    status_row = ClientStatusRow()
+    maintenance.add(status_row)
     maintenance.add(
         action(
             "Reparera",
@@ -397,34 +419,18 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         frame.set_hexpand(True)
         column.append(frame)
     column.append(_info_strip(config))
-    column.append(RunBar())
+    run_bar = RunBar()
+    column.append(run_bar)
     page.set_vexpand(True)
     column.append(page)
+
+    if hasattr(window, "register_state"):
+        window.register_state(status_row.refresh)  # type: ignore[attr-defined]
+        window.register_state(run_bar.refresh)  # type: ignore[attr-defined]
     return _toolbar_page("Frostfire Installer", column)
 
 
 # --- Handlers ------------------------------------------------------------
-def _ensure(window: Adw.ApplicationWindow, button: Gtk.Button, row: Adw.ActionRow) -> None:
-    button.set_sensitive(False)
-    window.toast("Verifierar/installerar ...")  # type: ignore[attr-defined]
-
-    def work() -> str:
-        return str(service.ensure(Config.load()))
-
-    def done(build: str) -> None:
-        button.set_sensitive(True)
-        row.set_title("Verifiera Battle.net")
-        row.set_subtitle("Klienten är installerad")
-        button.set_label("Verifiera")
-        window.toast(f"Klart – Proton: {build}")  # type: ignore[attr-defined]
-
-    def error(exc: Exception) -> None:
-        button.set_sensitive(True)
-        window.toast(f"Fel: {exc}")  # type: ignore[attr-defined]
-
-    run_async(work, done, error)
-
-
 def _repair(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
     button.set_sensitive(False)
     window.toast("Reparerar ...")  # type: ignore[attr-defined]
@@ -436,6 +442,7 @@ def _repair(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
 
     def done(_result: object) -> None:
         button.set_sensitive(True)
+        _refresh_root(window)
         window.toast("Reparerat och startat")  # type: ignore[attr-defined]
 
     def error(exc: Exception) -> None:
@@ -459,6 +466,7 @@ def _reinstall(window: Adw.ApplicationWindow, button: Gtk.Button, keep: Adw.Swit
 
     def done(_log_path: str) -> None:
         button.set_sensitive(True)
+        _refresh_root(window)
         window.toast("Återinstallerat" + (" (spel behållna)" if keep_games else ""))  # type: ignore[attr-defined]
 
     def error(exc: Exception) -> None:
@@ -478,6 +486,7 @@ def _remove(window: Adw.ApplicationWindow, button: Gtk.Button, keep: Adw.SwitchR
 
     def done(_result: object) -> None:
         button.set_sensitive(True)
+        _refresh_root(window)
         window.toast("Battle.net borttaget" + (" (spel behållna)" if keep_games else ""))  # type: ignore[attr-defined]
 
     def error(exc: Exception) -> None:

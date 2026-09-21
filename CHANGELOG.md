@@ -37,6 +37,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   (`frostfireinstaller`, `frostfireinstaller-gui`), app id `io.github.frostfireinstaller`,
   config/state paths, desktop entry and icon.
 - Scope: a **Battle.net installer helper** (not a game launcher or library).
+- **Consolidated actions**: the start button installs the client when missing
+  ("Installera & starta"); the maintenance row is status-only (plus Reparera).
 - GUI actions split into "Installation & underhåll" (ice) and "Återställ & ta bort" (fire).
 - Icon install now includes the hicolor `index.theme` so the app icon resolves.
 - New app icon: the frostfire gateway (half ice, half lava), installed as a full

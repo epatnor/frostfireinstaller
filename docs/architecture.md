@@ -60,7 +60,9 @@ GTK4 + libadwaita (`frostfireinstaller gui`), one column:
 1. **Banner** — full-bleed header art.
 2. **Info strip** — App (status/Proton/prefix) and System (distro/kernel, session,
    GPU) in two equal-width columns.
-3. **Run bar** — start/stop Battle.net, state icon inside the button.
+3. **Run bar** — install/start/stop Battle.net in one button: it runs `ensure()`
+   first, so a missing client is installed ("Installera & starta") before launching.
+   The maintenance row is status-only; *Reparera* stays a separate action.
 4. **Preferences** — "Installation & underhåll" (ice), "Återställ & ta bort" (fire,
    with *Behåll spel*), "Loggar", and an **Avancerat** switch that reveals
    Prestanda / Runner / Sökvägar / Om.
