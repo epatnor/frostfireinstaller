@@ -20,8 +20,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
 - **Även installeraren** checkbox in the *Ta bort* row and `--purge-installer` (CLI):
   drop the cached `Battle.net-Setup.exe` so the download path can be re-tested.
 - Avancerat → Sökvägar shows where the installer is cached and whether it is present.
-- GUI: client status and *Reparera* share one row; the info strip is live (updates on
-  install/remove); logs moved under Avancerat (a *Visa* button on the Loggar row).
+- GUI: client status and *Reparera* share one row; logs moved under Avancerat
+  (a *Visa* button on the Loggar row).
+- **Battle.net band**: state, Proton and prefix moved from the info strip into the
+  run bar (dimmed second line); the info strip is now a single line of system info.
 
 ### Fixed
 - **Icon install** referenced the removed SVG, so a fresh setup got no app icon;

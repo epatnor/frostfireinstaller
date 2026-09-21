@@ -55,6 +55,10 @@ _CSS = f"""
     padding: 12px 18px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }}
+.run-details {{
+    opacity: 0.7;
+    font-size: 0.92em;
+}}
 .run-status-on {{
     color: #57e389;
 }}

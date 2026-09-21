@@ -16,7 +16,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gtk  # noqa: E402
+from gi.repository import Adw, Gtk, Pango  # noqa: E402
 
 from .. import service  # noqa: E402
 from ..config import Config  # noqa: E402
@@ -104,9 +104,17 @@ class RunBar(Gtk.Box):
         text.set_valign(Gtk.Align.CENTER)
         title = Gtk.Label(label="Battle.net", xalign=0)
         title.add_css_class("heading")
+
+        detail = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.status = Gtk.Label(xalign=0)
+        self.details = Gtk.Label(xalign=0)
+        self.details.add_css_class("run-details")
+        self.details.set_ellipsize(Pango.EllipsizeMode.END)
+        detail.append(self.status)
+        detail.append(self.details)
+
         text.append(title)
-        text.append(self.status)
+        text.append(detail)
         self.append(text)
 
         spacer = Gtk.Box()
@@ -133,8 +141,10 @@ class RunBar(Gtk.Box):
             root.toast(message)  # type: ignore[attr-defined]
 
     def refresh(self) -> None:
+        config = Config.load()
         running = health.running()
-        installed = battlenet.installed(Config.load())
+        installed = battlenet.installed(config)
+        build = proton.find(config.proton_name)
 
         self.status.set_label("Startat" if running else "Stoppat")
         self.status.remove_css_class("run-status-on")
@@ -159,6 +169,11 @@ class RunBar(Gtk.Box):
         else:
             self.label.set_label("Installera & starta")
             self.button.add_css_class("suggested-action")
+
+        proton_name = build.name if build else "Proton saknas"
+        prefix = str(config.prefix).replace(str(Path.home()), "~", 1)
+        self.details.set_label(f"{proton_name}, {prefix}")
+        self.details.set_tooltip_text(f"Proton: {build or 'saknas'}\nPrefix: {config.prefix}")
 
     def _on_clicked(self, button: Gtk.Button) -> None:
         if health.running():
@@ -190,62 +205,32 @@ def _label(text: str) -> Gtk.Label:
     return Gtk.Label(label=text, xalign=0)
 
 
-def _info_column(title: str, rows: list[tuple[str, Gtk.Widget]]) -> Gtk.Widget:
-    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
-    box.set_hexpand(True)
-    box.set_halign(Gtk.Align.START)
-    heading = Gtk.Label(label=title, xalign=0)
-    heading.add_css_class("info-title")
-    box.append(heading)
-    for key, value in rows:
-        line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+def _system_strip() -> Gtk.Widget:
+    """One-line system summary below the banner (app details live in the run bar)."""
+    host = distro.detect()
+    strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=24)
+    strip.add_css_class("info-strip")
+
+    items = (
+        ("Distro", f"{host.distro}, {host.kernel}"),
+        ("Session", f"{host.session}, {host.desktop}"),
+        ("GPU", host.gpu or "-"),
+    )
+    for index, (key, value) in enumerate(items):
+        item = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         key_label = Gtk.Label(label=key, xalign=0)
         key_label.add_css_class("info-key")
-        line.append(key_label)
-        line.append(value)
-        box.append(line)
-    return box
-
-
-class InfoStrip(Gtk.Box):
-    """Dark strip below the banner: app + system information (kept live)."""
-
-    def __init__(self, config: Config) -> None:
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=48)
-        self.add_css_class("info-strip")
-        self._config = config
-
-        host = distro.detect()
-        build = proton.find(config.proton_name)
-
-        self.bnet = _label("")
-        self.append(
-            _info_column(
-                "App",
-                [
-                    ("Battle.net", self.bnet),
-                    ("Proton", _label(build.name if build else "saknas")),
-                    ("Prefix", _label(str(config.prefix))),
-                ],
-            )
-        )
-        self.append(
-            _info_column(
-                "System",
-                [
-                    ("Distro", _label(f"{host.distro}, {host.kernel}")),
-                    ("Session", _label(f"{host.session}, {host.desktop}")),
-                    ("GPU", _label(host.gpu or "-")),
-                ],
-            )
-        )
-        self.refresh()
-
-    def refresh(self) -> None:
-        state = "Installerat" if battlenet.installed(self._config) else "Ej installerat"
-        if health.running():
-            state += ", körs"
-        self.bnet.set_label(state)
+        value_label = Gtk.Label(label=value, xalign=0)
+        value_label.set_ellipsize(Pango.EllipsizeMode.END)
+        value_label.set_tooltip_text(value)
+        if index == len(items) - 1:
+            item.set_hexpand(True)
+            value_label.set_hexpand(True)
+            value_label.set_halign(Gtk.Align.START)
+        item.append(key_label)
+        item.append(value_label)
+        strip.append(item)
+    return strip
 
 
 def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
@@ -441,15 +426,13 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         frame.set_child(picture)
         frame.set_hexpand(True)
         column.append(frame)
-    strip = InfoStrip(config)
-    column.append(strip)
+    column.append(_system_strip())
     run_bar = RunBar()
     column.append(run_bar)
     page.set_vexpand(True)
     column.append(page)
 
     if hasattr(window, "register_state"):
-        window.register_state(strip.refresh)  # type: ignore[attr-defined]
         window.register_state(client_row.refresh)  # type: ignore[attr-defined]
         window.register_state(run_bar.refresh)  # type: ignore[attr-defined]
     return _toolbar_page("Frostfire Installer", column)
@@ -531,6 +514,7 @@ def _pick_runner(window: Adw.ApplicationWindow, name: str) -> None:
     config = Config.load()
     config.proton_name = name
     config.save()
+    _refresh_root(window)
     window.toast(f"Runner satt till {name}")  # type: ignore[attr-defined]
 
 
