@@ -105,7 +105,7 @@ class RunBar(Gtk.Box):
         title = Gtk.Label(label="Battle.net", xalign=0)
         title.add_css_class("heading")
 
-        detail = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        detail = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         self.status = Gtk.Label(xalign=0)
         self.details = Gtk.Label(xalign=0)
         self.details.add_css_class("run-details")
