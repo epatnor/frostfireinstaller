@@ -181,7 +181,7 @@ class RunBar(Gtk.Box):
 
         proton_name = build.name if build else "Proton saknas"
         prefix = str(config.prefix).replace(str(Path.home()), "~", 1)
-        self.details.set_label(f"{proton_name}, {prefix}")
+        self.details.set_label(f", {proton_name}, {prefix}")
         self.details.set_tooltip_text(f"Proton: {build or 'saknas'}\nPrefix: {config.prefix}")
 
     def _on_clicked(self, button: Gtk.Button) -> None:
