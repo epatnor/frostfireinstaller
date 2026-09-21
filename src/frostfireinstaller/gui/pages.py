@@ -386,25 +386,19 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         runners.add(row)
     page.add(runners)
 
-    # --- Logs ------------------------------------------------------------
-    logs = Adw.PreferencesGroup(title="Loggar")
-    logs.add(
-        action(
-            "Visa loggar",
-            "Körnings- och installationsloggar",
-            "Visa",
-            lambda _b: _show_logs(window),
-            icon=MATERIAL["log"],
-        )
-    )
-    page.add(logs)
-
-    # --- Paths -----------------------------------------------------------
+    # --- Paths (advanced) ------------------------------------------------
     paths = Adw.PreferencesGroup(title="Sökvägar")
     paths.set_description("Var saker ligger. Installeraren cachas och återanvänds.")
     paths.add(_kv("Installerare", f"{config.installer}, {_installer_state(config.installer)}"))
     paths.add(_kv("Config", str(config.config_file)))
-    paths.add(_kv("Loggar", str(config.log_dir)))
+
+    log_row = Adw.ActionRow(title="Loggar", subtitle=str(config.log_dir))
+    log_button = Gtk.Button(label="Visa")
+    log_button.set_valign(Gtk.Align.CENTER)
+    log_button.set_tooltip_text("Körnings- och installationsloggar")
+    log_button.connect("clicked", lambda *_: _show_logs(window))
+    log_row.add_suffix(log_button)
+    paths.add(log_row)
     page.add(paths)
 
     # --- About -----------------------------------------------------------

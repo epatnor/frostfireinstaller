@@ -21,7 +21,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   drop the cached `Battle.net-Setup.exe` so the download path can be re-tested.
 - Avancerat → Sökvägar shows where the installer is cached and whether it is present.
 - GUI: client status and *Reparera* share one row; the info strip is live (updates on
-  install/remove).
+  install/remove); logs moved under Avancerat (a *Visa* button on the Loggar row).
 
 ### Fixed
 - **Icon install** referenced the removed SVG, so a fresh setup got no app icon;

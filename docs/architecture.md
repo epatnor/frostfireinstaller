@@ -63,9 +63,10 @@ GTK4 + libadwaita (`frostfireinstaller gui`), one column:
 3. **Run bar** — install/start/stop Battle.net in one button: it runs `ensure()`
    first, so a missing client is installed ("Installera & starta") before launching.
    The maintenance row is status-only; *Reparera* stays a separate action.
-4. **Preferences** — "Installation & underhåll" (ice), "Återställ & ta bort" (fire,
-   with *Behåll spel*), "Loggar", and an **Avancerat** switch that reveals
-   Prestanda / Runner / Sökvägar / Om.
+4. **Preferences** — "Installation & underhåll" (ice: client status + *Reparera*),
+   "Återställ & ta bort" (fire: *Behåll spel*, *Återinstallera*, *Ta bort* with the
+   *Även installeraren* checkbox), and an **Avancerat** switch that reveals
+   Prestanda / Runner / Sökvägar (with *Visa loggar*) / Om.
 
 Long-running work runs in worker threads and reports through toasts.
 
