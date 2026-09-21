@@ -30,9 +30,11 @@ Born from a working recipe on Bazzite: `umu-launcher` + GE-Proton (see `docs/`).
 frostfireinstaller gui
 ```
 
-- **Infofält** (live): Battle.net-status, Proton och prefix sida vid sida med distro,
-  kernel, session och GPU (namn, VRAM, drivrutin).
-- **Startknappen gör allt** (is): startar Battle.net — och installerar klienten om den saknas. Statusrad + Reparera i underhållet.
+- **Battle.net-bandet**: status (färgad), Proton och prefix på en dämpad andra rad,
+  plus åtgärdsknappen (*Installera & starta* / *Starta* / *Stoppa*).
+- **Infofält** (en rad): distro + kernel, session + skrivbord, GPU (namn, VRAM, drivrutin).
+- **Startknappen gör allt** (is): startar Battle.net — och installerar klienten om den
+  saknas. Status + *Reparera* delar rad i underhållet.
 - **Återställ & ta bort** (eld): Behåll spel, Återinstallera, Ta bort (med kryssrutan **Även installeraren**).
 - **Avancerat**: Prestanda (med "?"-förklaring per växel), Runner, Sökvägar
   (inkl. **Visa loggar**), Om.

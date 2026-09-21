@@ -39,10 +39,11 @@
 - **En kolumn:** fönstrets menyrad (header bar) → fullbredds-banner → infofält → alla
   funktioner som rader.
 - Bannern når kant-till-kant (AspectFrame, inga marginaler).
-- **Infofältet** (mörkt, `#00070f`) visar App- och Systemdata i två lika breda kolumner,
-  tre rader var:
-  - App: Battle.net-status, Proton, Prefix
-  - System: Distro + kernel, session + skrivbord, GPU (namn, VRAM, drivrutin)
+- **Infofältet** (mörkt, `#00070f`) är en rad systeminfo: distro + kernel, session,
+  GPU (namn, VRAM, drivrutin).
+- **Battle.net-bandet** (`#081a28`) bär appdetaljerna: status (grön/röd), Proton och
+  prefix på en dämpad andra rad, plus åtgärdsknappen. Detaljerat utan att skrika —
+  andra raden är `opacity: 0.7` och `0.92em`.
 - GTK4 + libadwaita; mörkt/ljust följer systemet.
 
 ## Tillgångar (assets)
