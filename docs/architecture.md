@@ -100,6 +100,7 @@ disabled in the UI.
 | Purpose | Path |
 |---|---|
 | Prefix / game data | `~/Games/battlenet` (override: `FROSTFIREINSTALLER_BNET_DIR`, or `[paths] bnet_dir`) |
+| Cached installer | `~/Games/battlenet/Battle.net-Setup.exe` (reused; delete with `--purge-installer`) |
 | Config | `~/.config/frostfireinstaller/config.toml` |
 | State | `~/.local/state/frostfireinstaller` |
 | Logs | `~/.local/state/frostfireinstaller/logs` |

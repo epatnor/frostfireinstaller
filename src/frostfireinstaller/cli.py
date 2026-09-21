@@ -55,7 +55,9 @@ def cmd_reinstall(args: argparse.Namespace) -> int:
     config = Config.load()
     setup_run_log(config.log_dir)
     build = service.find_proton(config)
-    log_path = battlenet.reinstall(config, build, keep_games=not args.purge)
+    log_path = battlenet.reinstall(
+        config, build, keep_games=not args.purge, remove_installer=args.purge_installer
+    )
     log.info("Installationslogg: %s", log_path)
     return 0
 
@@ -63,8 +65,12 @@ def cmd_reinstall(args: argparse.Namespace) -> int:
 def cmd_remove(args: argparse.Namespace) -> int:
     config = Config.load()
     setup_run_log(config.log_dir)
-    battlenet.remove(config, keep_games=not args.purge)
-    log.info("Battle.net borttaget%s", "" if args.purge else " (spel behållna)")
+    battlenet.remove(config, keep_games=not args.purge, remove_installer=args.purge_installer)
+    log.info(
+        "Battle.net borttaget%s%s",
+        "" if args.purge else " (spel behållna)",
+        " + installeraren" if args.purge_installer else "",
+    )
     return 0
 
 
@@ -85,6 +91,9 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
     print(f"prefix     : {config.prefix} {'(finns)' if config.prefix.is_dir() else '(saknas)'}")
     print(f"bnet       : {'installerat' if battlenet.installed(config) else 'ej installerat'}")
     print(f"running    : {'ja' if health.running() else 'nej'}")
+    print(
+        f"installer  : {config.installer} {'(finns)' if config.installer.is_file() else '(saknas)'}"
+    )
     print(f"loggar     : {config.log_dir}")
 
     builds = proton.all_builds()
@@ -158,8 +167,14 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("ensure", help="set up/verify only, do not launch")
     reinstall = sub.add_parser("reinstall", help="reinstall Battle.net (keeps games by default)")
     reinstall.add_argument("--purge", action="store_true", help="also remove installed games")
+    reinstall.add_argument(
+        "--purge-installer", action="store_true", help="also remove the cached installer"
+    )
     remove = sub.add_parser("remove", help="remove the Battle.net client (keeps games by default)")
     remove.add_argument("--purge", action="store_true", help="also remove installed games")
+    remove.add_argument(
+        "--purge-installer", action="store_true", help="also remove the cached installer"
+    )
     sub.add_parser("doctor", help="show environment and status")
     sub.add_parser("logs", help="show the latest run log")
     sub.add_parser("install-logs", help="show the latest installation log")

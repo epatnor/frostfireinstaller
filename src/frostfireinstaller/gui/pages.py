@@ -9,6 +9,7 @@ launcher, not here.
 from __future__ import annotations
 
 import shutil
+from pathlib import Path
 
 import gi
 
@@ -24,6 +25,14 @@ from .helpers import data_file, run_async  # noqa: E402
 
 def _kv(title: str, value: str) -> Adw.ActionRow:
     return Adw.ActionRow(title=title, subtitle=value)
+
+
+def _installer_state(path: Path) -> str:
+    try:
+        size = path.stat().st_size
+    except OSError:
+        return "saknas, laddas ner vid nästa start"
+    return f"{size / 1024**2:.1f} MB, nedladdad och cachad"
 
 
 # Material Symbols glyphs (subset of the variable font, see data/fonts).
@@ -273,12 +282,20 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     )
     keep_games.set_active(True)
     destructive.add(keep_games)
+
+    drop_installer = Adw.SwitchRow(
+        title="Ta bort installeraren",
+        subtitle="Raderar nedladdad Battle.net-Setup.exe – nästa start laddar ner den igen",
+    )
+    drop_installer.set_active(False)
+    destructive.add(drop_installer)
+
     destructive.add(
         action(
             "Återinstallera Battle.net",
             "Tar bort klienten och installerar om",
             "Återinstallera",
-            lambda b: _reinstall(window, b, keep_games),
+            lambda b: _reinstall(window, b, keep_games, drop_installer),
             icon=MATERIAL["refresh"],
             tone="fire",
         )
@@ -288,7 +305,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Ta bort Battle.net",
             "Tar bort klienten (spelen behålls om växeln är på)",
             "Ta bort",
-            lambda b: _remove(window, b, keep_games),
+            lambda b: _remove(window, b, keep_games, drop_installer),
             icon=MATERIAL["delete"],
             tone="fire",
         )
@@ -373,7 +390,8 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
 
     # --- Paths -----------------------------------------------------------
     paths = Adw.PreferencesGroup(title="Sökvägar")
-    paths.add(_kv("Installerare", str(config.installer)))
+    paths.set_description("Var saker ligger. Installeraren cachas och återanvänds.")
+    paths.add(_kv("Installerare", f"{config.installer}, {_installer_state(config.installer)}"))
     paths.add(_kv("Config", str(config.config_file)))
     paths.add(_kv("Loggar", str(config.log_dir)))
     page.add(paths)
@@ -452,9 +470,15 @@ def _repair(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
     run_async(work, done, error)
 
 
-def _reinstall(window: Adw.ApplicationWindow, button: Gtk.Button, keep: Adw.SwitchRow) -> None:
+def _reinstall(
+    window: Adw.ApplicationWindow,
+    button: Gtk.Button,
+    keep: Adw.SwitchRow,
+    drop: Adw.SwitchRow,
+) -> None:
     button.set_sensitive(False)
     keep_games = keep.get_active()
+    remove_installer = drop.get_active()
     window.toast("Återinstallerar Battle.net ...")  # type: ignore[attr-defined]
 
     def work() -> str:
@@ -462,7 +486,11 @@ def _reinstall(window: Adw.ApplicationWindow, button: Gtk.Button, keep: Adw.Swit
         build = proton.find(config.proton_name)
         if build is None:
             raise RuntimeError("Ingen Proton hittad")
-        return str(battlenet.reinstall(config, build, keep_games=keep_games))
+        return str(
+            battlenet.reinstall(
+                config, build, keep_games=keep_games, remove_installer=remove_installer
+            )
+        )
 
     def done(_log_path: str) -> None:
         button.set_sensitive(True)
@@ -476,13 +504,19 @@ def _reinstall(window: Adw.ApplicationWindow, button: Gtk.Button, keep: Adw.Swit
     run_async(work, done, error)
 
 
-def _remove(window: Adw.ApplicationWindow, button: Gtk.Button, keep: Adw.SwitchRow) -> None:
+def _remove(
+    window: Adw.ApplicationWindow,
+    button: Gtk.Button,
+    keep: Adw.SwitchRow,
+    drop: Adw.SwitchRow,
+) -> None:
     button.set_sensitive(False)
     keep_games = keep.get_active()
+    remove_installer = drop.get_active()
     window.toast("Tar bort Battle.net ...")  # type: ignore[attr-defined]
 
     def work() -> None:
-        battlenet.remove(Config.load(), keep_games=keep_games)
+        battlenet.remove(Config.load(), keep_games=keep_games, remove_installer=remove_installer)
 
     def done(_result: object) -> None:
         button.set_sensitive(True)

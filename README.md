@@ -33,7 +33,7 @@ frostfireinstaller gui
 - **Infofält**: Battle.net-status, Proton och prefix sida vid sida med distro, kernel,
   session och GPU (namn, VRAM, drivrutin).
 - **Startknappen gör allt** (is): startar Battle.net — och installerar klienten om den saknas. Statusrad + Reparera i underhållet.
-- **Återställ & ta bort** (eld): Behåll spel, Återinstallera, Ta bort.
+- **Återställ & ta bort** (eld): Behåll spel, **Ta bort installeraren**, Återinstallera, Ta bort.
 - **Loggar**: visa kör- och installationsloggar direkt i appen.
 - **Avancerat**: Prestanda (med "?"-förklaring per växel), Runner, Sökvägar, Om.
 
@@ -68,6 +68,7 @@ frostfireinstaller ensure       # set up/verify only
 frostfireinstaller doctor       # show environment and status
 frostfireinstaller reinstall    # reinstall the client (keeps games)
 frostfireinstaller remove       # remove the client (keeps games)
+frostfireinstaller remove --purge-installer   # ...and the cached installer
 frostfireinstaller logs         # latest run log
 frostfireinstaller install-logs # latest installation log
 frostfireinstaller kill         # stop all Battle.net processes

@@ -64,8 +64,10 @@ frostfireinstaller gui      # graphical interface
 frostfireinstaller doctor   # environment + status
 ```
 
-First run downloads the Battle.net installer and installs it into
-`~/Games/battlenet/prefix`. When the launcher appears, close it once (the tool
+First run downloads the Battle.net installer (cached at
+`~/Games/battlenet/Battle.net-Setup.exe`) and installs it into
+`~/Games/battlenet/prefix`. The cached installer is reused on reinstall; use
+`--purge-installer` or the *Ta bort installeraren* switch to force a fresh download. When the launcher appears, close it once (the tool
 does this automatically) and then start it again before logging in.
 
 ## Custom prefix location
@@ -96,6 +98,7 @@ pipx upgrade frostfireinstaller     # or: pipx install --force .
 ```bash
 frostfireinstaller remove       # remove the client, keep installed games
 frostfireinstaller remove --purge
+frostfireinstaller remove --purge-installer   # also drop the cached installer
 frostfireinstaller uninstall    # remove prefix, desktop entry and icon
 ```
 

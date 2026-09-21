@@ -17,6 +17,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
 - Docs: `docs/architecture.md`, `docs/install.md`, `docs/design.md`.
 - Tests (pytest) and CI (ruff / mypy / pytest).
 
+- **Ta bort installeraren** switch (GUI) and `--purge-installer` (CLI): drop the cached
+  `Battle.net-Setup.exe` on remove/reinstall so the download path can be re-tested.
+- Avancerat → Sökvägar shows where the installer is cached and whether it is present.
+
 ### Fixed
 - **Icon install** referenced the removed SVG, so a fresh setup got no app icon;
   the packaged PNG is now installed (and a stale SVG is cleaned up).

@@ -231,12 +231,13 @@ def installed_games(config: Config) -> list[Path]:
     return found
 
 
-def remove(config: Config, keep_games: bool = True) -> None:
+def remove(config: Config, keep_games: bool = True, remove_installer: bool = False) -> None:
     """Remove the Battle.net client.
 
     With *keep_games* the installed games (and their data) are preserved;
     only the client, Agent and caches are removed. Otherwise the whole
-    prefix (including games) is deleted.
+    prefix (including games) is deleted. With *remove_installer* the cached
+    ``Battle.net-Setup.exe`` is deleted too (next start downloads it again).
     """
     health.kill_all()
     if keep_games:
@@ -247,12 +248,21 @@ def remove(config: Config, keep_games: bool = True) -> None:
     else:
         log.info("Tar bort hela prefixen (inkl. spel)")
         shutil.rmtree(config.prefix, ignore_errors=True)
+    if remove_installer:
+        config.installer.unlink(missing_ok=True)
+        config.installer.with_suffix(".exe.part").unlink(missing_ok=True)
+        log.info("Tog bort installeraren: %s", config.installer)
 
 
-def reinstall(config: Config, proton: Path, keep_games: bool = True) -> Path:
+def reinstall(
+    config: Config,
+    proton: Path,
+    keep_games: bool = True,
+    remove_installer: bool = False,
+) -> Path:
     """Reinstall Battle.net, optionally keeping installed games.
 
     Returns the installation log path.
     """
-    remove(config, keep_games)
+    remove(config, keep_games, remove_installer)
     return install(config, proton)
