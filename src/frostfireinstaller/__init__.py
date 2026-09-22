@@ -1,6 +1,6 @@
-"""frostfireinstaller - install and launch Blizzard games on Linux.
+"""frostfireinstaller - a Battle.net installer helper for Linux.
 
-Backend: umu-launcher + Proton. See PLAN.md and docs/ for details.
+Backend: umu-launcher + Proton. See docs/ for details.
 """
 
 from __future__ import annotations

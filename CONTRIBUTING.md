@@ -30,6 +30,12 @@ python tools/genassets.py --prompt "..." --out assets/generated/hero.png
 # Derive the app icon set from a square master PNG
 python tools/make_icon.py --src assets/icon/frostfireinstaller.png \
     --install --repo-copy src/frostfireinstaller/data/icons/frostfireinstaller.png
+
+# Bake the banner subtitle into the packaged header image
+python tools/make_header.py
+
+# Rebuild the Material Symbols subset (needs fonttools + brotli)
+python tools/make_symbols.py
 ```
 
 Never commit API keys: `.env`, `*.key` and `assets/generated/` are gitignored.
@@ -39,7 +45,7 @@ Never commit API keys: `.env`, `*.key` and `assets/generated/` are gitignored.
 - Keep the **core** GUI-free and dependency-light (stdlib first).
 - Every behavior change needs a test where feasible.
 - Update `CHANGELOG.md`.
-- Be kind in issues and reviews (see `CODE_OF_CONDUCT.md`).
+- Be kind in issues and reviews.
 
 ## Commit style
 

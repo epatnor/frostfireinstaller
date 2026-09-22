@@ -9,14 +9,27 @@ import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from importlib import resources
 from pathlib import Path
 
 from .config import Config
-from .core import battlenet, proton, umu
+from .core import battlenet, proton, recommend, umu
 from .logsetup import get_logger
 
 log = get_logger()
+
+Progress = Callable[[str], None]
+
+
+def _emit(on_progress: Progress | None, message: str) -> None:
+    if on_progress is None:
+        return
+    try:
+        on_progress(message)
+    except Exception:  # noqa: BLE001
+        log.debug("progress callback failed", exc_info=True)
+
 
 APP_ID = "io.github.frostfireinstaller"
 
@@ -95,6 +108,36 @@ def ensure_shortcut(config: Config) -> Path:
     return desktop
 
 
+def set_persistenced(enable: bool) -> None:
+    """Toggle ``nvidia-persistenced`` (reversible GPU mitigation).
+
+    Run as the user: systemd asks Polkit/the desktop for authorisation. Raises
+    ``subprocess.CalledProcessError`` if the user declines or it fails.
+    """
+    action = "enable" if enable else "disable"
+    subprocess.run(["systemctl", action, "--now", "nvidia-persistenced"], check=True)
+
+
+def set_gpu_preference(preference: str) -> None:
+    """Set which GPU the games use: ``auto``, ``nvidia`` or ``integrated``.
+
+    Writes/removes ``DXVK_FILTER_DEVICE_NAME`` in config.toml. On a hybrid laptop
+    whose panel hangs off the integrated GPU, the "integrated" option renders on
+    the same GPU as the screen and avoids the cross-GPU (PRIME) copy that can hang
+    the NVIDIA driver. Fully reversible, no privileges.
+    """
+    if preference not in {"auto", "nvidia", "integrated"}:
+        raise ValueError(f"unknown GPU preference: {preference!r}")
+    config = Config.load()
+    if preference == "auto":
+        config.env.pop("DXVK_FILTER_DEVICE_NAME", None)
+    elif preference == "nvidia":
+        config.env["DXVK_FILTER_DEVICE_NAME"] = "NVIDIA"
+    else:
+        config.env["DXVK_FILTER_DEVICE_NAME"] = recommend.integrated_gpu_name() or "AMD Radeon"
+    config.save()
+
+
 def find_proton(config: Config) -> Path:
     build = proton.find(config.proton_name)
     if not build:
@@ -105,27 +148,29 @@ def find_proton(config: Config) -> Path:
     return build
 
 
-def ensure(config: Config) -> Path:
+def ensure(config: Config, on_progress: Progress | None = None) -> Path:
     """Idempotently set everything up and return the chosen Proton build."""
     if not shutil.which("umu-run"):
         raise RuntimeError("umu-run saknas. Installera umu-launcher och försök igen.")
 
     config.bnet_dir.mkdir(parents=True, exist_ok=True)
 
+    _emit(on_progress, "Söker efter Proton ...")
     build = find_proton(config)
     log.info("Proton: %s", build)
 
-    battlenet.ensure_installer(config)
+    battlenet.ensure_installer(config, on_progress=on_progress)
 
     if battlenet.installed(config):
         log.info("Battle.net redan installerat")
     else:
-        log_path = battlenet.install(config, build)
+        log_path = battlenet.install(config, build, on_progress=on_progress)
         log.info("Installationslogg: %s", log_path)
 
     if battlenet.ensure_config(config):
         log.info("Stängde av 'starta minimerad'")
 
+    _emit(on_progress, "Skapar genväg ...")
     ensure_shortcut(config)
     return build
 

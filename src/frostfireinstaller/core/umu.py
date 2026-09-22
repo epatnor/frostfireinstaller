@@ -29,6 +29,8 @@ def build_env(config: Config, proton: Path) -> dict[str, str]:
     env.update(BASE_ENV)
     if config.performance.mangohud:
         env["MANGOHUD"] = "1"
+    # User overrides from [env] (e.g. DXVK_FILTER_DEVICE_NAME) win.
+    env.update(config.env)
     return env
 
 

@@ -8,10 +8,7 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
-import gi
-
-gi.require_version("Gtk", "4.0")
-from gi.repository import GLib, Gtk  # noqa: E402
+from gi.repository import GLib  # noqa: E402
 
 
 def run_async(
@@ -45,15 +42,3 @@ def data_file(*parts: str) -> Path | None:
         return Path(str(target)) if target.is_file() else None
     except (FileNotFoundError, OSError):
         return None
-
-
-def make_icon(pixel_size: int = 48) -> Gtk.Widget:
-    """Return the app icon as a Gtk.Image, falling back to a themed icon."""
-    svg = data_file("icons", "frostfireinstaller.svg")
-    if svg is not None:
-        image = Gtk.Image.new_from_file(str(svg))
-        image.set_pixel_size(pixel_size)
-        return image
-    image = Gtk.Image.new_from_icon_name("applications-games-symbolic")
-    image.set_pixel_size(pixel_size)
-    return image

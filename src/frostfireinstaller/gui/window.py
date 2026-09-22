@@ -17,9 +17,14 @@ class MainWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self.set_title("Frostfire Installer")
-        self.set_default_size(760, 820)
+        # Fixed 608 px wide (the banner's size) so the banner fills the window
+        # and keeps its exact size; pages.py only changes the height
+        # (350 <-> 770) when the advanced sections are toggled.
+        self.set_resizable(False)
+        self.set_default_size(608, 350)
 
         self._state_refreshers: list[Callable[[], None]] = []
+        self._activity: pages.ActivityBar | None = None
         self.toasts = Adw.ToastOverlay()
         self.toasts.set_child(pages.build_main(self))
         self.set_content(self.toasts)
@@ -31,6 +36,18 @@ class MainWindow(Adw.ApplicationWindow):
     def refresh_state(self) -> None:
         for refresher in self._state_refreshers:
             refresher()
+
+    def register_activity(self, bar: pages.ActivityBar) -> None:
+        """The strip that shows what operation is running right now."""
+        self._activity = bar
+
+    def set_activity(self, message: str) -> None:
+        if self._activity is not None:
+            self._activity.show(message)
+
+    def clear_activity(self) -> None:
+        if self._activity is not None:
+            self._activity.hide()
 
     def toast(self, message: str) -> None:
         self.toasts.add_toast(Adw.Toast(title=message))

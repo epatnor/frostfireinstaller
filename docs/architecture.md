@@ -23,6 +23,10 @@ Environment applied to the launcher:
 | `GAMEID` | `umu-battlenet` | umu identity |
 | `PROTONPATH` | detected Proton build | the runner |
 
+Extra variables can be added under `[env]` in `config.toml`; they are merged last
+and win over the defaults (useful for driver workarounds, e.g.
+`DXVK_FILTER_DEVICE_NAME`). See `docs/troubleshooting.md`.
+
 ## Why not Bottles/Soda or Lutris
 
 - **Bottles + Soda**: the launcher's CEF UI does not render (black window / spinning gear,
@@ -64,12 +68,25 @@ GTK4 + libadwaita (`frostfireinstaller gui`), one column:
 4. **Battle.net band** — client state (coloured) plus the install/start/stop button.
    The button runs `ensure()` first, so a missing client is installed ("Installera")
    before launching.
-4. **Preferences** — "Installation & underhåll" (ice: client status + *Reparera*),
-   "Återställ & ta bort" (fire: *Behåll spel*, *Återinstallera*, *Ta bort* with the
-   *Även installeraren* checkbox), and an **Avancerat** switch that reveals
-   Prestanda / Runner / Sökvägar (with *Visa loggar*) / Om.
+5. **Activity strip** — a spinner + text showing the operation running right now
+   (searching for Proton, downloading, installing, starting, removing).
+6. **Recommendation strip** — appears **only for warnings** from
+   `core/recommend.py` (NVIDIA `NVRM: Xid` / `NV_ERR_NO_MEMORY` GPU faults,
+   missing `umu-run`/Proton, low disk, NTFS/exFAT prefix, missing performance
+   tools). It opens a dialog with copy-ready fix commands and one **reversible
+   in-app toggle** (`nvidia-persistenced` via `systemctl`, Polkit-prompted). The
+   full report — every check including the passing ones — is under **Avancerat →
+   Diagnostik → Systemkontroll** and in `doctor`. The app never makes large
+   system changes.
+7. **Advanced footer expander** — right under the Battle.net band; "Visa
+   avancerat" (chevron-down/up) reveals, in a scroll area below, "Installation &
+   underhåll", "Återställ & ta bort", Prestanda / Runner / Sökvägar (with *Visa
+   loggar*) / Om. The window is a fixed **608 px wide** (not user-resizable) with
+   a banner scaled to 608 × 198; only its height changes (350 ↔ 770) on toggle,
+   so the banner never resizes.
 
-Long-running work runs in worker threads and reports through toasts.
+Long-running work runs in worker threads: the activity strip shows the current step,
+and toasts report the result.
 
 ### Performance wrappers
 
@@ -114,3 +131,9 @@ disabled in the UI.
 - `run-<ts>.log` — one per invocation (tool activity).
 - `install-<ts>.log` — one per installation (system info, installer sha256, full installer
   output, client log tail, result). Meant to be shareable for bug reports.
+
+## Troubleshooting
+
+Common failures and their fixes (e.g. the WoW `ERROR #109` D3D12/VKD3D freeze, the
+launcher CEF fixes, where the logs live) are collected in
+[`docs/troubleshooting.md`](troubleshooting.md).

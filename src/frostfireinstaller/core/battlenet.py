@@ -6,7 +6,9 @@ import hashlib
 import platform
 import shutil
 import time
+import urllib.error
 import urllib.request
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
@@ -15,6 +17,18 @@ from ..logsetup import get_logger, open_install_log
 from . import distro, health, umu
 
 log = get_logger()
+
+Progress = Callable[[str], None]
+
+
+def _emit(on_progress: Progress | None, message: str) -> None:
+    """Report a human-readable step; never let a UI callback break the work."""
+    if on_progress is None:
+        return
+    try:
+        on_progress(message)
+    except Exception:  # noqa: BLE001
+        log.debug("progress callback failed", exc_info=True)
 
 
 # --- state ---------------------------------------------------------------
@@ -78,16 +92,43 @@ def wait_for_launcher_ready(config: Config, timeout: int = 300, interval: int = 
 
 
 # --- installer -----------------------------------------------------------
-def ensure_installer(config: Config) -> Path:
+def _retryable(exc: OSError) -> bool:
+    """A 5xx/timeout/connection error is worth retrying; a 4xx is not."""
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code >= 500
+    return True
+
+
+def ensure_installer(
+    config: Config, attempts: int = 3, on_progress: Progress | None = None
+) -> Path:
     if config.installer.is_file():
         return config.installer
     config.bnet_dir.mkdir(parents=True, exist_ok=True)
-    log.info("Hämtar Battle.net-Setup.exe ...")
     tmp = config.installer.with_suffix(".exe.part")
-    with urllib.request.urlopen(config.installer_url, timeout=120) as resp, tmp.open("wb") as fh:  # noqa: S310
-        shutil.copyfileobj(resp, fh)
-    tmp.replace(config.installer)
-    return config.installer
+    last: OSError | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            _emit(on_progress, f"Laddar ner installeraren ({attempt}/{attempts}) ...")
+            log.info("Hämtar Battle.net-Setup.exe (försök %d/%d) ...", attempt, attempts)
+            with (
+                urllib.request.urlopen(config.installer_url, timeout=120) as resp,
+                tmp.open(  # noqa: S310
+                    "wb"
+                ) as fh,
+            ):
+                shutil.copyfileobj(resp, fh)
+            tmp.replace(config.installer)
+            return config.installer
+        except OSError as exc:
+            last = exc
+            if not _retryable(exc) or attempt == attempts:
+                break
+            log.warning("Nedladdningen misslyckades (%s), försöker igen ...", exc)
+            _emit(on_progress, "Nedladdningen misslyckades, försöker igen ...")
+            time.sleep(2 * attempt)
+    tmp.unlink(missing_ok=True)
+    raise RuntimeError(f"Kunde inte ladda ner installeraren: {last}") from last
 
 
 def sha256(path: Path) -> str:
@@ -98,7 +139,7 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def install(config: Config, proton: Path) -> Path:
+def install(config: Config, proton: Path, on_progress: Progress | None = None) -> Path:
     """Run the installer, wait for readiness, then auto-close the first run.
 
     Returns the path to the installation log.
@@ -106,6 +147,7 @@ def install(config: Config, proton: Path) -> Path:
     log_path = open_install_log(config.log_dir)
     _write_header(log_path, config, proton)
 
+    _emit(on_progress, "Installerar Battle.net (kan ta några minuter) ...")
     log.info("Startar Battle.net-installationen (klicka ev. 'Continue' i fönstret)...")
     with log_path.open("a", encoding="utf-8") as out:
         umu.spawn(config, proton, str(config.installer), stdout=out, stderr=out)
@@ -231,7 +273,12 @@ def installed_games(config: Config) -> list[Path]:
     return found
 
 
-def remove(config: Config, keep_games: bool = True, remove_installer: bool = False) -> None:
+def remove(
+    config: Config,
+    keep_games: bool = True,
+    remove_installer: bool = False,
+    on_progress: Progress | None = None,
+) -> None:
     """Remove the Battle.net client.
 
     With *keep_games* the installed games (and their data) are preserved;
@@ -239,6 +286,7 @@ def remove(config: Config, keep_games: bool = True, remove_installer: bool = Fal
     prefix (including games) is deleted. With *remove_installer* the cached
     ``Battle.net-Setup.exe`` is deleted too (next start downloads it again).
     """
+    _emit(on_progress, "Tar bort Battle.net ...")
     health.kill_all()
     if keep_games:
         kept = installed_games(config)
@@ -259,10 +307,11 @@ def reinstall(
     proton: Path,
     keep_games: bool = True,
     remove_installer: bool = False,
+    on_progress: Progress | None = None,
 ) -> Path:
     """Reinstall Battle.net, optionally keeping installed games.
 
     Returns the installation log path.
     """
-    remove(config, keep_games, remove_installer)
-    return install(config, proton)
+    remove(config, keep_games, remove_installer, on_progress=on_progress)
+    return install(config, proton, on_progress=on_progress)

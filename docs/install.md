@@ -111,3 +111,8 @@ frostfireinstaller uninstall    # remove prefix, desktop entry and icon
 > ```
 >
 > The Homebrew tap expects a companion repo named `homebrew-frostfireinstaller`.
+
+## Troubleshooting
+
+See [`docs/troubleshooting.md`](troubleshooting.md) for common failures (e.g. the
+WoW `ERROR #109` D3D12 freeze, launcher issues, where the logs live).

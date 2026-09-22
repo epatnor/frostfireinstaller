@@ -17,8 +17,10 @@ Blizzard's own Battle.net launcher — `frostfireinstaller` is the helper undern
 - **Performance**: optional MangoHud, GameMode and Gamescope wrappers that follow the
   games (same Wine session), plus Proton's DXVK/VKD3D/NTSync.
 - **Broad distro support** (Bazzite/Fedora atomic, Arch, Debian/Ubuntu, ...).
-- **Looks cool**: GTK4/libadwaita UI with a frosty identity — banner, info strip
-  (App/System at a glance), a single start/stop bar, and ice/fire themed sections.
+- **Looks cool:** a Battle.net-inspired GTK4/libadwaita UI with our own frost/fire
+  palette — dark flat panels, uppercase section labels and gradient buttons. The
+  window is a compact, fixed 608 px wide; everything except the run controls sits
+  behind a "Visa avancerat" footer expander.
 
 Born from a working recipe on Bazzite: `umu-launcher` + GE-Proton (see `docs/`).
 
@@ -30,14 +32,27 @@ Born from a working recipe on Bazzite: `umu-launcher` + GE-Proton (see `docs/`).
 frostfireinstaller gui
 ```
 
-- **Infofält** (en rad): distro + kernel, session + skrivbord, GPU (namn, VRAM, drivrutin).
-- **Konfigurationsband** (smalt): Proton och prefix — hur appen är uppsatt, alltid synligt.
-- **Battle.net-bandet**: status (färgad) och åtgärdsknappen (*Installera* / *Starta* / *Stoppa*).
-- **Startknappen gör allt** (is): startar Battle.net — och installerar klienten om den
-  saknas. Status + *Reparera* delar rad i underhållet.
-- **Återställ & ta bort** (eld): Behåll spel, Återinstallera, Ta bort (med kryssrutan **Även installeraren**).
-- **Avancerat**: Prestanda (med "?"-förklaring per växel), Runner, Sökvägar
-  (inkl. **Visa loggar**), Om.
+- **Banner** (fast höjd) → **infofält** (distro + kernel, session, GPU) →
+  **konfigurationsband** (Proton och prefix) → **Battle.net-bandet**.
+- **Battle.net-bandet**: status-piller och åtgärdsknappen (*Installera* / *Starta* /
+  *Stoppa*). Startknappen kör `ensure()` först, så en saknad klient installeras.
+- **Aktivitetsrad**: spinner + text som visar pågående operation.
+- **Systemkontroll & rekommendationer**: appen kontrollerar `umu-run`, Proton,
+  diskutrymme, prefixens filsystem, hybrid-GPU, NVIDIA-drivrutin/modul och senaste
+  `NVRM: Xid`/`NV_ERR_NO_MEMORY`, saknade prestandaverktyg och runner. En
+  **varningsrad** (under bandet) visas bara vid problem och öppnar en dialog med
+  **färdiga kommandon att kopiera**; hela rapporten (inkl. OK) ligger under
+  **Avancerat → Diagnostik → Systemkontroll** och i `doctor`. Den **reversibla**
+  åtgärden (GPU-persistens) kan slås på/av direkt i appen — appen gör aldrig
+  stora systemändringar själv.
+- **"Visa avancerat"** (footer med chevron) fäller ut allt annat:
+  - **Installation & underhåll** (is): status + *Reparera* i samma rad.
+  - **Återställ & ta bort** (eld): *Behåll spel*, *Återinstallera*, *Ta bort* (med
+    kryssrutan **Även installeraren**).
+  - **Prestanda** (med "?"-förklaring per växel), **Runner**, **Sökvägar**
+    (inkl. *Öppna mapp* och **Visa loggar**) och **Om**.
+
+Fönstret är **608 px brett och inte resizbart**; vid expandering växer det bara nedåt.
 
 ---
 
@@ -77,6 +92,16 @@ frostfireinstaller kill         # stop all Battle.net processes
 frostfireinstaller uninstall    # remove prefix, shortcut, icon
 ```
 
+## Reliability
+
+- Idempotent setup: `ensure` verifies prefix, installer, client, config and
+  shortcut every run.
+- The installer **retries** transient download failures (5xx/timeouts).
+- **Reparera** stops a wedged client, clears CEF/cache and relaunches.
+- Reinstall/remove **keep your games** unless you ask otherwise.
+- Games run in Blizzard's own launcher; if a game itself misbehaves (e.g. a
+  D3D12 freeze), see `docs/troubleshooting.md`.
+
 ## Security
 
 - No secrets are stored or required at runtime.
@@ -93,6 +118,9 @@ frostfireinstaller uninstall    # remove prefix, shortcut, icon
 | `docs/architecture.md` | backend, lifecycle, GUI, security, paths |
 | `docs/install.md` | install channels, prefix override, update/remove |
 | `docs/design.md` | naming, ice/fire concept, assets, iconography |
+| `docs/troubleshooting.md` | common failures and fixes (D3D12 freeze, launcher, logs) |
+| `docs/wow-forever-error-history.md` | observed WoW: Forever (69913) error history and Xid correlation |
+| `docs/technical-reference.md` | deep-dive: Wine/Proton/Steam/umu stack, Battle.net + WoW: Forever specs, env reference |
 
 ## Development
 
@@ -108,6 +136,8 @@ Developer tools (never bundled, never needed at runtime):
 python tools/genassets.py --prompt "..." --out assets/generated/x.png  # concept art
 python tools/make_icon.py --src assets/icon/frostfireinstaller.png --install --repo-copy \
     src/frostfireinstaller/data/icons/frostfireinstaller.png
+python tools/make_header.py                     # bake the banner subtitle
+python tools/make_symbols.py                    # rebuild the Material Symbols subset
 ```
 
 ## How it works

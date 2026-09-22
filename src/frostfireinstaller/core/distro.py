@@ -7,7 +7,6 @@ import platform
 import shutil
 import subprocess
 from dataclasses import dataclass
-from pathlib import Path
 
 
 @dataclass(slots=True)
@@ -31,23 +30,6 @@ def _os_release() -> str:
     return platform.platform()
 
 
-def _gib(size: int) -> str:
-    """Format a byte count as GB (e.g. 4 GB, 11.5 GB)."""
-    gib = size / 1024**3
-    return f"{gib:.0f} GB" if abs(gib - round(gib)) < 0.05 else f"{gib:.1f} GB"
-
-
-def _vram_sysfs() -> str | None:
-    for path in sorted(Path("/sys/class/drm").glob("card[0-9]*/device/mem_info_vram_total")):
-        try:
-            total = int(path.read_text(encoding="utf-8").strip())
-        except (OSError, ValueError):
-            continue
-        if total > 0:
-            return _gib(total)
-    return None
-
-
 def _nvidia() -> str | None:
     if not shutil.which("nvidia-smi"):
         return None
@@ -55,7 +37,7 @@ def _nvidia() -> str | None:
         out = subprocess.run(
             [
                 "nvidia-smi",
-                "--query-gpu=name,memory.total,driver_version",
+                "--query-gpu=name,driver_version",
                 "--format=csv,noheader",
             ],
             capture_output=True,
@@ -68,16 +50,9 @@ def _nvidia() -> str | None:
     lines = out.stdout.strip().splitlines()
     if not lines:
         return None
-    name, _, rest = lines[0].partition(",")
-    memory, _, driver = rest.partition(",")
+    name, _, driver = lines[0].partition(",")
     clean = name.strip().removeprefix("NVIDIA ").removesuffix(" Laptop GPU")
-    label = clean
-    amount = memory.split()[0] if memory.split() else ""
-    if amount.isdigit() and memory.strip().lower().endswith("mib"):
-        label = f"{clean}, {_gib(int(amount) * 1024**2)}"
-    if driver.strip():
-        label = f"{label} ({driver.strip()})"
-    return label
+    return f"{clean} ({driver.strip()})" if driver.strip() else clean
 
 
 def _pci() -> str | None:
@@ -93,8 +68,7 @@ def _pci() -> str | None:
             name = line.split(": ", 1)[-1]
             for prefix in ("Advanced Micro Devices, Inc. [AMD/ATI] ", "Intel Corporation "):
                 name = name.removeprefix(prefix)
-            vram = _vram_sysfs()
-            return f"{name}, {vram}" if vram else name
+            return name
     return None
 
 

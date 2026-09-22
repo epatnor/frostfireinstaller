@@ -42,7 +42,3 @@ def load_all() -> dict[str, GameProfile]:
         )
         result[profile.id] = profile
     return result
-
-
-def get(game_id: str) -> GameProfile | None:
-    return load_all().get(game_id)

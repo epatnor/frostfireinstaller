@@ -4,11 +4,16 @@ Layout: window header bar (top) -> Frostfire banner -> all features as rows.
 
 Scope: a Battle.net installer helper. Games are started from Blizzard's own
 launcher, not here.
+
+The visual language (flat bordered panels, thin separators, small radii,
+gradient buttons, uppercase section labels) is modelled on the Battle.net
+launcher, but uses our own frost/fire palette.
 """
 
 from __future__ import annotations
 
 import shutil
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 
@@ -16,11 +21,12 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gtk, Pango  # noqa: E402
+gi.require_version("GdkPixbuf", "2.0")
+from gi.repository import Adw, Gdk, GdkPixbuf, GLib, Gtk, Pango  # noqa: E402
 
 from .. import service  # noqa: E402
 from ..config import Config  # noqa: E402
-from ..core import battlenet, distro, health, proton  # noqa: E402
+from ..core import battlenet, distro, health, proton, recommend  # noqa: E402
 from .helpers import data_file, run_async  # noqa: E402
 
 
@@ -44,17 +50,80 @@ MATERIAL = {
     "stop": "\ue047",
     "refresh": "\ue5d5",
     "delete": "\ue92e",
-    "log": "\ue873",
     "info": "\ue88e",
+    "expand": "\ue5cf",
+    "collapse": "\ue5ce",
+    "check": "\ue5ca",
 }
 
+# Banner size: the window is locked to this width (608) and the picture is
+# scaled to match at load, so it fills the width and never changes between
+# collapsed/expanded. Height is ~20% smaller than the full-width banner.
+BANNER_HEIGHT = 198
+BANNER_WIDTH = round(BANNER_HEIGHT * 1600 / 521)
 
-def _icon(glyph: str, tone: str | None = None) -> Gtk.Widget:
+
+def _icon(glyph: str, tone: str | None = None) -> Gtk.Label:
     label = Gtk.Label(label=glyph)
     label.add_css_class("material-icon")
     if tone is not None:
         label.add_css_class(f"icon-{tone}")
     return label
+
+
+def _button(
+    label: str,
+    *,
+    primary: bool = False,
+    danger: bool = False,
+    tooltip: str | None = None,
+) -> Gtk.Button:
+    button = Gtk.Button(label=label)
+    button.set_valign(Gtk.Align.CENTER)
+    if danger:
+        button.add_css_class("bn-btn-danger")
+    elif primary:
+        button.add_css_class("bn-btn-primary")
+    else:
+        button.add_css_class("bn-btn")
+    if tooltip is not None:
+        button.set_tooltip_text(tooltip)
+    return button
+
+
+def _open_folder(path: Path) -> None:
+    """Open a folder in the desktop file manager."""
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        subprocess.Popen(["xdg-open", str(path)])  # noqa: S603,S607
+    except OSError:
+        pass
+
+
+class Section(Gtk.Box):
+    """A Battle.net-style section: uppercase label plus a bordered row panel."""
+
+    def __init__(self, title: str, description: str | None = None) -> None:
+        super().__init__(orientation=Gtk.Orientation.VERTICAL)
+        self.add_css_class("bn-section")
+
+        heading = Gtk.Label(label=title.upper(), xalign=0)
+        heading.add_css_class("section-title")
+        self.append(heading)
+
+        if description is not None:
+            note = Gtk.Label(label=description, xalign=0)
+            note.set_wrap(True)
+            note.add_css_class("section-desc")
+            self.append(note)
+
+        self.rows = Gtk.ListBox()
+        self.rows.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.rows.add_css_class("bn-panel")
+        self.append(self.rows)
+
+    def add(self, row: Gtk.Widget) -> None:
+        self.rows.append(row)
 
 
 def _toolbar_page(title: str, content: Gtk.Widget) -> Adw.ToolbarView:
@@ -73,15 +142,74 @@ def _refresh_root(widget: Gtk.Widget) -> None:
         root.refresh_state()  # type: ignore[attr-defined]
 
 
+def _reporter(root: Gtk.Widget | None) -> Callable[[str], None]:
+    """Return a thread-safe progress reporter for background work."""
+
+    def report(message: str) -> None:
+        if root is not None and hasattr(root, "set_activity"):
+            GLib.idle_add(root.set_activity, message)  # type: ignore[attr-defined]
+
+    return report
+
+
+def _clear_activity(root: Gtk.Widget | None) -> None:
+    if root is not None and hasattr(root, "clear_activity"):
+        root.clear_activity()  # type: ignore[attr-defined]
+
+
+class ActivityBar(Gtk.Box):
+    """Thin strip that shows the operation currently running (spinner + text)."""
+
+    def __init__(self) -> None:
+        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        self.add_css_class("activity-bar")
+        self.spinner = Gtk.Spinner()
+        self.spinner.set_valign(Gtk.Align.CENTER)
+        self.label = Gtk.Label(xalign=0)
+        self.label.set_ellipsize(Pango.EllipsizeMode.END)
+        self.append(self.spinner)
+        self.append(self.label)
+        self.set_visible(False)
+
+    def show(self, text: str) -> None:
+        self.label.set_label(text)
+        self.spinner.start()
+        self.set_visible(True)
+
+    def hide(self) -> None:
+        self.spinner.stop()
+        self.set_visible(False)
+
+
+class RecommendationBar(Gtk.Box):
+    """Strip that surfaces a recommendation; opens a dialog with copy-ready steps."""
+
+    def __init__(self, items: list[recommend.Recommendation], on_show: Callable[[], None]) -> None:
+        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        self.add_css_class("recommend-bar")
+        warn = any(item.level == "warn" for item in items)
+        if not warn:
+            self.add_css_class("info")
+        self.append(_icon(MATERIAL["info"], "fire" if warn else "ice"))
+
+        label = Gtk.Label(label=items[0].title, xalign=0)
+        label.set_ellipsize(Pango.EllipsizeMode.END)
+        label.set_hexpand(True)
+        self.append(label)
+
+        button = _button("Visa", primary=warn)
+        button.set_tooltip_text("Visa rekommendationer och kommandon")
+        button.connect("clicked", lambda *_: on_show())
+        self.append(button)
+
+
 class ClientRow(Adw.ActionRow):
     """Client state with the repair action in the same row."""
 
     def __init__(self, on_repair: Callable[[Gtk.Button], None]) -> None:
         super().__init__(title="Battle.net")
         self.add_prefix(_icon(MATERIAL["build"], "ice"))
-        button = Gtk.Button(label="Reparera")
-        button.set_valign(Gtk.Align.CENTER)
-        button.set_tooltip_text("Stoppa, rensa CEF/cache och starta om")
+        button = _button("Reparera", tooltip="Stoppa, rensa CEF/cache och starta om")
         button.connect("clicked", lambda *_: on_repair(button))
         self.add_suffix(button)
         self.refresh()
@@ -100,12 +228,14 @@ class RunBar(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         self.add_css_class("run-bar")
 
-        text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        text = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         text.set_valign(Gtk.Align.CENTER)
         title = Gtk.Label(label="Battle.net", xalign=0)
         title.add_css_class("heading")
 
         self.status = Gtk.Label(xalign=0)
+        self.status.add_css_class("status-pill")
+        self.status.set_valign(Gtk.Align.CENTER)
 
         text.append(title)
         text.append(self.status)
@@ -121,8 +251,7 @@ class RunBar(Gtk.Box):
         content.append(self.icon)
         content.append(self.label)
 
-        self.button = Gtk.Button()
-        self.button.set_valign(Gtk.Align.CENTER)
+        self.button = _button("", primary=True)
         self.button.set_child(content)
         self.button.connect("clicked", self._on_clicked)
         self.append(self.button)
@@ -140,15 +269,16 @@ class RunBar(Gtk.Box):
         installed = battlenet.installed(config)
 
         if running:
-            state = "Startat"
+            state, tone = "Startat", "status-on"
         elif installed:
-            state = "Stoppat"
+            state, tone = "Stoppat", "status-off"
         else:
-            state = "Ej installerat"
+            state, tone = "Ej installerat", "status-missing"
+
         self.status.set_label(state)
-        self.status.remove_css_class("run-status-on")
-        self.status.remove_css_class("run-status-off")
-        self.status.add_css_class("run-status-on" if running else "run-status-off")
+        for name in ("status-on", "status-off", "status-missing"):
+            self.status.remove_css_class(name)
+        self.status.add_css_class(tone)
 
         if running:
             glyph = MATERIAL["stop"]
@@ -157,20 +287,25 @@ class RunBar(Gtk.Box):
         self.icon.set_label(glyph)
         self.icon.remove_css_class("icon-red")
         self.icon.remove_css_class("icon-green")
-        self.icon.add_css_class("icon-red" if running else "icon-green")
+        self.icon.remove_css_class("icon-white")
+        self.icon.add_css_class("icon-red" if running else "icon-white")
+
+        self.button.remove_css_class("bn-btn")
+        self.button.remove_css_class("bn-btn-primary")
+        self.button.remove_css_class("bn-btn-danger")
 
         if running:
             self.label.set_label("Stoppa")
             self.button.set_tooltip_text("Stoppar Battle.net")
-            self.button.remove_css_class("suggested-action")
+            self.button.add_css_class("bn-btn")
         elif installed:
             self.label.set_label("Starta")
             self.button.set_tooltip_text("Startar Battle.net")
-            self.button.add_css_class("suggested-action")
+            self.button.add_css_class("bn-btn-primary")
         else:
             self.label.set_label("Installera")
             self.button.set_tooltip_text("Installerar Battle.net och startar klienten")
-            self.button.add_css_class("suggested-action")
+            self.button.add_css_class("bn-btn-primary")
 
     def _on_clicked(self, button: Gtk.Button) -> None:
         if health.running():
@@ -179,20 +314,25 @@ class RunBar(Gtk.Box):
             self._toast("Stoppade Battle.net")
             return
 
+        root = self.get_root()
         button.set_sensitive(False)
+        report = _reporter(root)
+        report("Förbereder ...")
         self._toast("Startar Battle.net ...")
 
         def work() -> None:
             config = Config.load()
-            service.launch(config, service.ensure(config))
+            service.launch(config, service.ensure(config, on_progress=report))
 
         def done(_result: object) -> None:
             button.set_sensitive(True)
+            _clear_activity(root)
             _refresh_root(self)
             self._toast("Startar Battle.net")
 
         def error(exc: Exception) -> None:
             button.set_sensitive(True)
+            _clear_activity(root)
             self._toast(f"Fel: {exc}")
 
         run_async(work, done, error)
@@ -242,7 +382,7 @@ def _info_column_inline(key: str, value: Gtk.Widget) -> Gtk.Widget:
 def _system_strip() -> Gtk.Widget:
     """One-line system summary below the banner (app details live in the run bar)."""
     host = distro.detect()
-    strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=24)
+    strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
     strip.add_css_class("info-strip")
 
     items = (
@@ -269,18 +409,16 @@ def _system_strip() -> Gtk.Widget:
 
 def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     config = Config.load()
-    page = Adw.PreferencesPage()
-
-    # --- Maintenance (ice: preserve and keep running) --------------------
-    maintenance = Adw.PreferencesGroup(title="Installation &amp; underhåll")
-    maintenance.set_description("Is – bevara och hålla igång.")
+    sections = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+    sections.add_css_class("bn-sections")
 
     def action(
         title: str,
         subtitle: str,
         label: str,
         callback: object,
-        suggested: bool = False,
+        primary: bool = False,
+        danger: bool = False,
         icon: str | None = None,
         tone: str | None = None,
         options: list[Gtk.Widget] | None = None,
@@ -290,21 +428,19 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             row.add_prefix(_icon(icon, tone))
         for widget in options or []:
             row.add_suffix(widget)
-        button = Gtk.Button(label=label)
-        button.set_valign(Gtk.Align.CENTER)
-        if suggested:
-            button.add_css_class("suggested-action")
+        button = _button(label, primary=primary, danger=danger)
         button.connect("clicked", lambda *_: callback(button))  # type: ignore[operator]
         row.add_suffix(button)
         return row
 
+    # --- Maintenance (ice: preserve and keep running) --------------------
+    maintenance = Section("Installation & underhåll")
     client_row = ClientRow(lambda b: _repair(window, b))
     maintenance.add(client_row)
-    page.add(maintenance)
+    sections.append(maintenance)
 
     # --- Destructive (fire: reinstall / remove) --------------------------
-    destructive = Adw.PreferencesGroup(title="Återställ &amp; ta bort")
-    destructive.set_description("Eld – förstörande åtgärder.")
+    destructive = Section("Återställ & ta bort")
 
     keep_games = Adw.SwitchRow(
         title="Behåll spel",
@@ -335,33 +471,18 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Tar bort klienten (spelen behålls om växeln är på)",
             "Ta bort",
             lambda b: _remove(window, b, keep_games, drop_installer),
+            danger=True,
             icon=MATERIAL["delete"],
             tone="fire",
             options=[drop_installer],
         )
     )
-    page.add(destructive)
-
-    # --- Advanced switch (stays put above the groups it reveals) ---------
-    advanced: list[Adw.PreferencesGroup] = []
-    advanced_group = Adw.PreferencesGroup(title="Avancerat")
-    show_advanced = Adw.SwitchRow(
-        title="Visa avancerat",
-        subtitle="Prestanda, runner, sökvägar och diagnostik",
-    )
-
-    def on_show(row: Adw.SwitchRow, _pspec: object) -> None:
-        for group in advanced:
-            group.set_visible(row.get_active())
-
-    show_advanced.connect("notify::active", on_show)
-    advanced_group.add(show_advanced)
-    page.add(advanced_group)
+    sections.append(destructive)
 
     # --- Performance -----------------------------------------------------
-    performance = Adw.PreferencesGroup(title="Prestanda")
-    performance.set_description(
-        "Gäller spelen du startar från Battle.net (samma Wine-session), inte bara launchern."
+    performance = Section(
+        "Prestanda",
+        "Gäller spelen du startar från Battle.net (samma Wine-session), inte bara launchern.",
     )
     performance.add(
         _switch(
@@ -399,12 +520,10 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Wayland-fönsterproblem. Låt vara av om allt fungerar.",
         )
     )
-    page.add(performance)
-    advanced.append(performance)
+    sections.append(performance)
 
     # --- Runner ----------------------------------------------------------
-    runners = Adw.PreferencesGroup(title="Runner")
-    runners.set_description("Vilken Proton som används. Sparas i config.toml.")
+    runners = Section("Runner", "Vilken Proton som används. Sparas i config.toml.")
     current = proton.find(config.proton_name)
     builds = proton.all_builds()
     if not builds:
@@ -430,83 +549,194 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         )
         row.add_prefix(radio)
         runners.add(row)
-    page.add(runners)
-    advanced.append(runners)
+    sections.append(runners)
+
+    # --- Graphics (advanced) --------------------------------------------
+    graphics = Section(
+        "Grafik",
+        "Vilket grafikkort spelen använder. Sparas i config.toml. Reversibelt – byt när som helst.",
+    )
+    preference = recommend.gpu_preference(config)
+    integrated = recommend.integrated_gpu_name() or "AMD"
+    gpu_options = (
+        ("auto", "Auto", "Spelet får välja (NVIDIA på den här maskinen)"),
+        ("nvidia", "NVIDIA", 'Tvingar DXVK_FILTER_DEVICE_NAME = "NVIDIA"'),
+        (
+            "integrated",
+            f"Integrerad ({integrated})",
+            "Samma kort som skärmen. Felsökningsläge om NVIDIA-vägen ger GPU-häng.",
+        ),
+    )
+    gpu_group: Gtk.CheckButton | None = None
+    for value, title, subtitle in gpu_options:
+        row = Adw.ActionRow(title=title, subtitle=subtitle)
+        radio = Gtk.CheckButton()
+        radio.set_valign(Gtk.Align.CENTER)
+        radio.set_tooltip_text(f"Använd {title}")
+        if gpu_group is None:
+            gpu_group = radio
+        else:
+            radio.set_group(gpu_group)
+        radio.set_active(value == preference)
+        radio.connect(
+            "toggled",
+            lambda button, val=value: _pick_gpu(window, val) if button.get_active() else None,
+        )
+        row.add_prefix(radio)
+        graphics.add(row)
+    sections.append(graphics)
 
     # --- Paths (advanced) ------------------------------------------------
-    paths = Adw.PreferencesGroup(title="Sökvägar")
-    paths.set_description("Var saker ligger. Installeraren cachas och återanvänds.")
-    paths.add(_kv("Installerare", f"{config.installer}, {_installer_state(config.installer)}"))
+    paths = Section("Sökvägar", "Var saker ligger. Installeraren cachas och återanvänds.")
+    installer_row = Adw.ActionRow(title="Installerare")
+    open_button = _button("Öppna mapp", tooltip="Öppna mappen där installeraren cachas")
+    open_button.connect("clicked", lambda *_: _open_folder(config.bnet_dir))
+    installer_row.add_suffix(open_button)
+    paths.add(installer_row)
+
+    def refresh_installer() -> None:
+        installer_row.set_subtitle(f"{config.installer}, {_installer_state(config.installer)}")
+
+    refresh_installer()
     paths.add(_kv("Config", str(config.config_file)))
 
     log_row = Adw.ActionRow(title="Loggar", subtitle=str(config.log_dir))
-    log_button = Gtk.Button(label="Visa")
-    log_button.set_valign(Gtk.Align.CENTER)
-    log_button.set_tooltip_text("Körnings- och installationsloggar")
+    log_button = _button("Visa", tooltip="Körnings- och installationsloggar")
     log_button.connect("clicked", lambda *_: _show_logs(window))
     log_row.add_suffix(log_button)
     paths.add(log_row)
-    page.add(paths)
-    advanced.append(paths)
+    sections.append(paths)
+
+    # --- Diagnostics -----------------------------------------------------
+    diagnostics = Section("Diagnostik", "Kontrollerar drivrutin, runner, utrymme med mera.")
+    diag_row = Adw.ActionRow(
+        title="Systemkontroll", subtitle="Visa status för alla kända fallgropar"
+    )
+    diag_button = _button("Kör", tooltip="Kör systemkontrollen")
+    diag_button.connect(
+        "clicked", lambda *_: _show_recommendations(window, recommend.report(Config.load()))
+    )
+    diag_row.add_suffix(diag_button)
+    diagnostics.add(diag_row)
+    sections.append(diagnostics)
 
     # --- About -----------------------------------------------------------
-    about = Adw.PreferencesGroup(title="Om")
+    about = Section("Om")
     row = Adw.ActionRow(title="Frostfire Installer")
     row.add_prefix(_icon(MATERIAL["info"]))
-    button = Gtk.Button(label="Om")
-    button.set_valign(Gtk.Align.CENTER)
+    button = _button("Om")
     button.connect("clicked", lambda *_: _show_about(window))
     row.add_suffix(button)
     about.add(row)
-    page.add(about)
-    advanced.append(about)
+    sections.append(about)
 
-    # --- Advanced: hidden by default to keep the app simple --------------
-    for group in advanced:
-        group.set_visible(False)
+    # --- Hide maintenance/destructive when there is no client ------------
+    def refresh_sections() -> None:
+        installed = battlenet.installed(Config.load())
+        maintenance.set_visible(installed)
+        destructive.set_visible(installed)
 
-    # --- Column: banner on top, everything else below --------------------
+    refresh_sections()
+
+    # --- Advanced content: the maintenance/destructive/… sections -------
+    config_strip = ConfigStrip(config)
+
+    scroller = Gtk.ScrolledWindow(vexpand=True)
+    scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    scroller.set_propagate_natural_width(False)
+    scroller.set_child(sections)
+    scroller.set_visible(False)
+
+    # --- Footer expander (fixed, right under the Battle.net band) --------
+    footer = Gtk.Button()
+    footer.add_css_class("bn-footer")
+    footer.set_hexpand(True)
+    footer_content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    footer_content.set_hexpand(True)
+    footer_label = Gtk.Label(label="Visa avancerat", xalign=0)
+    footer_spacer = Gtk.Box()
+    footer_spacer.set_hexpand(True)
+    footer_icon = _icon(MATERIAL["expand"])
+    footer_content.append(footer_label)
+    footer_content.append(footer_spacer)
+    footer_content.append(footer_icon)
+    footer.set_child(footer_content)
+
+    expanded = {"open": False}
+
+    def toggle_advanced(*_args: object) -> None:
+        expanded["open"] = not expanded["open"]
+        scroller.set_visible(expanded["open"])
+        footer_label.set_label("Dölj avancerat" if expanded["open"] else "Visa avancerat")
+        footer_icon.set_label(MATERIAL["collapse"] if expanded["open"] else MATERIAL["expand"])
+        # Only the height changes; the width is locked by the window.
+        window.set_default_size(608, 770 if expanded["open"] else 350)  # type: ignore[attr-defined]
+        window.queue_resize()  # type: ignore[attr-defined]
+
+    footer.connect("clicked", toggle_advanced)
+
+    # --- Column: banner + run controls, advanced content below -----------
     column = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
     banner = data_file("header", "frostfire_installer_header.png")
     if banner is not None:
-        picture = Gtk.Picture.new_for_filename(str(banner))
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            str(banner), BANNER_WIDTH, BANNER_HEIGHT, True
+        )
+        picture = Gtk.Picture.new_for_paintable(Gdk.Texture.new_for_pixbuf(pixbuf))
         picture.set_content_fit(Gtk.ContentFit.FILL)
-        frame = Gtk.AspectFrame(ratio=1600 / 521, obey_child=False)
-        frame.set_child(picture)
-        frame.set_hexpand(True)
-        column.append(frame)
+        picture.set_size_request(BANNER_WIDTH, BANNER_HEIGHT)
+        picture.set_hexpand(True)
+        picture.set_valign(Gtk.Align.START)
+        column.append(picture)
     column.append(_system_strip())
-    config_strip = ConfigStrip(config)
     column.append(config_strip)
     run_bar = RunBar()
     column.append(run_bar)
-    page.set_vexpand(True)
-    column.append(page)
+
+    recommendations = recommend.collect(config)
+    warns = [item for item in recommendations if item.level == "warn"]
+    if warns:
+        report_items = recommend.report(config)
+        rec_bar = RecommendationBar(warns, lambda: _show_recommendations(window, report_items))
+        column.append(rec_bar)
+
+    activity_bar = ActivityBar()
+    column.append(activity_bar)
+    column.append(footer)
+    column.append(scroller)
 
     if hasattr(window, "register_state"):
         window.register_state(client_row.refresh)  # type: ignore[attr-defined]
         window.register_state(config_strip.refresh)  # type: ignore[attr-defined]
         window.register_state(run_bar.refresh)  # type: ignore[attr-defined]
+        window.register_state(refresh_sections)  # type: ignore[attr-defined]
+        window.register_state(refresh_installer)  # type: ignore[attr-defined]
+    if hasattr(window, "register_activity"):
+        window.register_activity(activity_bar)  # type: ignore[attr-defined]
     return _toolbar_page("Frostfire Installer", column)
 
 
 # --- Handlers ------------------------------------------------------------
 def _repair(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
     button.set_sensitive(False)
+    report = _reporter(window)
+    window.set_activity("Reparerar ...")  # type: ignore[attr-defined]
     window.toast("Reparerar ...")  # type: ignore[attr-defined]
 
     def work() -> None:
         config = Config.load()
         health.remediate(config)
-        service.launch(config, service.ensure(config))
+        service.launch(config, service.ensure(config, on_progress=report))
 
     def done(_result: object) -> None:
         button.set_sensitive(True)
+        _clear_activity(window)
         _refresh_root(window)
         window.toast("Reparerat och startat")  # type: ignore[attr-defined]
 
     def error(exc: Exception) -> None:
         button.set_sensitive(True)
+        _clear_activity(window)
         window.toast(f"Fel: {exc}")  # type: ignore[attr-defined]
 
     run_async(work, done, error)
@@ -515,6 +745,8 @@ def _repair(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
 def _reinstall(window: Adw.ApplicationWindow, button: Gtk.Button, keep: Adw.SwitchRow) -> None:
     button.set_sensitive(False)
     keep_games = keep.get_active()
+    report = _reporter(window)
+    window.set_activity("Återinstallerar Battle.net ...")  # type: ignore[attr-defined]
     window.toast("Återinstallerar Battle.net ...")  # type: ignore[attr-defined]
 
     def work() -> str:
@@ -522,15 +754,17 @@ def _reinstall(window: Adw.ApplicationWindow, button: Gtk.Button, keep: Adw.Swit
         build = proton.find(config.proton_name)
         if build is None:
             raise RuntimeError("Ingen Proton hittad")
-        return str(battlenet.reinstall(config, build, keep_games=keep_games))
+        return str(battlenet.reinstall(config, build, keep_games=keep_games, on_progress=report))
 
     def done(_log_path: str) -> None:
         button.set_sensitive(True)
+        _clear_activity(window)
         _refresh_root(window)
         window.toast("Återinstallerat" + (" (spel behållna)" if keep_games else ""))  # type: ignore[attr-defined]
 
     def error(exc: Exception) -> None:
         button.set_sensitive(True)
+        _clear_activity(window)
         window.toast(f"Fel: {exc}")  # type: ignore[attr-defined]
 
     run_async(work, done, error)
@@ -545,18 +779,27 @@ def _remove(
     button.set_sensitive(False)
     keep_games = keep.get_active()
     remove_installer = drop.get_active()
+    report = _reporter(window)
+    window.set_activity("Tar bort Battle.net ...")  # type: ignore[attr-defined]
     window.toast("Tar bort Battle.net ...")  # type: ignore[attr-defined]
 
     def work() -> None:
-        battlenet.remove(Config.load(), keep_games=keep_games, remove_installer=remove_installer)
+        battlenet.remove(
+            Config.load(),
+            keep_games=keep_games,
+            remove_installer=remove_installer,
+            on_progress=report,
+        )
 
     def done(_result: object) -> None:
         button.set_sensitive(True)
+        _clear_activity(window)
         _refresh_root(window)
         window.toast("Battle.net borttaget" + (" (spel behållna)" if keep_games else ""))  # type: ignore[attr-defined]
 
     def error(exc: Exception) -> None:
         button.set_sensitive(True)
+        _clear_activity(window)
         window.toast(f"Fel: {exc}")  # type: ignore[attr-defined]
 
     run_async(work, done, error)
@@ -568,6 +811,16 @@ def _pick_runner(window: Adw.ApplicationWindow, name: str) -> None:
     config.save()
     _refresh_root(window)
     window.toast(f"Runner satt till {name}")  # type: ignore[attr-defined]
+
+
+def _pick_gpu(window: Adw.ApplicationWindow, preference: str) -> None:
+    try:
+        service.set_gpu_preference(preference)
+    except (OSError, ValueError) as exc:
+        window.toast(f"Misslyckades: {exc}")  # type: ignore[attr-defined]
+        return
+    _refresh_root(window)
+    window.toast("Grafikval sparat – starta om Battle.net och spelet.")  # type: ignore[attr-defined]
 
 
 def _help_button(text: str) -> Gtk.Widget:
@@ -584,7 +837,7 @@ def _help_button(text: str) -> Gtk.Widget:
 
     button = Gtk.MenuButton()
     button.set_icon_name("help-about-symbolic")
-    button.add_css_class("flat")
+    button.add_css_class("bn-btn-flat")
     button.set_valign(Gtk.Align.CENTER)
     button.set_popover(popover)
     return button
@@ -656,6 +909,129 @@ def _show_logs(window: Adw.ApplicationWindow) -> None:
     dialog.set_title("Loggar")
     dialog.set_content_width(820)
     dialog.set_content_height(600)
+    dialog.set_child(toolbar)
+    dialog.present(window)
+
+
+def _copy_to_clipboard(text: str) -> None:
+    display = Gdk.Display.get_default()
+    if display is not None:
+        display.get_clipboard().set(text)
+
+
+def _command_row(command: str) -> Gtk.Widget:
+    row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    entry = Gtk.Entry()
+    entry.set_text(command)
+    entry.set_editable(False)
+    entry.set_hexpand(True)
+    entry.add_css_class("monospace")
+    button = _button("Kopiera")
+    button.set_tooltip_text("Kopiera kommandot till urklipp")
+
+    def copy(*_args: object) -> None:
+        _copy_to_clipboard(command)
+        button.set_label("Kopierat")
+
+    button.connect("clicked", copy)
+    row.append(entry)
+    row.append(button)
+    return row
+
+
+def _persistenced_control(window: Adw.ApplicationWindow) -> Gtk.Widget:
+    """Reversible in-app mitigation: keep the GPU initialised (nvidia-persistenced)."""
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+    active = recommend.persistenced_state() == "active"
+    button = _button(
+        "Inaktivera GPU-persistens" if active else "Aktivera GPU-persistens",
+        primary=not active,
+    )
+    note = Gtk.Label(
+        label="Reversibelt – kör igen för att stänga av. Kräver din lösenordsbekräftelse.",
+        xalign=0,
+    )
+    note.set_wrap(True)
+    note.add_css_class("section-desc")
+    button.connect("clicked", lambda *_: _toggle_persistenced(window, button, note))
+    box.append(button)
+    box.append(note)
+    return box
+
+
+def _toggle_persistenced(
+    window: Adw.ApplicationWindow, button: Gtk.Button, note: Gtk.Label
+) -> None:
+    enable = recommend.persistenced_state() != "active"
+    button.set_sensitive(False)
+    note.set_label("Väntar på godkännande ...")
+
+    def work() -> None:
+        service.set_persistenced(enable)
+
+    def done(_result: object) -> None:
+        button.set_sensitive(True)
+        button.set_label("Inaktivera GPU-persistens" if enable else "Aktivera GPU-persistens")
+        note.set_label("Klart – starta om spelet och testa." if enable else "Avstängt.")
+
+    def error(exc: Exception) -> None:
+        button.set_sensitive(True)
+        note.set_label(f"Misslyckades: {exc}")
+
+    run_async(work, done, error)
+
+
+def _show_recommendations(
+    window: Adw.ApplicationWindow, items: list[recommend.Recommendation]
+) -> None:
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+    for margin in ("top", "bottom", "start", "end"):
+        getattr(box, f"set_margin_{margin}")(16)
+
+    for item in items:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        glyph, tone = {
+            "warn": (MATERIAL["info"], "fire"),
+            "info": (MATERIAL["info"], "ice"),
+            "ok": (MATERIAL["check"], "green"),
+        }.get(item.level, (MATERIAL["info"], None))
+        head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        head.append(_icon(glyph, tone))
+        title = Gtk.Label(xalign=0)
+        title.set_markup(f"<b>{GLib.markup_escape_text(item.title)}</b>")
+        title.set_wrap(True)
+        head.append(title)
+        card.append(head)
+
+        if item.detail:
+            detail = Gtk.Label(label=item.detail, xalign=0)
+            detail.set_wrap(True)
+            card.append(detail)
+
+        if item.action:
+            action = Gtk.Label(label=item.action, xalign=0)
+            action.set_wrap(True)
+            action.add_css_class("section-desc")
+            card.append(action)
+
+        for command in item.commands:
+            card.append(_command_row(command))
+
+        if item.action_id == "persistenced":
+            card.append(_persistenced_control(window))
+        box.append(card)
+
+    scroller = Gtk.ScrolledWindow(vexpand=True)
+    scroller.set_child(box)
+
+    toolbar = Adw.ToolbarView()
+    toolbar.add_top_bar(Adw.HeaderBar())
+    toolbar.set_content(scroller)
+
+    dialog = Adw.Dialog()
+    dialog.set_title("Rekommendationer")
+    dialog.set_content_width(620)
+    dialog.set_content_height(540)
     dialog.set_child(toolbar)
     dialog.present(window)
 

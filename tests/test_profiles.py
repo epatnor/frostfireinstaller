@@ -8,7 +8,3 @@ def test_load_all_contains_known_games() -> None:
     assert "battlenet" in games
     assert "wow" in games
     assert games["wow"].name.startswith("World of Warcraft")
-
-
-def test_get_unknown_returns_none() -> None:
-    assert profiles.get("does-not-exist") is None

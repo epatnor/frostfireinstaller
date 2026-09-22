@@ -13,13 +13,17 @@ Overridable via ``$XDG_CONFIG_HOME/frostfireinstaller/config.toml``:
 
     [paths]
     bnet_dir = "~/Games/battlenet"
+
+    [env]
+    # extra environment for the Wine session (umu-run + Battle.net + games)
+    DXVK_FILTER_DEVICE_NAME = "AMD Radeon"
 """
 
 from __future__ import annotations
 
 import os
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 APP = "frostfireinstaller"
@@ -56,10 +60,9 @@ class Config:
     bnet_dir: Path
     prefix: Path
     installer: Path
-    data_dir: Path
     config_dir: Path
-    state_dir: Path
     log_dir: Path
+    env: dict[str, str] = field(default_factory=dict)
 
     # --- derived paths -----------------------------------------------------
     @property
@@ -85,7 +88,6 @@ class Config:
     # --- factory -----------------------------------------------------------
     @classmethod
     def load(cls) -> Config:
-        data_dir = _xdg("XDG_DATA_HOME", "~/.local/share") / APP
         config_dir = _xdg("XDG_CONFIG_HOME", "~/.config") / APP
         state_dir = _xdg("XDG_STATE_HOME", "~/.local/state") / APP
 
@@ -95,6 +97,7 @@ class Config:
         gameid = "umu-battlenet"
         proton_name: str | None = None
         performance = Performance()
+        env: dict[str, str] = {}
 
         cfg_file = config_dir / "config.toml"
         if cfg_file.is_file():
@@ -105,6 +108,7 @@ class Config:
             perf = data.get("performance", {})
             gameid = str(runtime.get("gameid", gameid))
             proton_name = runtime.get("proton") or None
+            env = {str(key): str(value) for key, value in dict(data.get("env", {})).items()}
             bnet_dir = Path(paths.get("bnet_dir", bnet_dir)).expanduser()
             performance = Performance(
                 mangohud=bool(perf.get("mangohud", False)),
@@ -119,10 +123,9 @@ class Config:
             bnet_dir=bnet_dir,
             prefix=bnet_dir / "prefix",
             installer=bnet_dir / "Battle.net-Setup.exe",
-            data_dir=data_dir,
             config_dir=config_dir,
-            state_dir=state_dir,
             log_dir=state_dir / "logs",
+            env=env,
         )
 
     # --- persistence -------------------------------------------------------
@@ -145,6 +148,10 @@ class Config:
                 "gamescope": self.performance.gamescope,
             }
         )
+        if self.env:
+            data["env"] = dict(self.env)
+        else:
+            data.pop("env", None)
 
         lines: list[str] = []
         for section, values in data.items():

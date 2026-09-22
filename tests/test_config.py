@@ -6,6 +6,7 @@ import pytest
 
 from frostfireinstaller import service
 from frostfireinstaller.config import Config, _toml_value
+from frostfireinstaller.core import umu
 
 
 def test_load_derives_paths() -> None:
@@ -64,3 +65,45 @@ def test_save_roundtrips_quoted_values(sandbox: Config) -> None:
 def test_desktop_exec_quotes_only_when_needed() -> None:
     assert service._desktop_exec("/usr/bin/app", "gui") == "/usr/bin/app gui"
     assert service._desktop_exec("/opt/my apps/app", "gui") == '"/opt/my apps/app" gui'
+
+
+def test_env_section_is_read_and_applied(sandbox: Config) -> None:
+    sandbox.config_dir.mkdir(parents=True, exist_ok=True)
+    sandbox.config_file.write_text(
+        '[env]\nDXVK_FILTER_DEVICE_NAME = "AMD Radeon"\n', encoding="utf-8"
+    )
+
+    config = Config.load()
+    assert config.env["DXVK_FILTER_DEVICE_NAME"] == "AMD Radeon"
+
+    env = umu.build_env(config, Path("/usr/lib/proton"))
+    assert env["DXVK_FILTER_DEVICE_NAME"] == "AMD Radeon"
+    assert env["WINEPREFIX"] == str(config.prefix)
+
+    config.save()
+    assert "DXVK_FILTER_DEVICE_NAME" in sandbox.config_file.read_text(encoding="utf-8")
+
+
+def test_set_persistenced_command(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_run(cmd: list[str], check: bool = False) -> None:
+        calls["cmd"] = cmd
+        calls["check"] = check
+
+    monkeypatch.setattr(service.subprocess, "run", fake_run)
+    service.set_persistenced(True)
+    assert calls["cmd"] == ["systemctl", "enable", "--now", "nvidia-persistenced"]
+    service.set_persistenced(False)
+    assert calls["cmd"] == ["systemctl", "disable", "--now", "nvidia-persistenced"]
+
+
+def test_set_gpu_preference_roundtrips(sandbox: Config) -> None:
+    service.set_gpu_preference("nvidia")
+    assert Config.load().env["DXVK_FILTER_DEVICE_NAME"] == "NVIDIA"
+
+    service.set_gpu_preference("integrated")
+    assert Config.load().env["DXVK_FILTER_DEVICE_NAME"]
+
+    service.set_gpu_preference("auto")
+    assert "DXVK_FILTER_DEVICE_NAME" not in Config.load().env
