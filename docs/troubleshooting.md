@@ -7,7 +7,7 @@ Play) are usually Wine/Proton/graphics issues, not the installer.
 > **The app checks for you.** A **recommendation strip** appears under the
 > Battle.net band when a check fails, with copy-ready commands. The full report —
 > every check, including the ones that pass — is under
-> **Avancerat → Diagnostik → Systemkontroll** and in `frostfireinstaller doctor`.
+> **Advanced → Diagnostics → System check** and in `frostfireinstaller doctor`.
 > It covers: `umu-run`, Proton builds, free disk space, the prefix filesystem
 > (NTFS/exFAT warning), hybrid GPUs, the NVIDIA driver/module and any recent
 > `NVRM: Xid` / `NV_ERR_NO_MEMORY` faults, missing performance tools and the
@@ -145,7 +145,7 @@ hang**, not the game. It is common on hybrid/Optimus laptops with the NVIDIA
 > does **not** help here — the fault is below them (it happens with both D3D11 and
 > D3D12, on any runner, and can be intermittent). Focus on the driver.
 
-> The app surfaces this automatically: the **recommendation strip** → **Visa**
+> The app surfaces this automatically: the **recommendation strip** → **View**
 > shows the steps below and can toggle the reversible one for you. The app never
 > makes large system changes itself — the rest are copy-ready commands.
 
@@ -314,7 +314,7 @@ The launcher needs two Wine fixes, which `frostfireinstaller` already applies:
 - `WINE_SIMULATE_WRITECOPY=1`
 - `WINEDLLOVERRIDES=locationapi=d`
 
-If the client still misbehaves, use **Reparera** (stops the client, clears
+If the client still misbehaves, use **Repair** (stops the client, clears
 CEF/cache and relaunches). A full **Reinstall** (with *Keep games*) keeps
 your games.
 

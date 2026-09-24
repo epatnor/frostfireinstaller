@@ -30,7 +30,7 @@ Blizzard's own Battle.net launcher — `frostfireinstaller` is the helper undern
 - **Looks cool:** a Battle.net-inspired GTK4/libadwaita UI with our own frost/fire
   palette — dark flat panels, uppercase section labels and gradient buttons. The
   window is a compact, fixed 608 px wide; everything except the run controls sits
-  behind a "Visa avancerat" footer expander.
+  behind a "Show advanced" footer expander.
 
 Born from a working recipe on Bazzite: `umu-launcher` + GE-Proton (see `docs/`).
 
@@ -42,7 +42,7 @@ Born from a working recipe on Bazzite: `umu-launcher` + GE-Proton (see `docs/`).
 frostfireinstaller gui
 ```
 
-- **Banner** (fixed height) → **info strip** (distro + kernel, session, GPU) →
+- **Banner** (full width, height from the image) → **info strip** (distro + kernel, session, GPU) →
   **config band** (Proton and prefix) → **Battle.net band**.
 - **Battle.net band**: status pill and the action button (*Install* / *Start* /
   *Stop*). The start button runs `ensure()` first, so a missing client is installed.
@@ -127,7 +127,7 @@ frostfireinstaller uninstall    # remove prefix, shortcut, icon
 - Idempotent setup: `ensure` verifies prefix, installer, client, config and
   shortcut every run.
 - The installer **retries** transient download failures (5xx/timeouts).
-- **Reparera** stops a wedged client, clears CEF/cache and relaunches.
+- **Repair** stops a wedged client, clears CEF/cache and relaunches.
 - Reinstall/remove **keep your games** unless you ask otherwise.
 - Games run in Blizzard's own launcher; if a game itself misbehaves (e.g. a
   D3D12 freeze), see `docs/troubleshooting.md`.

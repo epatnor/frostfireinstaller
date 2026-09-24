@@ -62,9 +62,10 @@ launcher (without their logos or artwork), but keeps our own frost/fire palette:
   (shown only when the footer is expanded).
 - **Fixed width:** the window is **608 px wide and not user-resizable** (the same as
   the banner, so it fills the width).
-- **Fixed banner size:** the banner is scaled at load to **608×198 px** (20 % smaller
-  than full width) and painted at a fixed, centred size — it never changes. On toggle
-  only the window height changes (350 ↔ 770) and the app grows downwards.
+- **Adaptive banner:** the banner fills the fixed 608 px width; its height is
+  derived from the image's aspect ratio at load, so any header renders without
+  distortion. On toggle only the window height changes and the app grows
+  downwards.
 - **The info strip** (dark, `#00070f`) is one line of system info: distro + kernel,
   session, GPU (name, driver).
 - **The config band** (`#051320`, narrow) shows Proton and prefix — how the app is

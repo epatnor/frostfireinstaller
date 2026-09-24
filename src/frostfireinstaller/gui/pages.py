@@ -16,6 +16,7 @@ import shutil
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import gi
 
@@ -56,11 +57,40 @@ MATERIAL = {
     "check": "\ue5ca",
 }
 
-# Banner size: the window is locked to this width (608) and the picture is
-# scaled to match at load, so it fills the width and never changes between
-# collapsed/expanded. Height is ~20% smaller than the full-width banner.
-BANNER_HEIGHT = 198
-BANNER_WIDTH = round(BANNER_HEIGHT * 1600 / 521)
+# The window is locked to this width and the banner fills it. The banner height
+# is derived from the image's aspect ratio, so any header renders undistorted;
+# the window height follows (banner + fixed chrome, and + the advanced sections).
+WINDOW_WIDTH = 608
+DEFAULT_BANNER_HEIGHT = 198
+_COLLAPSED_BASE = 350 - DEFAULT_BANNER_HEIGHT  # window minus banner, collapsed
+_ADVANCED_EXTRA = 770 - 350  # extra height when the advanced sections are shown
+
+
+def _banner_height(banner: Path | None) -> int:
+    """Height for a full-width banner that matches the image's aspect ratio."""
+    if banner is None:
+        return DEFAULT_BANNER_HEIGHT
+    try:
+        _format, width, height = GdkPixbuf.Pixbuf.get_file_info(str(banner))
+    except (GLib.Error, OSError, TypeError):
+        return DEFAULT_BANNER_HEIGHT
+    if not width or not height:
+        return DEFAULT_BANNER_HEIGHT
+    return max(140, min(360, round(WINDOW_WIDTH * height / width)))
+
+
+def _draw_banner(
+    _area: Gtk.DrawingArea, cr: Any, width: int, height: int, pixbuf: GdkPixbuf.Pixbuf
+) -> None:
+    """Paint the banner pixbuf to fill the drawing area exactly."""
+    pix_w, pix_h = pixbuf.get_width(), pixbuf.get_height()
+    if not pix_w or not pix_h or width <= 0 or height <= 0:
+        return
+    cr.save()
+    cr.scale(width / pix_w, height / pix_h)
+    Gdk.cairo_set_source_pixbuf(cr, pixbuf, 0, 0)
+    cr.paint()
+    cr.restore()
 
 
 def _icon(glyph: str, tone: str | None = None) -> Gtk.Label:
@@ -680,6 +710,12 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     footer_content.append(footer_icon)
     footer.set_child(footer_content)
 
+    # Banner: full window width, height from the image's own aspect ratio.
+    banner = data_file("header", "frostfire_installer_header.png")
+    banner_height = _banner_height(banner)
+    collapsed_height = _COLLAPSED_BASE + banner_height
+    expanded_height = collapsed_height + _ADVANCED_EXTRA
+
     expanded = {"open": False}
 
     def toggle_advanced(*_args: object) -> None:
@@ -687,25 +723,32 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         scroller.set_visible(expanded["open"])
         footer_label.set_label("Hide advanced" if expanded["open"] else "Show advanced")
         footer_icon.set_label(MATERIAL["collapse"] if expanded["open"] else MATERIAL["expand"])
-        # Only the height changes; the width is locked by the window.
-        window.set_default_size(608, 770 if expanded["open"] else 350)  # type: ignore[attr-defined]
+        # The window is not user-resizable, and GTK ignores set_default_size on
+        # such a window: briefly allow resizing so the new size is applied, then
+        # lock it again. Only the height changes.
+        target = expanded_height if expanded["open"] else collapsed_height
+        window.set_resizable(True)  # type: ignore[attr-defined]
+        window.set_default_size(WINDOW_WIDTH, target)  # type: ignore[attr-defined]
+        window.set_resizable(False)  # type: ignore[attr-defined]
         window.queue_resize()  # type: ignore[attr-defined]
 
     footer.connect("clicked", toggle_advanced)
 
     # --- Column: banner + run controls, advanced content below -----------
     column = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-    banner = data_file("header", "frostfire_installer_header.png")
     if banner is not None:
         pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
-            str(banner), BANNER_WIDTH, BANNER_HEIGHT, True
+            str(banner), WINDOW_WIDTH, banner_height, True
         )
-        picture = Gtk.Picture.new_for_paintable(Gdk.Texture.new_for_pixbuf(pixbuf))
-        picture.set_content_fit(Gtk.ContentFit.FILL)
-        picture.set_size_request(BANNER_WIDTH, BANNER_HEIGHT)
-        picture.set_hexpand(True)
-        picture.set_valign(Gtk.Align.START)
-        column.append(picture)
+        # A DrawingArea has no natural size beyond its request, so the banner
+        # stays exactly this tall and never rescales when the window grows.
+        area = Gtk.DrawingArea()
+        area.set_size_request(WINDOW_WIDTH, banner_height)
+        area.set_hexpand(True)
+        area.set_vexpand(False)
+        area.set_valign(Gtk.Align.START)
+        area.set_draw_func(_draw_banner, pixbuf)
+        column.append(area)
     column.append(_system_strip())
     column.append(config_strip)
     run_bar = RunBar()
@@ -731,6 +774,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         window.register_state(refresh_installer)  # type: ignore[attr-defined]
     if hasattr(window, "register_activity"):
         window.register_activity(activity_bar)  # type: ignore[attr-defined]
+    window.set_default_size(WINDOW_WIDTH, collapsed_height)  # type: ignore[attr-defined]
     return _toolbar_page("Frostfire Installer", column)
 
 

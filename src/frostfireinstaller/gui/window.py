@@ -17,9 +17,9 @@ class MainWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self.set_title("Frostfire Installer")
-        # Fixed 608 px wide (the banner's size) so the banner fills the window
-        # and keeps its exact size; pages.py only changes the height
-        # (350 <-> 770) when the advanced sections are toggled.
+        # Fixed 608 px wide so the banner fills the window. The height is set by
+        # pages.py from the banner's aspect ratio and grows when the advanced
+        # sections are toggled; this is only the pre-build fallback.
         self.set_resizable(False)
         self.set_default_size(608, 350)
 

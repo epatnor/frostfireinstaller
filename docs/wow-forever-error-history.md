@@ -145,7 +145,7 @@ NVRM: Xid (PCI:0000:01:00): 109, name=WowB.exe, errorString CTX SWITCH TIMEOUT, 
 - **The workaround did not help here**: the 22:14 crash ran on **D3D11** with
   **Secondary Lighting = Fair** — the setting the community found helped on
   Windows. On this machine the reliable escape was the **iGPU** (the
-  `frostfireinstaller` *Avancerat → Grafik* selector) until Blizzard fixed it in
+  `frostfireinstaller` *Advanced → Graphics* selector) until Blizzard fixed it in
   **69977**.
 - **Device-lost recovery is broken** (Blizzard's own secondary issue): the 22:14
   run shows `GxRestarts: 2` — the device was lost, recovered, lost again, then
@@ -161,7 +161,7 @@ NVRM: Xid (PCI:0000:01:00): 109, name=WowB.exe, errorString CTX SWITCH TIMEOUT, 
   (22:43/22:45). Combined with the earlier data, this points at the **69913
   client regression** on the **cross-GPU (PRIME) path**, not the module choice.
 - **The iGPU path is stable**: running the game on the **AMD Radeon** iGPU (the
-  one wired to the panel) via `frostfireinstaller`'s *Avancerat → Grafik* selector
+  one wired to the panel) via `frostfireinstaller`'s *Advanced → Graphics* selector
   works well. It was the recommended workaround on 69913; **no longer needed on
   69977**.
 - **The asserts are separate and soft**: 6× narration (`#135`) on D3D12 (21 Sep)

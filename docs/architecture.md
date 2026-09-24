@@ -66,24 +66,26 @@ GTK4 + libadwaita (`frostfireinstaller gui`), one column:
 3. **Config band** — narrow band with the runner (Proton) and prefix, i.e. how the app
    is set up; a missing Proton is highlighted.
 4. **Battle.net band** — client state (coloured) plus the install/start/stop button.
-   The button runs `ensure()` first, so a missing client is installed ("Installera")
+   The button runs `ensure()` first, so a missing client is installed ("Install")
    before launching.
 5. **Activity strip** — a spinner + text showing the operation running right now
    (searching for Proton, downloading, installing, starting, removing).
 6. **Recommendation strip** — appears **only for warnings** from
-   `core/recommend.py` (NVIDIA `NVRM: Xid` / `NV_ERR_NO_MEMORY` GPU faults,
-   missing `umu-run`/Proton, low disk, NTFS/exFAT prefix, missing performance
-   tools). It opens a dialog with copy-ready fix commands and one **reversible
-   in-app toggle** (`nvidia-persistenced` via `systemctl`, Polkit-prompted). The
-   full report — every check including the passing ones — is under **Advanced →
-   Diagnostics → System check** and in `doctor`. The app never makes large
-   system changes.
+   `core/recommend.py`: NVIDIA `NVRM: Xid` / `NV_ERR_NO_MEMORY` GPU faults,
+   missing `umu-run` (a missing Proton is **auto-downloaded** by umu as
+   `UMU-Proton`), **Vulkan** capability (absent, older than 1.3, software-only
+   `llvmpipe`, or no 32-bit loader), low disk, an NTFS/exFAT prefix, and missing
+   performance tools. It opens a dialog with copy-ready fix commands and one
+   **reversible in-app toggle** (`nvidia-persistenced` via `systemctl`,
+   Polkit-prompted). The full report — every check including the passing ones —
+   is under **Advanced → Diagnostics → System check** and in `doctor`. The app
+   never makes large system changes.
 7. **Advanced footer expander** — right under the Battle.net band; "Show
    advanced" (chevron-down/up) reveals, in a scroll area below, "Installation &
    maintenance", "Reset & remove", Performance / Runner / Paths (with *View
    logs*) / About. The window is a fixed **608 px wide** (not user-resizable) with
-   a banner scaled to 608 × 198; only its height changes (350 ↔ 770) on toggle,
-   so the banner never resizes.
+   a banner that fills the width at the image's own aspect ratio; the window height
+   follows the banner and grows when the advanced sections are toggled.
 
 Long-running work runs in worker threads: the activity strip shows the current step,
 and toasts report the result.

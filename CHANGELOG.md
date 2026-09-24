@@ -18,6 +18,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   supervision (the maintainer reviews, tests and is responsible).
 - `docs/support.md` (scope, safety, no warranty), `CODE_OF_CONDUCT.md` and
   `docs/flatpak.md` (Flatpak/Flathub status, blockers and plan).
+- **Aspect-adaptive banner**: the window derives the banner height from the header
+  image's own aspect ratio (it fills the fixed 608 px width, undistorted) and the
+  window height follows. Updated the header image.
 - **Vulkan capability check**: `core/recommend.py` warns when Vulkan is missing,
   older than 1.3, software-only (llvmpipe), or when the **32-bit Vulkan loader**
   is absent — the prerequisites Battle.net (32-bit) and the games need.
