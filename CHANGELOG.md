@@ -18,8 +18,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   supervision (the maintainer reviews, tests and is responsible).
 - `docs/support.md` (scope, safety, no warranty), `CODE_OF_CONDUCT.md` and
   `docs/flatpak.md` (Flatpak/Flathub status, blockers and plan).
-- Flatpak: renamed to the new app id, metainfo gains `<developer>`/`<releases>`,
-  and the manifest documents the offline-build and bundling work.
+- Flatpak: renamed to the new app id, metainfo gains `<developer>`/`<releases>`
+  and screenshots; the manifest now runs **umu inside the sandbox** (bundled
+  umu-launcher + `org.winehq.Wine` base + `--allow=per-app-dev-shm`) instead of
+  the `flatpak-spawn --host` escape — the pattern Flathub accepts.
 
 ## [0.1.0] - 2026-09-24
 

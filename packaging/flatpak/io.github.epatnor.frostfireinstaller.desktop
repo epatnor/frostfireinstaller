@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=Frostfire Installer
 Comment=Battle.net installer helper (umu + Proton)
-Exec=frostfireinstaller gui
+Exec=frostfireinstaller-gui
 Icon=io.github.epatnor.frostfireinstaller
 Terminal=false
 Type=Application
