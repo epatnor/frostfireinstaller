@@ -31,7 +31,10 @@ def _emit(on_progress: Progress | None, message: str) -> None:
         log.debug("progress callback failed", exc_info=True)
 
 
-APP_ID = "io.github.frostfireinstaller"
+APP_ID = "io.github.epatnor.frostfireinstaller"
+
+# Earlier releases used a shorter app id; clean up its desktop entry/icon.
+_LEGACY_APP_IDS = ("io.github.frostfireinstaller",)
 
 
 def _data_file(*parts: str) -> Path | None:
@@ -97,6 +100,9 @@ def ensure_shortcut(config: Config) -> Path:
         encoding="utf-8",
     )
     (apps / "frostfireinstaller.desktop").unlink(missing_ok=True)
+    for legacy in _LEGACY_APP_IDS:
+        (apps / f"{legacy}.desktop").unlink(missing_ok=True)
+        (icons / f"{legacy}.png").unlink(missing_ok=True)
 
     if shutil.which("update-desktop-database"):
         subprocess.run(["update-desktop-database", str(apps)], check=False)

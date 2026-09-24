@@ -3,7 +3,7 @@
 ## Name and motif
 
 - **Display name:** Frostfire Installer
-- **Technical name:** `frostfireinstaller` (package, CLI, app id `io.github.frostfireinstaller`)
+- **Technical name:** `frostfireinstaller` (package, CLI, app id `io.github.epatnor.frostfireinstaller`)
 - **Motif:** frost/fire. Ice preserves, fire destroys.
 
 ## Ice and fire (UI concept)

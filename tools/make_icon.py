@@ -17,7 +17,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-APP_ID = "io.github.frostfireinstaller"
+APP_ID = "io.github.epatnor.frostfireinstaller"
 SIZES = (16, 24, 32, 48, 64, 128, 256, 512)
 RADIUS_RATIO = 224 / 1024
 SUPERSAMPLE = 4

@@ -1,0 +1,42 @@
+# Flatpak manifest (EXPERIMENTAL - not yet Flathub-ready).
+#
+# frostfireinstaller drives the host's umu-launcher + a Proton build. A sandboxed
+# app cannot run host binaries directly, so this manifest uses `flatpak-spawn --host`
+# (needs --talk-name=org.freedesktop.Flatpak). Flathub does NOT accept that escape
+# hatch, so this manifest is for local testing only. See docs/flatpak.md for the
+# plan to bundle umu + a Proton runtime inside the sandbox (like Bottles does).
+#
+# Local build:
+#   flatpak-builder --user --install --force-clean build-dir \
+#     io.github.epatnor.frostfireinstaller.yml
+#
+# Flathub build notes (when we get there):
+#   - source must be a released archive (type: archive) with a sha256, not `dir`
+#   - build offline: vendor hatchling (build backend) and rely on the runtime's
+#     PyGObject instead of fetching it from PyPI
+#   - add screenshots to the metainfo
+
+app-id: io.github.epatnor.frostfireinstaller
+runtime: org.gnome.Platform
+runtime-version: "49"
+sdk: org.gnome.Sdk
+command: frostfireinstaller
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --share=network
+  - --filesystem=~/Games
+  - --filesystem=~/.local/share/Steam:ro
+  - --filesystem=~/.local/share/applications
+  - --talk-name=org.freedesktop.Flatpak
+modules:
+  - name: frostfireinstaller
+    buildsystem: simple
+    build-commands:
+      # PyGObject comes from the GNOME runtime; the base package has no runtime deps.
+      - pip3 install --prefix=/app .
+    sources:
+      - type: dir
+        path: ../..

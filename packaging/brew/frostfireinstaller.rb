@@ -4,8 +4,7 @@ class Frostfireinstaller < Formula
   desc "Install and launch Blizzard games on Linux via umu-launcher + Proton"
   homepage "https://github.com/epatnor/frostfireinstaller"
   url "https://github.com/epatnor/frostfireinstaller/archive/refs/tags/v0.1.0.tar.gz"
-  # Fill in when tagging a release: curl -sL <url> | sha256sum
-  sha256 "REPLACE_WITH_TARBALL_SHA256"
+  sha256 "5bdd1251f427a38288324f4d94e0f3009a08c32b12e9ad16a44548d32c492896"
   license "MIT"
   head "https://github.com/epatnor/frostfireinstaller.git", branch: "main"
 

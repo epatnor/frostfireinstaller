@@ -131,9 +131,9 @@ frostfireinstaller remove --purge-installer   # also drop the cached installer
 frostfireinstaller uninstall    # remove prefix, desktop entry and icon
 ```
 
-> The project is not published yet, so the PyPI/curl/AUR/brew commands only work
-> once `epatnor/frostfireinstaller` is pushed and released. Until then, install
-> from a clone:
+> The GitHub repo and the **v0.1.0 release** are public. The **PyPI**, **AUR** and
+> **Homebrew** channels are not published yet, so those commands only work once
+> they are. Until then, install from the repo:
 >
 > ```bash
 > git clone https://github.com/epatnor/frostfireinstaller

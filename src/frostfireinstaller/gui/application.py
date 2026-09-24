@@ -14,7 +14,7 @@ from gi.repository import Adw, Gdk, Gio, Gtk  # noqa: E402
 
 from .window import MainWindow  # noqa: E402
 
-APP_ID = "io.github.frostfireinstaller"
+APP_ID = "io.github.epatnor.frostfireinstaller"
 
 # Bundled font used across the app UI (overridable for testing).
 INFO_FONT = os.environ.get("FROSTFIRE_INFO_FONT", "Open Sans")

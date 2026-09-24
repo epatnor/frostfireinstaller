@@ -123,8 +123,8 @@ disabled in the UI.
 | Config | `~/.config/frostfireinstaller/config.toml` |
 | State | `~/.local/state/frostfireinstaller` |
 | Logs | `~/.local/state/frostfireinstaller/logs` |
-| Desktop entry | `~/.local/share/applications/io.github.frostfireinstaller.desktop` |
-| Icon | `~/.local/share/icons/hicolor/512x512/apps/io.github.frostfireinstaller.png` |
+| Desktop entry | `~/.local/share/applications/io.github.epatnor.frostfireinstaller.desktop` |
+| Icon | `~/.local/share/icons/hicolor/512x512/apps/io.github.epatnor.frostfireinstaller.png` |
 
 ## Logging
 

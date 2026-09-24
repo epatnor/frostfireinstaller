@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
 
 ## [Unreleased]
 
+### Changed
+- **App id is now `io.github.epatnor.frostfireinstaller`** (the Flathub
+  reverse-DNS form). The desktop entry and icon follow; a legacy
+  `io.github.frostfireinstaller` entry/icon is cleaned up on setup.
+
+### Added
+- `docs/support.md` (scope, safety, no warranty), `CODE_OF_CONDUCT.md` and
+  `docs/flatpak.md` (Flatpak/Flathub status, blockers and plan).
+- Flatpak: renamed to the new app id, metainfo gains `<developer>`/`<releases>`,
+  and the manifest documents the offline-build and bundling work.
+
+## [0.1.0] - 2026-09-24
+
 ### Added
 - `core`: distro/proton detection, umu runner, Battle.net install/launch/repair, health checks.
 - Logging: per-run and per-installation logs with full diagnostics.
@@ -114,13 +127,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   and the unused `gui.helpers.make_icon()` helper (it referenced the removed SVG).
 
 ### Notes
-- Project URLs and packaging point at `epatnor/frostfireinstaller`.
+- First public release. Project URLs and packaging point at
+  `epatnor/frostfireinstaller`; the GitHub repo and `v0.1.0` release are public
+  (PyPI/AUR/Homebrew not yet).
 - Ported from the verified `bnetstarter` bash prototype (umu-launcher + GE-Proton on Bazzite).
 - **Field result (Bazzite, RTX 3050 Ti Laptop):** the WoW: Forever build-69913
   `Xid 109` GPU hang was a **client shader bug** (unbounded GI-probe compute
   shader), not the driver — the proprietary NVIDIA driver did not stop it. It is
   **fixed in build 69977** (verified 2026-09-24, zero `Xid` on NVIDIA). Recorded
   in `docs/wow-forever-error-history.md` and `docs/troubleshooting.md`.
-
-## [0.1.0] - 2026-09-20
-- First public scaffold.

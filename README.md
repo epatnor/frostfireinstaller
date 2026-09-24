@@ -7,7 +7,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 
-**Status:** early development (v0.1, Python port of a verified prototype).
+**Status:** v0.1 — first public release (a Python port of a verified prototype).
+Early, but used daily on the reference machine. See [`docs/support.md`](docs/support.md)
+for what is supported and what is out of scope.
 
 ---
 
@@ -132,11 +134,15 @@ frostfireinstaller uninstall    # remove prefix, shortcut, icon
 | Document | Contents |
 |---|---|
 | `docs/architecture.md` | backend, lifecycle, GUI, security, paths |
-| `docs/install.md` | install channels, prefix override, update/remove |
+| `docs/install.md` | install channels, distro matrix, prefix override, update/remove |
+| `docs/support.md` | support scope, what's in/out of scope, safety, no warranty |
 | `docs/design.md` | naming, ice/fire concept, assets, iconography |
 | `docs/troubleshooting.md` | common failures and fixes (D3D12 freeze, launcher, logs) |
-| `docs/wow-forever-error-history.md` | observed WoW: Forever (69913) error history and Xid correlation |
+| `docs/wow-forever-error-history.md` | observed WoW: Forever (69913 → 69977) error history and Xid correlation |
 | `docs/technical-reference.md` | deep-dive: Wine/Proton/Steam/umu stack, Battle.net + WoW: Forever specs, env reference |
+| `docs/flatpak.md` | Flatpak/Flathub status, blockers and plan |
+
+For how support works and what is out of scope, see [`docs/support.md`](docs/support.md).
 
 ## Development
 
