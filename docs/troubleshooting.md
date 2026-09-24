@@ -22,14 +22,27 @@ Play) are usually Wine/Proton/graphics issues, not the installer.
 - Per-game crash dumps: `<game dir>/Errors/*.txt` (e.g. `_retail_/Errors/`).
 - `frostfireinstaller doctor` prints the environment and current status.
 
-## Known bugs in World of Warcraft: Forever (build 69913)
+## Known bugs in World of Warcraft: Forever
 
-The Forever beta has **two independent, currently unfixed bugs**. They look
-alarming but are not caused by your GPU choice, the installer, or an outdated
-driver. Sources: [Blizzard forum #2353584], [Proton #10157], [vkd3d-proton
-#3304].
+> **Resolved in build 69977 (2026-09-22).** The `ERROR #109` / NVIDIA `Xid 109`
+> GPU hang below was a **client regression in build 69913**, caused by an
+> unbounded compute shader (the **Global Illumination probe update**) whose loop
+> count is read from a not-yet-initialised constant buffer on its first dispatch.
+> It was **not** the driver, Proton or your setup — the same setting also times
+> out drivers on AMD/Windows and freezes macOS. Blizzard's 69977 build fixes it
+> (verified on the reference machine: a 2026-09-24 play session on the NVIDIA
+> RTX 3050 Ti with **zero** `Xid`). The notes are kept for older builds and for
+> the two issues that remain (a session-long FPS degradation and the soft
+> narration assert). Sources: [Blizzard #2359917], [gist: fx], [blue post 69977].
+
+The 69913 beta had **two independent bugs**. They looked alarming but were not
+caused by your GPU choice, the installer, or an outdated driver. Sources:
+[Blizzard forum #2353584], [Proton #10157], [vkd3d-proton #3304].
 
 [Blizzard forum #2353584]: https://us.forums.blizzard.com/en/wow/t/wowf-beta-69913-hard-gpu-hang-entering-world-map-2991-client-deadlock-in-device-lost-recovery-error-109/2353584
+[Blizzard #2359917]: https://us.forums.blizzard.com/en/wow/t/linuxnvidia-forever-gi-secondary-lighting-gpu-hang-xid-109-cause-isolated-shader-override-workaround/2359917
+[gist: fx]: https://gist.github.com/fx/88cf5be8bed8e9ce761e26e183b0ba90
+[blue post 69977]: https://us.forums.blizzard.com/en/wow/t/beta-client-update-september-22/2358655
 [Proton #10157]: https://github.com/ValveSoftware/Proton/issues/10157
 [vkd3d-proton #3304]: https://github.com/HansKristian-Work/vkd3d-proton/issues/3304
 
@@ -49,7 +62,7 @@ the dialog is a separate Blizzard Error process and may linger after you quit.
 There is no client-side fix yet — this is usually the dismissible error seen at
 character select.
 
-### 2. `ERROR #109` / `Xid 109` — GPU hang on world entry (regression)
+### 2. `ERROR #109` / `Xid 109` — GPU hang on world entry (regression, fixed in 69977)
 
 Build **69913** regressed. ~11–15 s after the loading screen reaches 100 %, the
 GPU queue hangs (`NVRM: Xid ... 109 CTX SWITCH TIMEOUT`), and the client's
@@ -57,6 +70,11 @@ device-lost recovery then **deadlocks in `WaitForFence`**, so the freeze watchdo
 kills the process. Build **69893 was stable**. Reported on NVIDIA GPUs from a
 GTX 1070 to an RTX 4090 and on **both** D3D11 and D3D12 — a **client
 regression, not an outdated driver**.
+
+The root cause was isolated to one **compute shader** (the GI probe update) whose
+unbounded loops read an invalid count on their first dispatch; it also times out
+drivers on AMD/Windows and freezes macOS. Build **69977 fixes it**. The
+workarounds below only apply if you are still on an older build.
 
 Workarounds, in order:
 
@@ -108,6 +126,10 @@ This is the single most common fix for Blizzard titles on Linux.
 
 ## GPU hang — `NVRM: Xid ... 109` / `CTX SWITCH TIMEOUT`
 
+> **Note (2026-09-24):** for WoW: Forever this was the build-69913 shader bug and
+> is **fixed in build 69977** — update the game first. The steps below remain
+> useful for any *other* title or older build that shows the same kernel fault.
+
 **Symptom:** the game freezes regardless of D3D11/D3D12, and
 
 ```bash
@@ -155,9 +177,9 @@ hang**, not the game. It is common on hybrid/Optimus laptops with the NVIDIA
    > **proprietary** driver (`kmod-nvidia-580.178.04`, replacing
    > `kmod-nvidia-open`) did **not** fix `Xid 109` — two fresh
    > `CTX SWITCH TIMEOUT` faults on `WowB.exe` appeared within minutes of the
-   > first launch. So on this hybrid laptop the driver type is **not** the root
-   > cause; the `#109` regression and the cross-GPU (PRIME) path remain. The
-   > reliable escape is still the **iGPU** (step 5), which runs the game stably.
+   > first launch. This confirmed the driver type was **not** the cause; the
+   > real cause was the 69913 shader regression (fixed in **69977**). The iGPU
+   > (step 5) was the working fallback in the meantime.
 5. **Last resort — run on the integrated GPU** (enough for WoW). Add to
    `~/.config/frostfireinstaller/config.toml`:
 
@@ -176,6 +198,12 @@ shows two *independent* failure modes that are easy to confuse. Inspect
 `<edition>/Logs/gx.log` for both.
 
 ### A. `ERROR #109` is a *symptom* of NVIDIA `Xid 109` (`CTX SWITCH TIMEOUT`)
+
+> **Superseded for WoW: Forever (2026-09-24).** The PRIME-path explanation below
+> was the best theory on build 69913. The actual cause turned out to be a
+> **client shader bug** (the GI probe compute shader), and it was **fixed in
+> build 69977** — it also affected AMD/Windows and macOS. Treat this section as
+> historical for Forever; it may still apply to other titles.
 
 The game's render thread blocks in `dxgi.dll` waiting for a wedged GPU context;
 after 20 s WoW's watchdog raises `ERROR #109` / `Soft Lock`. Confirm with:

@@ -109,10 +109,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
 - Project URLs and packaging point at `epatnor/frostfireinstaller`; the repo is not
   pushed yet, so install from a clone until it is.
 - Ported from the verified `bnetstarter` bash prototype (umu-launcher + GE-Proton on Bazzite).
-- **Field result (Bazzite, RTX 3050 Ti Laptop):** switching from the open to the
-  **proprietary** NVIDIA driver did **not** stop the WoW: Forever build-69913
-  `Xid 109` GPU hang; the **iGPU** path is stable and remains the workaround.
-  Recorded in `docs/wow-forever-error-history.md` and `docs/troubleshooting.md`.
+- **Field result (Bazzite, RTX 3050 Ti Laptop):** the WoW: Forever build-69913
+  `Xid 109` GPU hang was a **client shader bug** (unbounded GI-probe compute
+  shader), not the driver — the proprietary NVIDIA driver did not stop it. It is
+  **fixed in build 69977** (verified 2026-09-24, zero `Xid` on NVIDIA). Recorded
+  in `docs/wow-forever-error-history.md` and `docs/troubleshooting.md`.
 
 ## [0.1.0] - 2026-09-20
 - First public scaffold.

@@ -36,7 +36,8 @@ Wine, and **World of Warcraft: Forever** specifically.
    `WINE_SIMULATE_WRITECOPY=1` and `WINEDLLOVERRIDES=locationapi=d`.
 6. **World of Warcraft: Forever** is (per community sources) an official Blizzard
    "Classic+" product on the modern Mainline client, version line **1.60.x**,
-   beta build **1.60.1.69913**, launching **2026-11-04**. It is a D3D12 client,
+   beta builds **1.60.1.69913** (2026-09-17) and **1.60.1.69977** (2026-09-22,
+   which fixes the `Xid 109` hang), launching **2026-11-04**. It is a D3D12 client,
    so on Linux it needs the same DXVK/vkd3d-proton stack as retail WoW. Blizzard
    does **not** support Linux.
 7. **Anti-cheat decides support.** Blizzard's **Warden is user-space** → works
@@ -44,8 +45,9 @@ Wine, and **World of Warcraft: Forever** specifically.
    Wine.
 8. **This machine** (Bazzite Kinoite 44, Wayland/KDE, RTX 3050 Ti + AMD Cezanne
    iGPU, umu 1.4.4, GE-Proton11-7 / UMU-Proton-10.0-4) is a verified-working
-   Battle.net configuration; the iGPU (`DXVK_FILTER_DEVICE_NAME`) is a useful
-   fallback for NVIDIA `Xid 109` GPU hangs.
+   Battle.net configuration; it now plays WoW: Forever on the NVIDIA GPU with no
+   `Xid` after build **69977**. The iGPU (`DXVK_FILTER_DEVICE_NAME`) remains a
+   useful fallback for `Xid 109` GPU hangs in general.
 
 ---
 
@@ -454,7 +456,7 @@ BlizzCon 2026. Platforms: Windows and macOS — **no official Linux support.**
 | Item | Value |
 |---|---|
 | Version line | **1.60.x** (distinct from Era 1.15.x and Retail 12.x) |
-| Beta build | **1.60.1 (69913)**, 2026-09-17 |
+| Beta build | **1.60.1 (69913)**, 2026-09-17 → **1.60.1 (69977)**, 2026-09-22 (fixes the `Xid 109` hang) |
 | Beta window | 2026-09-17 → 2026-10-21 |
 | Global launch | **2026-11-04, 15:00 PST** |
 | Battle.net product (beta) | **`wow_classic_beta`** (observed in this project) |
@@ -498,10 +500,12 @@ this bar.
   game arguments `--game=wow_classic_beta --install`, implying the product works
   in a Wine prefix like other WoW flavors.
 - General WoW-under-Wine knowledge (D3D11 fallback, shader caches) applies.
-- **Build 69913 is a regression:** the beta has an unresolved `Xid 109` GPU hang
-  on world entry (all NVIDIA generations, D3D11 and D3D12) plus a soft narration
-  assert (`ERROR #135`). See §14.6 and `docs/troubleshooting.md` for the
-  workarounds (Secondary Lighting → Fair, iGPU fallback).
+- **Build 69913 was a regression, fixed in 69977.** On 69913 the beta had an
+  `Xid 109` GPU hang on world entry (all NVIDIA generations, D3D11 and D3D12)
+  plus a soft narration assert (`ERROR #135`). The hang was a **client shader
+  bug** (see §14.5/§14.6) and **build 69977 (2026-09-22) fixes it** — verified on
+  the reference machine (2026-09-24, RTX 3050 Ti, zero `Xid`). See
+  `docs/wow-forever-error-history.md` and `docs/troubleshooting.md`.
 
 ### 12.5 DirectX API selection
 
@@ -560,6 +564,11 @@ not the API choice.
 
 ### 14.3 NVIDIA GPU hang — `NVRM: Xid 109` / `CTX SWITCH TIMEOUT`
 
+> **For WoW: Forever this is resolved.** It was a build-69913 client shader bug
+> (see §14.5), **fixed in build 69977**; it was not the driver or the open
+> modules (switching to proprietary did not help — see §14.6). The mitigations
+> below apply to other titles or older builds.
+
 ```bash
 journalctl -k | grep -i nvrm
 # NVRM: Xid (PCI:0000:01:00): 109, name=WowB.exe, errorString CTX SWITCH TIMEOUT
@@ -594,13 +603,25 @@ does **not** help. Mitigations, easiest first:
 - Raise `vm.max_map_count`.
 - Ensure GPU driver (Mesa/NVIDIA) is current.
 
-### 14.5 Shader-override workaround (D3D12 shader infinite loop) **[community]**
+### 14.5 The shader root cause and the `VKD3D_SHADER_OVERRIDE` workaround **[community]**
 
-For the reproducible vkd3d shader-loop hang: dump shaders with
-`VKD3D_SHADER_DUMP_PATH`, bound every `OpLoopMerge` (e.g. 4096 iterations), run
-with `VKD3D_SHADER_OVERRIDE`, and delete `_classic_beta_/vkd3d-proton.cache`
+**Root cause (isolated 2026-09-24).** The build-69913 `Xid 109` was a single
+**compute shader** — the **Global Illumination probe update**. Its two outer loops
+take their iteration count from a constant buffer (`cb0[2] / cb0[3]`); on the
+**first dispatch** after GI resources are created the count is not yet valid and
+nothing bounds the loops, so the shader never terminates and the driver times out
+the context. Triggered by `giQuality >= 1` or `graphicsLightMode >= 2`. It is a
+**client defect**, not the driver: the same setting times out drivers on
+AMD/Windows and freezes macOS. Fixed by Blizzard in **69977**.
+
+**Workaround (69913 only).** Dump the shaders the client compiles
+(`VKD3D_SHADER_DUMP_PATH`), bound every `OpLoopMerge` (e.g. 4096 iterations),
+run with `VKD3D_SHADER_OVERRIDE`, and delete `_classic_beta_/vkd3d-proton.cache`
 before dumping and before playing. The override must be set on **Battle.net**
-(children inherit it). This is advanced and use-case-specific.
+(children inherit it). D3D12 only. Sources: [Blizzard #2359917], [gist: fx].
+
+[Blizzard #2359917]: https://us.forums.blizzard.com/en/wow/t/linuxnvidia-forever-gi-secondary-lighting-gpu-hang-xid-109-cause-isolated-shader-override-workaround/2359917
+[gist: fx]: https://gist.github.com/fx/88cf5be8bed8e9ce761e26e183b0ba90
 
 ### 14.6 Errors seen on the reference machine
 
@@ -609,7 +630,8 @@ On the reference machine (Bazzite, RTX 3050 Ti Laptop, GE-Proton11-7), several
 fault.
 
 1. **`ERROR #109` is a symptom of NVIDIA `Xid 109` (`CTX SWITCH TIMEOUT`)** — a
-   **build-69913 regression**. The render thread blocks in `dxgi.dll`; the 20 s
+   **build-69913 regression, fixed in build 69977** (see §14.5). The render thread
+   blocks in `dxgi.dll`; the 20 s
    watchdog fires. The crashes are **early (1–6 min) and at low memory
    (13–22 %)**, so this is not memory pressure and not the power profile.
    Community reports reproduce it on **desktop and laptop** NVIDIA GPUs (GTX 1070
@@ -622,7 +644,8 @@ fault.
    or run on the **integrated GPU** (bypasses the NVIDIA path entirely — the app
    exposes Auto / NVIDIA / Integrerad under **Avancerat → Grafik**). The game
    often **recovers by re-creating its D3D11 device**
-   (`Device Destroy Successful` → `Dx11 Device Create Successful`).
+   (`Device Destroy Successful` → `Dx11 Device Create Successful`). On **69977**
+   the reference machine plays on the NVIDIA GPU with **no** `Xid` (2026-09-24).
 
 2. **`ERROR #135` is a separate narration/voice assert**, at the login screen:
    `ASSERTSAFE(m_platformInterface != nullptr)` in `VoiceSpeakManager.cpp`, called
@@ -639,6 +662,12 @@ fault.
    (`DXVK_FILTER_DEVICE_NAME="AMD Radeon"`), closing Battle.net after launch,
    capping FPS/render scale, and raising `maxFPSBK` in `<edition>/WTF/Config.wtf`.
    `/reload` does not touch GPU resources.
+
+   > **Still open on 69977.** A **session-long FPS degradation / apparent memory
+   > leak** persists after the `Xid` fix (frame rate falls toward ~30 in
+   > Ironforge/Stormwind with GPU at full clocks). Community reports describe it
+   > as a client leak; it is separate from the shader bug. A relog to the
+   > character screen temporarily helps.
 
 4. **Client error report confirms the product identity:** `Exception.WowProject:
    Camelot`, `Branch: 1.60.1`, `BuildNumber: 69913`, `Platform: Linux (x86 64-bit)`,
@@ -695,9 +724,10 @@ fault.
 - Install via Battle.net with the **Game Version** set to *World of Warcraft:
   Forever* (beta product `wow_classic_beta` during beta).
 - Prefer **D3D11** (`SET GxApi "D3D11"` / `-d3d11`) — the mature DXVK path and
-  the standard escape from `ERROR #109`.
-- Keep the NVIDIA driver current; if `Xid 109` appears, follow §14.3. The AMD
-  iGPU via `DXVK_FILTER_DEVICE_NAME="AMD Radeon"` is a viable fallback for WoW.
+  the standard escape from `ERROR #109` on older builds.
+- **Update to build 69977 or later** — it fixes the 69913 `Xid 109` hang. Keep the
+  NVIDIA driver current; if `Xid 109` still appears, follow §14.3. The AMD iGPU
+  via `DXVK_FILTER_DEVICE_NAME="AMD Radeon"` is a viable fallback.
 - Enable ntsync if `/dev/ntsync` exists on kernel 7.2.4 (requires a supporting
   Proton/GE build).
 - Verify with `frostfireinstaller doctor` and the in-app system check.
@@ -716,8 +746,10 @@ fault.
    `wow_forever`) — gather ProtonDB data after launch.
 4. **ntsync availability** on this kernel: `lsof /dev/ntsync` /
    `modprobe ntsync`; confirm the chosen Proton build enables it.
-5. **Forever-specific Linux GPU behavior** — whether it reproduces the
-   `Xid 109` hang seen with `WowB.exe` on NVIDIA open modules.
+5. **Forever-specific Linux GPU behavior** — ~~whether it reproduces the
+   `Xid 109` hang~~ *answered:* 69913 reproduced it, **69977 fixed it** (2026-09-24,
+   verified on the reference machine). Open: the separate session FPS
+   degradation / memory leak.
 6. **corefonts**: decide whether the prefix needs `winetricks corefonts` or if
    GE-Proton's built-in font handling suffices.
 
@@ -760,6 +792,9 @@ fault.
 - wowdev.wiki Agent: https://wowdev.wiki/Agent
 - vkd3d-proton issue #3304 (WowB.exe Xid 109)
 - Valve Proton issue #10157 (WoW Forever Xid 13/109)
+- Shader root cause + override: https://us.forums.blizzard.com/en/wow/t/linuxnvidia-forever-gi-secondary-lighting-gpu-hang-xid-109-cause-isolated-shader-override-workaround/2359917
+- Loop-cap shader tool (gist): https://gist.github.com/fx/88cf5be8bed8e9ce761e26e183b0ba90
+- Blizzard blue post, build 69977: https://us.forums.blizzard.com/en/wow/t/beta-client-update-september-22/2358655
 - PCGamingWiki anti-cheat: https://www.pcgamingwiki.com/wiki/Anti-cheat_middleware
 - Ricochet announcement: https://news.blizzard.com/en-us/article/23733251/ricochet-anti-cheat-call-of-dutys-new-anti-cheat-initiative
 
