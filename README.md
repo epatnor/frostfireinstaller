@@ -10,14 +10,10 @@
 [![CI](https://github.com/epatnor/frostfireinstaller/actions/workflows/ci.yml/badge.svg)](https://github.com/epatnor/frostfireinstaller/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
-[![AI-assisted](https://img.shields.io/badge/AI--assisted-human--reviewed-blueviolet)](docs/ai-disclosure.md)
 
 **Status:** v0.1 — first public release (a Python port of a verified prototype).
 Early, but used daily on the reference machine. See [`docs/support.md`](docs/support.md)
 for what is supported and what is out of scope.
-
-> **AI disclosure:** this project is built with generative AI under human
-> supervision — see [`docs/ai-disclosure.md`](docs/ai-disclosure.md).
 
 ---
 
@@ -188,6 +184,15 @@ that can't work are those whose anti-cheat refuses Linux at the OS level — tha
 | Diablo II/III/IV, Hearthstone, StarCraft I/II, Heroes of the Storm, Warcraft III Reforged | ✅ |
 | Overwatch 2 | ✅ |
 | Call of Duty (Battle.net) | ⛔ blocked by kernel-level anti-cheat (Ricochet) — outside our control |
+
+## AI disclosure
+
+This project is built with **generative AI under human supervision**: the code,
+tests, packaging, documentation and visual assets are largely AI-assisted, while
+the design, direction, review and testing are human. The maintainer runs it on
+real hardware and is responsible for the released result.
+
+Read the full statement in [`docs/ai-disclosure.md`](docs/ai-disclosure.md).
 
 ## License
 
