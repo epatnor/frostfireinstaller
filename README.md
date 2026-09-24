@@ -47,9 +47,10 @@ frostfireinstaller gui
 - **Battle.net band**: status pill and the action button (*Install* / *Start* /
   *Stop*). The start button runs `ensure()` first, so a missing client is installed.
 - **Activity strip**: spinner + text showing the operation in progress.
-- **System check & recommendations**: the app checks `umu-run`, Proton, free disk
-  space, the prefix filesystem, hybrid GPU, the NVIDIA driver/module and recent
-  `NVRM: Xid`/`NV_ERR_NO_MEMORY`, missing performance tools and the runner. A
+- **System check & recommendations**: the app checks `umu-run`, Proton, **Vulkan**
+  (version, software-only, 32-bit loader), free disk space, the prefix filesystem,
+  hybrid GPU, the NVIDIA driver/module and recent `NVRM: Xid`/`NV_ERR_NO_MEMORY`,
+  missing performance tools and the runner. A
   **warning strip** (below the band) appears only on problems and opens a dialog
   with **copy-ready commands**; the full report (including OK) is under
   **Advanced → Diagnostics → System check** and in `doctor`. The **reversible**
@@ -77,8 +78,9 @@ downwards.
 
 - Linux, Python **3.11+**
 - [`umu-launcher`](https://github.com/Open-Wine-Components/umu-launcher) (`umu-run`)
-- A Proton build (GE-Proton, UMU-Proton or Proton-CachyOS) in a `compatibilitytools.d` dir
-- GPU drivers (Vulkan)
+- A Proton build (GE-Proton, UMU-Proton or Proton-CachyOS) in a `compatibilitytools.d`
+  dir — or let `umu-launcher` download **UMU-Proton** automatically on first launch
+- GPU drivers with **Vulkan 1.3+** (and a 32-bit Vulkan loader; Battle.net is 32-bit)
 - Optional GUI extras: `python3-gobject` (GTK4 + libadwaita); MangoHud / GameMode /
   Gamescope if you want the performance toggles
 

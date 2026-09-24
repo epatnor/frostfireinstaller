@@ -276,6 +276,23 @@ Reduce pressure (easiest first):
   the client into a low-power state: add `SET maxFPSBK "60"` to
   `<edition>/WTF/Config.wtf` (remove the line to restore).
 
+## No Proton build found
+
+If no Proton build is in a `compatibilitytools.d` directory, `frostfireinstaller`
+asks `umu-launcher` to download **UMU-Proton** on first launch. If `umu-run` is
+missing too, install `umu-launcher` first (it fetches Proton for you), or install
+GE-Proton/UMU-Proton with ProtonPlus. `frostfireinstaller doctor` shows which case
+you are in.
+
+## Vulkan / old or weak GPU
+
+Battle.net's launcher and DXVK are **32-bit** and need a 32-bit Vulkan loader; the
+games need **Vulkan 1.3+** (vkd3d-proton) or DXVK. On very old integrated
+graphics (Intel HD 6000, GCN 1, Maxwell) the launcher may start but the game will
+fail — that is Blizzard's hardware floor, not the tool. `doctor` warns when Vulkan
+is missing, too old, software-only (llvmpipe), or the 32-bit loader is absent, and
+lists the packages to install.
+
 ## Other freezes or low performance
 
 Try these one at a time:

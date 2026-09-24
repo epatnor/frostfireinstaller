@@ -28,6 +28,16 @@ _SERIOUS_XIDS = {"13", "31", "43", "62", "79", "109", "119", "120"}
 _MIN_FREE_GB = 15
 _LINUX_FSTYPES = {"ext2", "ext3", "ext4", "btrfs", "xfs", "f2fs", "zfs", "tmpfs", "overlay"}
 
+# vkd3d-proton (D3D12) needs Vulkan 1.3; Battle.net is 32-bit and needs a 32-bit loader.
+_VULKAN_MIN = (1, 3)
+_SOFTWARE_VULKAN = ("llvmpipe", "lavapipe", "swiftshader")
+_32BIT_VULKAN_CANDIDATES = (
+    "/usr/lib32/libvulkan.so.1",
+    "/usr/lib/i386-linux-gnu/libvulkan.so.1",
+    "/lib32/libvulkan.so.1",
+    "/usr/lib/libvulkan.so.1",  # Fedora/openSUSE multiarch layout
+)
+
 _XID_RE = re.compile(r"NVRM: Xid \(PCI:[0-9a-fA-F:.]+\):\s*(\d+)")
 _VERSION_RE = re.compile(r"(\d+\.\d+(?:\.\d+)?)")
 
@@ -159,6 +169,83 @@ def _check_vram() -> Recommendation:
             "(the driver is), but keep the graphics settings moderate.",
         )
     return Recommendation("vram", "ok", f"{gb:.0f} GB video memory", "")
+
+
+def _has_32bit_vulkan() -> bool:
+    return any(Path(path).exists() for path in _32BIT_VULKAN_CANDIDATES)
+
+
+def _vulkan_versions_and_names() -> tuple[list[tuple[int, ...]], list[str]]:
+    """Parse ``vulkaninfo --summary`` into ``(api_versions, device_names)``."""
+    if not shutil.which("vulkaninfo"):
+        return [], []
+    try:
+        out = subprocess.run(
+            ["vulkaninfo", "--summary"],
+            capture_output=True,
+            text=True,
+            timeout=12,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return [], []
+    text = out.stdout
+    versions = [
+        tuple(int(part) for part in match.split("."))
+        for match in re.findall(r"apiVersion\s*=\s*(\d+\.\d+(?:\.\d+)?)", text)
+    ]
+    names = [name.strip() for name in re.findall(r"deviceName\s*=\s*(.+)", text)]
+    return versions, names
+
+
+def _check_vulkan() -> Recommendation:
+    if not shutil.which("vulkaninfo"):
+        return Recommendation(
+            "vulkan",
+            "info",
+            "Vulkan could not be checked",
+            "Install vulkan-tools to enable this check.",
+        )
+    versions, names = _vulkan_versions_and_names()
+    if not versions:
+        return Recommendation(
+            "vulkan",
+            "warn",
+            "No Vulkan device found",
+            "Battle.net (32-bit) and the games need a Vulkan-capable driver.",
+            "Install a Vulkan driver: Mesa RADV/ANV (AMD/Intel) or the NVIDIA "
+            "driver, plus the 32-bit libraries.",
+        )
+    best = max(versions)
+    best_text = ".".join(str(part) for part in best)
+    if best < _VULKAN_MIN:
+        return Recommendation(
+            "vulkan",
+            "warn",
+            f"Vulkan too old ({best_text})",
+            "vkd3d-proton (D3D12) needs Vulkan 1.3; older drivers can fail to run the games.",
+            "Update your GPU driver (Mesa or NVIDIA).",
+        )
+    real = [name for name in names if not any(s in name.lower() for s in _SOFTWARE_VULKAN)]
+    if names and not real:
+        return Recommendation(
+            "vulkan",
+            "warn",
+            "Only software Vulkan found",
+            "Only the software renderer (llvmpipe) is available; games will be "
+            "unusably slow or fail to start.",
+            "Install a GPU driver with Vulkan support.",
+        )
+    if not _has_32bit_vulkan():
+        return Recommendation(
+            "vulkan",
+            "warn",
+            "32-bit Vulkan loader not found",
+            "Battle.net's launcher and DXVK are 32-bit and need a 32-bit Vulkan loader.",
+            "Install the 32-bit Vulkan libraries for your GPU (e.g. "
+            "lib32-vulkan-radeon, libvulkan1:i386, mesa-vulkan-drivers.i686).",
+        )
+    return Recommendation("vulkan", "ok", f"Vulkan {best_text} ({len(real)} GPU)", "")
 
 
 def _driver_commands(is_open: bool, serious: bool) -> tuple[str, ...]:
@@ -377,7 +464,8 @@ def _check_umu() -> Recommendation:
         "warn",
         "umu-launcher is missing",
         "Without umu-run, Battle.net cannot be started.",
-        "Install umu-launcher (available on Bazzite/Fedora and from Open-Wine-Components).",
+        "Install umu-launcher (available on Bazzite/Fedora and from "
+        "Open-Wine-Components). It can also download Proton for you.",
     )
 
 
@@ -385,12 +473,23 @@ def _check_proton() -> Recommendation:
     builds = proton.all_builds()
     if builds:
         return Recommendation("proton", "ok", f"{len(builds)} Proton builds found", "")
+    if shutil.which("umu-run"):
+        return Recommendation(
+            "proton",
+            "info",
+            "No local Proton build",
+            "umu-launcher will download UMU-Proton automatically on first launch.",
+            "Or install GE-Proton/UMU-Proton with ProtonPlus "
+            "(https://github.com/Vysp3r/ProtonPlus).",
+        )
     return Recommendation(
         "proton",
         "warn",
-        "No Proton found",
-        "A Proton runner (GE-Proton/UMU-Proton) is needed in a compatibilitytools.d directory.",
-        "Install one via ProtonPlus (https://github.com/Vysp3r/ProtonPlus).",
+        "No Proton build and no umu-launcher",
+        "Install umu-launcher (it can then fetch UMU-Proton automatically), or a "
+        "Proton runner in a compatibilitytools.d directory.",
+        "Install umu-launcher, or GE-Proton/UMU-Proton via ProtonPlus "
+        "(https://github.com/Vysp3r/ProtonPlus).",
     )
 
 
@@ -465,6 +564,14 @@ def _check_perf_tools(config: Config) -> Recommendation:
 def _check_runner(config: Config) -> Recommendation:
     names = {build.name for build in proton.all_builds()}
     if not names:
+        if shutil.which("umu-run"):
+            return Recommendation(
+                "runner",
+                "info",
+                f"Runner: {proton.DEFAULT_CODENAME} (auto-download)",
+                "No local Proton build; umu-launcher will fetch it on first launch.",
+                "Change the runner under Advanced -> Runner.",
+            )
         return Recommendation("runner", "info", "No runner to recommend", "")
     preferred = next((name for name in sorted(names) if "UMU-Proton" in name), None)
     if preferred and config.proton_name != preferred:
@@ -483,6 +590,7 @@ def report(config: Config) -> list[Recommendation]:
     checks = [
         *_check_nvidia(),
         _check_vram(),
+        _check_vulkan(),
         _check_hybrid_gpu(config),
         _check_wow_tuning(config),
         _check_wow_forever(config),

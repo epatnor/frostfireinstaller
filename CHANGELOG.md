@@ -18,6 +18,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   supervision (the maintainer reviews, tests and is responsible).
 - `docs/support.md` (scope, safety, no warranty), `CODE_OF_CONDUCT.md` and
   `docs/flatpak.md` (Flatpak/Flathub status, blockers and plan).
+- **Vulkan capability check**: `core/recommend.py` warns when Vulkan is missing,
+  older than 1.3, software-only (llvmpipe), or when the **32-bit Vulkan loader**
+  is absent — the prerequisites Battle.net (32-bit) and the games need.
+- **Proton auto-download**: when no local Proton build is found, `umu-launcher`
+  downloads **UMU-Proton** on first launch; the Runner list offers the umu
+  codenames and the messages explain the fallback. Clearer guidance when even
+  `umu-run` is missing.
 - Flatpak: renamed to the new app id, metainfo gains `<developer>`/`<releases>`
   and screenshots; the manifest now runs **umu inside the sandbox** (bundled
   umu-launcher + `org.winehq.Wine` base + `--allow=per-app-dev-shm`) instead of

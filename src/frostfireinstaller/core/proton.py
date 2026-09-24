@@ -14,6 +14,15 @@ SEARCH_DIRS: tuple[Path, ...] = (
 # Preferred build families, in order.
 PREFERRED: tuple[str, ...] = ("GE-Proton", "UMU-Proton", "Proton")
 
+# Codenames umu-launcher knows how to download by itself (no local build needed).
+CODENAMES: tuple[str, ...] = ("UMU-Proton", "GE-Proton")
+DEFAULT_CODENAME: str = "UMU-Proton"
+
+
+def is_codename(name: str | None) -> bool:
+    """True if *name* is a codename umu can fetch on its own."""
+    return bool(name) and name in CODENAMES
+
 
 def _safe_name(name: str) -> bool:
     """Reject anything that is not a plain directory name (no traversal)."""
@@ -23,8 +32,10 @@ def _safe_name(name: str) -> bool:
 def find(proton_name: str | None = None) -> Path | None:
     """Return the path to a Proton build, or ``None``.
 
-    If *proton_name* is given, only an exact directory match is accepted.
-    Otherwise builds are searched preferring GE-Proton, then UMU-Proton, then Proton.
+    If *proton_name* is given, an exact directory match is preferred; a known
+    codename (e.g. ``UMU-Proton``) is returned as-is so umu-launcher can download
+    it on first launch. Otherwise builds are searched preferring GE-Proton, then
+    UMU-Proton, then Proton.
     """
     if proton_name:
         if not _safe_name(proton_name):
@@ -33,6 +44,8 @@ def find(proton_name: str | None = None) -> Path | None:
             candidate = directory / proton_name
             if candidate.is_dir():
                 return candidate
+        if is_codename(proton_name):
+            return Path(proton_name)
         return None
 
     for family in PREFERRED:

@@ -146,12 +146,21 @@ def set_gpu_preference(preference: str) -> None:
 
 def find_proton(config: Config) -> Path:
     build = proton.find(config.proton_name)
-    if not build:
-        raise RuntimeError(
-            "No Proton found. Install GE-Proton/UMU-Proton in a "
-            "compatibilitytools.d directory (e.g. via ProtonPlus)."
+    if build:
+        return build
+    # No local build: umu-launcher can download a codename (UMU-Proton) by itself.
+    if shutil.which("umu-run"):
+        log.info(
+            "No local Proton build; umu-launcher will fetch %s on first launch",
+            proton.DEFAULT_CODENAME,
         )
-    return build
+        return Path(proton.DEFAULT_CODENAME)
+    raise RuntimeError(
+        "No Proton build found and umu-run is missing. Install umu-launcher "
+        "(it can then fetch UMU-Proton automatically) or install "
+        "GE-Proton/UMU-Proton via ProtonPlus "
+        "(https://github.com/Vysp3r/ProtonPlus)."
+    )
 
 
 def ensure(config: Config, on_progress: Progress | None = None) -> Path:

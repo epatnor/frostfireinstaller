@@ -108,6 +108,9 @@ def test_report_sorts_most_severe_first(monkeypatch, tmp_path: Path) -> None:
         recommend, "_check_nvidia", lambda: [recommend.Recommendation("n", "info", "i")]
     )
     monkeypatch.setattr(recommend, "_check_vram", lambda: recommend.Recommendation("v", "ok", "o"))
+    monkeypatch.setattr(
+        recommend, "_check_vulkan", lambda: recommend.Recommendation("k", "ok", "o")
+    )
     monkeypatch.setattr(recommend, "_check_umu", lambda: recommend.Recommendation("u", "warn", "w"))
     monkeypatch.setattr(
         recommend, "_check_hybrid_gpu", lambda _c: recommend.Recommendation("h", "ok", "o")
@@ -135,7 +138,20 @@ def test_report_sorts_most_severe_first(monkeypatch, tmp_path: Path) -> None:
     )
 
     levels = [item.level for item in recommend.report(make_config(tmp_path))]
-    assert levels == ["warn", "info", "ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok"]
+    assert levels == [
+        "warn",
+        "info",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+    ]
 
 
 def test_persistenced_state_active(monkeypatch) -> None:
@@ -225,3 +241,70 @@ def test_wow_forever_flags_known_bugs(tmp_path: Path) -> None:
 
 def test_wow_forever_ok_without_beta(tmp_path: Path) -> None:
     assert recommend._check_wow_forever(make_config(tmp_path)).level == "ok"
+
+
+# --- Vulkan capability ---------------------------------------------------
+def test_vulkan_could_not_be_checked(monkeypatch) -> None:
+    monkeypatch.setattr(recommend.shutil, "which", lambda _name: None)
+    assert recommend._check_vulkan().level == "info"
+
+
+def test_vulkan_no_device(monkeypatch) -> None:
+    monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/vulkaninfo")
+    monkeypatch.setattr(recommend, "_vulkan_versions_and_names", lambda: ([], []))
+    assert recommend._check_vulkan().level == "warn"
+
+
+def test_vulkan_too_old(monkeypatch) -> None:
+    monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/vulkaninfo")
+    monkeypatch.setattr(
+        recommend, "_vulkan_versions_and_names", lambda: ([(1, 2, 200)], ["AMD Radeon"])
+    )
+    monkeypatch.setattr(recommend, "_has_32bit_vulkan", lambda: True)
+    item = recommend._check_vulkan()
+    assert item.level == "warn"
+    assert "old" in item.title.lower()
+
+
+def test_vulkan_software_only(monkeypatch) -> None:
+    monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/vulkaninfo")
+    monkeypatch.setattr(
+        recommend,
+        "_vulkan_versions_and_names",
+        lambda: ([(1, 4, 354)], ["llvmpipe (LLVM 22)"]),
+    )
+    monkeypatch.setattr(recommend, "_has_32bit_vulkan", lambda: True)
+    assert "software" in recommend._check_vulkan().title.lower()
+
+
+def test_vulkan_missing_32bit(monkeypatch) -> None:
+    monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/vulkaninfo")
+    monkeypatch.setattr(
+        recommend, "_vulkan_versions_and_names", lambda: ([(1, 4, 354)], ["AMD Radeon"])
+    )
+    monkeypatch.setattr(recommend, "_has_32bit_vulkan", lambda: False)
+    assert "32-bit" in recommend._check_vulkan().title
+
+
+def test_vulkan_ok(monkeypatch) -> None:
+    monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/vulkaninfo")
+    monkeypatch.setattr(
+        recommend, "_vulkan_versions_and_names", lambda: ([(1, 4, 354)], ["AMD Radeon"])
+    )
+    monkeypatch.setattr(recommend, "_has_32bit_vulkan", lambda: True)
+    assert recommend._check_vulkan().level == "ok"
+
+
+# --- Proton auto-download fallback ---------------------------------------
+def test_proton_auto_download_when_umu_present(monkeypatch) -> None:
+    monkeypatch.setattr(recommend.proton, "all_builds", lambda: [])
+    monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/umu-run")
+    item = recommend._check_proton()
+    assert item.level == "info"
+    assert "download" in (item.detail + item.action).lower()
+
+
+def test_proton_warns_without_umu(monkeypatch) -> None:
+    monkeypatch.setattr(recommend.proton, "all_builds", lambda: [])
+    monkeypatch.setattr(recommend.shutil, "which", lambda _name: None)
+    assert recommend._check_proton().level == "warn"

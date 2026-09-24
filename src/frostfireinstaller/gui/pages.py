@@ -361,10 +361,18 @@ class ConfigStrip(Gtk.Box):
 
     def refresh(self) -> None:
         build = proton.find(self._config.proton_name)
-        self.proton.set_label(build.name if build else "missing")
         self.proton.remove_css_class("config-warn")
-        self.proton.set_tooltip_text(str(build) if build else "No Proton found")
-        if build is None:
+        if build:
+            self.proton.set_label(build.name)
+            self.proton.set_tooltip_text(str(build))
+        elif shutil.which("umu-run"):
+            self.proton.set_label(f"auto ({proton.DEFAULT_CODENAME})")
+            self.proton.set_tooltip_text(
+                "No local Proton build; umu-launcher will download it on first launch"
+            )
+        else:
+            self.proton.set_label("missing")
+            self.proton.set_tooltip_text("No Proton found")
             self.proton.add_css_class("config-warn")
 
 
@@ -525,13 +533,26 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     runners = Section("Runner", "Which Proton is used. Saved in config.toml.")
     current = proton.find(config.proton_name)
     builds = proton.all_builds()
-    if not builds:
+    if builds:
+        candidates = list(builds)
+    elif shutil.which("umu-run"):
+        candidates = [Path(name) for name in proton.CODENAMES]
+    else:
+        candidates = []
         runners.add(
-            Adw.ActionRow(title="No Proton builds found", subtitle="Install one via ProtonPlus")
+            Adw.ActionRow(
+                title="No Proton builds found",
+                subtitle="Install umu-launcher (auto-download) or a build via ProtonPlus",
+            )
         )
     group: Gtk.CheckButton | None = None
-    for candidate in builds:
-        row = Adw.ActionRow(title=candidate.name, subtitle=str(candidate))
+    for candidate in candidates:
+        subtitle = (
+            "Downloaded by umu-launcher on first launch"
+            if proton.is_codename(candidate.name)
+            else str(candidate)
+        )
+        row = Adw.ActionRow(title=candidate.name, subtitle=subtitle)
         radio = Gtk.CheckButton()
         radio.set_valign(Gtk.Align.CENTER)
         radio.set_tooltip_text(f"Use {candidate.name}")
