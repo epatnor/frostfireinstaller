@@ -36,7 +36,7 @@ def kill_all() -> None:
     time.sleep(1)
     for pattern in _KILL_PATTERNS:
         subprocess.run(["pkill", "-9", "-f", pattern], check=False)  # noqa: S603, S607
-    log.info("Dödade Battle.net-processer")
+    log.info("Killed Battle.net processes")
 
 
 def ui_window_present() -> bool:
@@ -72,7 +72,7 @@ def wait_for_ui(timeout: int = 40, interval: int = 1) -> bool:
 
 
 def remediate(config: Config) -> None:
-    log.warning("Försöker åtgärda hängd klient ...")
+    log.warning("Trying to recover a hung client ...")
     kill_all()
     time.sleep(2)
     base = config.prefix / "drive_c/users/steamuser/AppData/Local/Battle.net"
@@ -80,4 +80,4 @@ def remediate(config: Config) -> None:
         target = base / sub
         if target.exists():
             shutil.rmtree(target, ignore_errors=True)
-            log.info("Rensade %s", sub)
+            log.info("Cleared %s", sub)

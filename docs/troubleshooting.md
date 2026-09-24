@@ -16,7 +16,7 @@ Play) are usually Wine/Proton/graphics issues, not the installer.
 ## Where the logs are
 
 - App run/installation logs: `~/.local/state/frostfireinstaller/logs`
-  (also in the GUI: *Avancerat → Sökvägar → **Visa loggar***).
+  (also in the GUI: *Advanced → Paths → **View logs***).
 - Battle.net client log:
   `<prefix>/drive_c/users/*/AppData/Local/Battle.net/Logs/battle.net-*.log`.
 - Per-game crash dumps: `<game dir>/Errors/*.txt` (e.g. `_retail_/Errors/`).
@@ -222,8 +222,8 @@ removed and the 20 s watchdog fires. The crashes are **early (1–6 min) and at 
 memory (13–22 %)** — this is not memory pressure and not the power profile.
 
 **Fix (reversible, no privileges):** run the game on the integrated GPU — the
-same one that drives the panel. Choose **Integrerad** under
-**Avancerat → Grafik** (Auto / NVIDIA / Integrerad), or set it yourself:
+same one that drives the panel. Choose **Integrated** under
+**Advanced → Graphics** (Auto / NVIDIA / Integrated), or set it yourself:
 
 ```toml
 # ~/.config/frostfireinstaller/config.toml
@@ -298,7 +298,7 @@ The launcher needs two Wine fixes, which `frostfireinstaller` already applies:
 - `WINEDLLOVERRIDES=locationapi=d`
 
 If the client still misbehaves, use **Reparera** (stops the client, clears
-CEF/cache and relaunches). A full **Återinstallera** (with *Behåll spel*) keeps
+CEF/cache and relaunches). A full **Reinstall** (with *Keep games*) keeps
 your games.
 
 ## "bad gateway" while downloading the installer
@@ -310,6 +310,6 @@ failing, check your network/DNS and try again.
 
 - Config: `~/.config/frostfireinstaller/config.toml`.
 - Cached installer: `~/Games/battlenet/Battle.net-Setup.exe` (drop it with the
-  *Även installeraren* checkbox or `--purge-installer`).
+  *Also the installer* checkbox or `--purge-installer`).
 - Full reset: `frostfireinstaller remove --purge --purge-installer`, then start
   again.

@@ -81,7 +81,7 @@ def launcher_ready(config: Config) -> bool:
 
 
 def wait_for_launcher_ready(config: Config, timeout: int = 300, interval: int = 2) -> bool:
-    log.info("Väntar på att Battle.net ska bli klart (max %ss)...", timeout)
+    log.info("Waiting for Battle.net to become ready (max %ss)...", timeout)
     waited = 0
     while waited < timeout:
         if installed(config) and launcher_ready(config):
@@ -109,8 +109,8 @@ def ensure_installer(
     last: OSError | None = None
     for attempt in range(1, attempts + 1):
         try:
-            _emit(on_progress, f"Laddar ner installeraren ({attempt}/{attempts}) ...")
-            log.info("Hämtar Battle.net-Setup.exe (försök %d/%d) ...", attempt, attempts)
+            _emit(on_progress, f"Downloading the installer ({attempt}/{attempts}) ...")
+            log.info("Fetching Battle.net-Setup.exe (attempt %d/%d) ...", attempt, attempts)
             with (
                 urllib.request.urlopen(config.installer_url, timeout=120) as resp,
                 tmp.open(  # noqa: S310
@@ -124,11 +124,11 @@ def ensure_installer(
             last = exc
             if not _retryable(exc) or attempt == attempts:
                 break
-            log.warning("Nedladdningen misslyckades (%s), försöker igen ...", exc)
-            _emit(on_progress, "Nedladdningen misslyckades, försöker igen ...")
+            log.warning("The download failed (%s), retrying ...", exc)
+            _emit(on_progress, "The download failed, retrying ...")
             time.sleep(2 * attempt)
     tmp.unlink(missing_ok=True)
-    raise RuntimeError(f"Kunde inte ladda ner installeraren: {last}") from last
+    raise RuntimeError(f"Could not download the installer: {last}") from last
 
 
 def sha256(path: Path) -> str:
@@ -147,19 +147,19 @@ def install(config: Config, proton: Path, on_progress: Progress | None = None) -
     log_path = open_install_log(config.log_dir)
     _write_header(log_path, config, proton)
 
-    _emit(on_progress, "Installerar Battle.net (kan ta några minuter) ...")
-    log.info("Startar Battle.net-installationen (klicka ev. 'Continue' i fönstret)...")
+    _emit(on_progress, "Installing Battle.net (this can take a few minutes) ...")
+    log.info("Starting the Battle.net installation (click 'Continue' in the window if asked)...")
     with log_path.open("a", encoding="utf-8") as out:
         umu.spawn(config, proton, str(config.installer), stdout=out, stderr=out)
         ready = wait_for_launcher_ready(config)
-        out.write("\n--- Klarsignal ---\n")
-        out.write(f"launcher_ready       : {'ja' if ready else 'nej'}\n")
-        out.write(f"battlenet_installed  : {'ja' if installed(config) else 'nej'}\n")
+        out.write("\n--- Ready signal ---\n")
+        out.write(f"launcher_ready       : {'yes' if ready else 'no'}\n")
+        out.write(f"battlenet_installed  : {'yes' if installed(config) else 'no'}\n")
         _append_client_log(out, config)
 
     ok = installed(config)
     if ok:
-        log.info("Stänger första körningen automatiskt (rekommenderas före inloggning).")
+        log.info("Closing the first run automatically (recommended before logging in).")
         health.kill_all()
     _append_result(log_path, ready, ok)
     return log_path
@@ -184,23 +184,23 @@ def ensure_config(config: Config) -> bool:
 # --- log helpers ---------------------------------------------------------
 def _write_header(path: Path, config: Config, proton: Path) -> None:
     host = distro.detect()
-    prefix_new = "ja" if not config.prefix.is_dir() else "nej"
+    prefix_new = "yes" if not config.prefix.is_dir() else "no"
     lines = [
         "=" * 60,
-        " frostfireinstaller - INSTALLATIONSLOGG",
+        " frostfireinstaller - INSTALLATION LOG",
         "=" * 60,
         f"date            : {datetime.now().isoformat(timespec='seconds')}",
         f"host            : {platform.node()}",
         f"kernel          : {platform.release()}",
         f"distro          : {host.distro}",
-        f"atomic          : {'ja' if host.atomic else 'nej'}",
+        f"atomic          : {'yes' if host.atomic else 'no'}",
         f"session         : {host.session}",
         f"desktop         : {host.desktop}",
         f"gpu             : {host.gpu or '-'}",
         "",
-        "--- Konfiguration ---",
+        "--- Configuration ---",
         f"prefix          : {config.prefix}",
-        f"prefix_ny       : {prefix_new}",
+        f"prefix_new      : {prefix_new}",
         f"gameid          : {config.gameid}",
         f"proton          : {proton}",
         f"installer       : {config.installer}",
@@ -217,19 +217,19 @@ def _write_header(path: Path, config: Config, proton: Path) -> None:
 
 def _append_client_log(out: object, config: Config) -> None:
     path = latest_client_log(config)
-    out.write("\n--- Battle.net-klientens logg (senaste 150 rader) ---\n")  # type: ignore[attr-defined]
+    out.write("\n--- Battle.net client log (last 150 lines) ---\n")  # type: ignore[attr-defined]
     if path:
         out.write(f"# {path}\n")  # type: ignore[attr-defined]
         tail = path.read_text(encoding="utf-8", errors="ignore").splitlines()[-150:]
         out.write("\n".join(tail) + "\n")  # type: ignore[attr-defined]
     else:
-        out.write("(ingen klientlogg hittad)\n")  # type: ignore[attr-defined]
+        out.write("(no client log found)\n")  # type: ignore[attr-defined]
 
 
 def _append_result(path: Path, ready: bool, ok: bool) -> None:
     with path.open("a", encoding="utf-8") as out:
-        out.write("\n--- Resultat ---\n")
-        out.write(f"status          : {'OK - Battle.net installerat' if ok else 'MISSLYCKAT'}\n")
+        out.write("\n--- Result ---\n")
+        out.write(f"status          : {'OK - Battle.net installed' if ok else 'FAILED'}\n")
         out.write(f"finished        : {datetime.now().isoformat(timespec='seconds')}\n")
 
 
@@ -286,20 +286,20 @@ def remove(
     prefix (including games) is deleted. With *remove_installer* the cached
     ``Battle.net-Setup.exe`` is deleted too (next start downloads it again).
     """
-    _emit(on_progress, "Tar bort Battle.net ...")
+    _emit(on_progress, "Removing Battle.net ...")
     health.kill_all()
     if keep_games:
         kept = installed_games(config)
-        log.info("Behåller %d spelinstallation(er)", len(kept))
+        log.info("Keeping %d game installation(s)", len(kept))
         for rel in CLIENT_DIRS:
             shutil.rmtree(config.prefix / rel, ignore_errors=True)
     else:
-        log.info("Tar bort hela prefixen (inkl. spel)")
+        log.info("Removing the whole prefix (including games)")
         shutil.rmtree(config.prefix, ignore_errors=True)
     if remove_installer:
         config.installer.unlink(missing_ok=True)
         config.installer.with_suffix(".exe.part").unlink(missing_ok=True)
-        log.info("Tog bort installeraren: %s", config.installer)
+        log.info("Removed the installer: %s", config.installer)
 
 
 def reinstall(

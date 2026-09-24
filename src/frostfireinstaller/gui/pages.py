@@ -38,8 +38,8 @@ def _installer_state(path: Path) -> str:
     try:
         size = path.stat().st_size
     except OSError:
-        return "saknas, laddas ner vid nästa start"
-    return f"{size / 1024**2:.1f} MB, nedladdad och cachad"
+        return "missing, will download on next start"
+    return f"{size / 1024**2:.1f} MB, downloaded and cached"
 
 
 # Material Symbols glyphs (subset of the variable font, see data/fonts).
@@ -197,8 +197,8 @@ class RecommendationBar(Gtk.Box):
         label.set_hexpand(True)
         self.append(label)
 
-        button = _button("Visa", primary=warn)
-        button.set_tooltip_text("Visa rekommendationer och kommandon")
+        button = _button("View", primary=warn)
+        button.set_tooltip_text("Show recommendations and commands")
         button.connect("clicked", lambda *_: on_show())
         self.append(button)
 
@@ -209,16 +209,14 @@ class ClientRow(Adw.ActionRow):
     def __init__(self, on_repair: Callable[[Gtk.Button], None]) -> None:
         super().__init__(title="Battle.net")
         self.add_prefix(_icon(MATERIAL["build"], "ice"))
-        button = _button("Reparera", tooltip="Stoppa, rensa CEF/cache och starta om")
+        button = _button("Repair", tooltip="Stop, clear CEF/cache and restart")
         button.connect("clicked", lambda *_: on_repair(button))
         self.add_suffix(button)
         self.refresh()
 
     def refresh(self) -> None:
         installed = battlenet.installed(Config.load())
-        self.set_subtitle(
-            "Klienten är installerad" if installed else "Klienten är inte installerad"
-        )
+        self.set_subtitle("The client is installed" if installed else "The client is not installed")
 
 
 class RunBar(Gtk.Box):
@@ -269,11 +267,11 @@ class RunBar(Gtk.Box):
         installed = battlenet.installed(config)
 
         if running:
-            state, tone = "Startat", "status-on"
+            state, tone = "Running", "status-on"
         elif installed:
-            state, tone = "Stoppat", "status-off"
+            state, tone = "Stopped", "status-off"
         else:
-            state, tone = "Ej installerat", "status-missing"
+            state, tone = "Not installed", "status-missing"
 
         self.status.set_label(state)
         for name in ("status-on", "status-off", "status-missing"):
@@ -295,30 +293,30 @@ class RunBar(Gtk.Box):
         self.button.remove_css_class("bn-btn-danger")
 
         if running:
-            self.label.set_label("Stoppa")
-            self.button.set_tooltip_text("Stoppar Battle.net")
+            self.label.set_label("Stop")
+            self.button.set_tooltip_text("Stops Battle.net")
             self.button.add_css_class("bn-btn")
         elif installed:
-            self.label.set_label("Starta")
-            self.button.set_tooltip_text("Startar Battle.net")
+            self.label.set_label("Start")
+            self.button.set_tooltip_text("Starts Battle.net")
             self.button.add_css_class("bn-btn-primary")
         else:
-            self.label.set_label("Installera")
-            self.button.set_tooltip_text("Installerar Battle.net och startar klienten")
+            self.label.set_label("Install")
+            self.button.set_tooltip_text("Installs Battle.net and starts the client")
             self.button.add_css_class("bn-btn-primary")
 
     def _on_clicked(self, button: Gtk.Button) -> None:
         if health.running():
             health.kill_all()
             _refresh_root(self)
-            self._toast("Stoppade Battle.net")
+            self._toast("Stopped Battle.net")
             return
 
         root = self.get_root()
         button.set_sensitive(False)
         report = _reporter(root)
-        report("Förbereder ...")
-        self._toast("Startar Battle.net ...")
+        report("Preparing ...")
+        self._toast("Starting Battle.net ...")
 
         def work() -> None:
             config = Config.load()
@@ -328,12 +326,12 @@ class RunBar(Gtk.Box):
             button.set_sensitive(True)
             _clear_activity(root)
             _refresh_root(self)
-            self._toast("Startar Battle.net")
+            self._toast("Starting Battle.net")
 
         def error(exc: Exception) -> None:
             button.set_sensitive(True)
             _clear_activity(root)
-            self._toast(f"Fel: {exc}")
+            self._toast(f"Error: {exc}")
 
         run_async(work, done, error)
 
@@ -363,9 +361,9 @@ class ConfigStrip(Gtk.Box):
 
     def refresh(self) -> None:
         build = proton.find(self._config.proton_name)
-        self.proton.set_label(build.name if build else "saknas")
+        self.proton.set_label(build.name if build else "missing")
         self.proton.remove_css_class("config-warn")
-        self.proton.set_tooltip_text(str(build) if build else "Ingen Proton hittad")
+        self.proton.set_tooltip_text(str(build) if build else "No Proton found")
         if build is None:
             self.proton.add_css_class("config-warn")
 
@@ -434,32 +432,32 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         return row
 
     # --- Maintenance (ice: preserve and keep running) --------------------
-    maintenance = Section("Installation & underhåll")
+    maintenance = Section("Installation & maintenance")
     client_row = ClientRow(lambda b: _repair(window, b))
     maintenance.add(client_row)
     sections.append(maintenance)
 
     # --- Destructive (fire: reinstall / remove) --------------------------
-    destructive = Section("Återställ & ta bort")
+    destructive = Section("Reset & remove")
 
     keep_games = Adw.SwitchRow(
-        title="Behåll spel",
-        subtitle="Behåll installerade spel vid återinstallation eller borttagning",
+        title="Keep games",
+        subtitle="Keep installed games when reinstalling or removing",
     )
     keep_games.set_active(True)
     destructive.add(keep_games)
 
-    drop_installer = Gtk.CheckButton(label="Även installeraren")
+    drop_installer = Gtk.CheckButton(label="Also the installer")
     drop_installer.set_valign(Gtk.Align.CENTER)
     drop_installer.set_tooltip_text(
-        "Raderar nedladdad Battle.net-Setup.exe – nästa start laddar ner den igen"
+        "Deletes the downloaded Battle.net-Setup.exe - the next start downloads it again"
     )
 
     destructive.add(
         action(
-            "Återinstallera Battle.net",
-            "Tar bort klienten och installerar om",
-            "Återinstallera",
+            "Reinstall Battle.net",
+            "Removes the client and installs it again",
+            "Reinstall",
             lambda b: _reinstall(window, b, keep_games),
             icon=MATERIAL["refresh"],
             tone="fire",
@@ -467,9 +465,9 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     )
     destructive.add(
         action(
-            "Ta bort Battle.net",
-            "Tar bort klienten (spelen behålls om växeln är på)",
-            "Ta bort",
+            "Remove Battle.net",
+            "Removes the client (games are kept if the switch is on)",
+            "Remove",
             lambda b: _remove(window, b, keep_games, drop_installer),
             danger=True,
             icon=MATERIAL["delete"],
@@ -481,61 +479,62 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
 
     # --- Performance -----------------------------------------------------
     performance = Section(
-        "Prestanda",
-        "Gäller spelen du startar från Battle.net (samma Wine-session), inte bara launchern.",
+        "Performance",
+        "Applies to the games you start from Battle.net (same Wine session), "
+        "not just the launcher.",
     )
     performance.add(
         _switch(
             config,
             "MangoHud",
-            "FPS/GPU-overlay",
+            "FPS/GPU overlay",
             "mangohud",
             "mangohud",
-            "Visar FPS, frame time, GPU/CPU-last och temperatur ovanpå spelet. "
-            "Påverkar inte prestandan, bara diagnostik. Följer med ner i spelen "
-            "eftersom de kör i samma Wine-session.",
+            "Shows FPS, frame time, GPU/CPU load and temperature on top of the game. "
+            "Does not affect performance, only diagnostics. Follows into the games "
+            "because they run in the same Wine session.",
         )
     )
     performance.add(
         _switch(
             config,
             "GameMode",
-            "Optimera systemet under spel",
+            "Optimise the system while gaming",
             "gamemode",
             "gamemode",
-            "Justerar systemet tillfälligt medan Battle.net och spelen kör: "
-            "CPU-governor till performance och mindre bakgrundsstök. Kan ge några "
-            "procent jämnare FPS. Kräver paketet gamemode.",
+            "Temporarily tunes the system while Battle.net and the games run: CPU "
+            "governor to performance and less background churn. Can give a few "
+            "percent smoother FPS. Requires the gamemode package.",
         )
     )
     performance.add(
         _switch(
             config,
             "Gamescope",
-            "Nästlad compositor (kan hjälpa på Wayland)",
+            "Nested compositor (can help on Wayland)",
             "gamescope",
             "gamescope",
-            "Kör Battle.net och spelen i en nästlad compositor. Kan skala "
-            "upplösning, köra FSR-uppskalning och låsa FPS, samt lösa "
-            "Wayland-fönsterproblem. Låt vara av om allt fungerar.",
+            "Runs Battle.net and the games in a nested compositor. Can scale "
+            "resolution, apply FSR upscaling and cap FPS, and fix Wayland window "
+            "issues. Leave it off if everything works.",
         )
     )
     sections.append(performance)
 
     # --- Runner ----------------------------------------------------------
-    runners = Section("Runner", "Vilken Proton som används. Sparas i config.toml.")
+    runners = Section("Runner", "Which Proton is used. Saved in config.toml.")
     current = proton.find(config.proton_name)
     builds = proton.all_builds()
     if not builds:
         runners.add(
-            Adw.ActionRow(title="Inga Proton-byggen hittades", subtitle="Installera via ProtonPlus")
+            Adw.ActionRow(title="No Proton builds found", subtitle="Install one via ProtonPlus")
         )
     group: Gtk.CheckButton | None = None
     for candidate in builds:
         row = Adw.ActionRow(title=candidate.name, subtitle=str(candidate))
         radio = Gtk.CheckButton()
         radio.set_valign(Gtk.Align.CENTER)
-        radio.set_tooltip_text(f"Använd {candidate.name}")
+        radio.set_tooltip_text(f"Use {candidate.name}")
         if group is None:
             group = radio
         else:
@@ -553,18 +552,18 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
 
     # --- Graphics (advanced) --------------------------------------------
     graphics = Section(
-        "Grafik",
-        "Vilket grafikkort spelen använder. Sparas i config.toml. Reversibelt – byt när som helst.",
+        "Graphics",
+        "Which GPU the games use. Saved in config.toml. Reversible - change any time.",
     )
     preference = recommend.gpu_preference(config)
     integrated = recommend.integrated_gpu_name() or "AMD"
     gpu_options = (
-        ("auto", "Auto", "Spelet får välja (NVIDIA på den här maskinen)"),
-        ("nvidia", "NVIDIA", 'Tvingar DXVK_FILTER_DEVICE_NAME = "NVIDIA"'),
+        ("auto", "Auto", "Let the game choose (NVIDIA on this machine)"),
+        ("nvidia", "NVIDIA", 'Forces DXVK_FILTER_DEVICE_NAME = "NVIDIA"'),
         (
             "integrated",
-            f"Integrerad ({integrated})",
-            "Samma kort som skärmen. Felsökningsläge om NVIDIA-vägen ger GPU-häng.",
+            f"Integrated ({integrated})",
+            "Same GPU as the screen. Troubleshooting mode if the NVIDIA path causes GPU hangs.",
         ),
     )
     gpu_group: Gtk.CheckButton | None = None
@@ -572,7 +571,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         row = Adw.ActionRow(title=title, subtitle=subtitle)
         radio = Gtk.CheckButton()
         radio.set_valign(Gtk.Align.CENTER)
-        radio.set_tooltip_text(f"Använd {title}")
+        radio.set_tooltip_text(f"Use {title}")
         if gpu_group is None:
             gpu_group = radio
         else:
@@ -587,9 +586,9 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     sections.append(graphics)
 
     # --- Paths (advanced) ------------------------------------------------
-    paths = Section("Sökvägar", "Var saker ligger. Installeraren cachas och återanvänds.")
-    installer_row = Adw.ActionRow(title="Installerare")
-    open_button = _button("Öppna mapp", tooltip="Öppna mappen där installeraren cachas")
+    paths = Section("Paths", "Where things live. The installer is cached and reused.")
+    installer_row = Adw.ActionRow(title="Installer")
+    open_button = _button("Open folder", tooltip="Open the folder where the installer is cached")
     open_button.connect("clicked", lambda *_: _open_folder(config.bnet_dir))
     installer_row.add_suffix(open_button)
     paths.add(installer_row)
@@ -600,19 +599,17 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     refresh_installer()
     paths.add(_kv("Config", str(config.config_file)))
 
-    log_row = Adw.ActionRow(title="Loggar", subtitle=str(config.log_dir))
-    log_button = _button("Visa", tooltip="Körnings- och installationsloggar")
+    log_row = Adw.ActionRow(title="Logs", subtitle=str(config.log_dir))
+    log_button = _button("View", tooltip="Run and installation logs")
     log_button.connect("clicked", lambda *_: _show_logs(window))
     log_row.add_suffix(log_button)
     paths.add(log_row)
     sections.append(paths)
 
     # --- Diagnostics -----------------------------------------------------
-    diagnostics = Section("Diagnostik", "Kontrollerar drivrutin, runner, utrymme med mera.")
-    diag_row = Adw.ActionRow(
-        title="Systemkontroll", subtitle="Visa status för alla kända fallgropar"
-    )
-    diag_button = _button("Kör", tooltip="Kör systemkontrollen")
+    diagnostics = Section("Diagnostics", "Checks the driver, runner, space and more.")
+    diag_row = Adw.ActionRow(title="System check", subtitle="Show the status of all known pitfalls")
+    diag_button = _button("Run", tooltip="Run the system check")
     diag_button.connect(
         "clicked", lambda *_: _show_recommendations(window, recommend.report(Config.load()))
     )
@@ -621,10 +618,10 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     sections.append(diagnostics)
 
     # --- About -----------------------------------------------------------
-    about = Section("Om")
+    about = Section("About")
     row = Adw.ActionRow(title="Frostfire Installer")
     row.add_prefix(_icon(MATERIAL["info"]))
-    button = _button("Om")
+    button = _button("About")
     button.connect("clicked", lambda *_: _show_about(window))
     row.add_suffix(button)
     about.add(row)
@@ -653,7 +650,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     footer.set_hexpand(True)
     footer_content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     footer_content.set_hexpand(True)
-    footer_label = Gtk.Label(label="Visa avancerat", xalign=0)
+    footer_label = Gtk.Label(label="Show advanced", xalign=0)
     footer_spacer = Gtk.Box()
     footer_spacer.set_hexpand(True)
     footer_icon = _icon(MATERIAL["expand"])
@@ -667,7 +664,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     def toggle_advanced(*_args: object) -> None:
         expanded["open"] = not expanded["open"]
         scroller.set_visible(expanded["open"])
-        footer_label.set_label("Dölj avancerat" if expanded["open"] else "Visa avancerat")
+        footer_label.set_label("Hide advanced" if expanded["open"] else "Show advanced")
         footer_icon.set_label(MATERIAL["collapse"] if expanded["open"] else MATERIAL["expand"])
         # Only the height changes; the width is locked by the window.
         window.set_default_size(608, 770 if expanded["open"] else 350)  # type: ignore[attr-defined]
@@ -720,8 +717,8 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
 def _repair(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
     button.set_sensitive(False)
     report = _reporter(window)
-    window.set_activity("Reparerar ...")  # type: ignore[attr-defined]
-    window.toast("Reparerar ...")  # type: ignore[attr-defined]
+    window.set_activity("Repairing ...")  # type: ignore[attr-defined]
+    window.toast("Repairing ...")  # type: ignore[attr-defined]
 
     def work() -> None:
         config = Config.load()
@@ -732,12 +729,12 @@ def _repair(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
         button.set_sensitive(True)
         _clear_activity(window)
         _refresh_root(window)
-        window.toast("Reparerat och startat")  # type: ignore[attr-defined]
+        window.toast("Repaired and started")  # type: ignore[attr-defined]
 
     def error(exc: Exception) -> None:
         button.set_sensitive(True)
         _clear_activity(window)
-        window.toast(f"Fel: {exc}")  # type: ignore[attr-defined]
+        window.toast(f"Error: {exc}")  # type: ignore[attr-defined]
 
     run_async(work, done, error)
 
@@ -746,26 +743,26 @@ def _reinstall(window: Adw.ApplicationWindow, button: Gtk.Button, keep: Adw.Swit
     button.set_sensitive(False)
     keep_games = keep.get_active()
     report = _reporter(window)
-    window.set_activity("Återinstallerar Battle.net ...")  # type: ignore[attr-defined]
-    window.toast("Återinstallerar Battle.net ...")  # type: ignore[attr-defined]
+    window.set_activity("Reinstalling Battle.net ...")  # type: ignore[attr-defined]
+    window.toast("Reinstalling Battle.net ...")  # type: ignore[attr-defined]
 
     def work() -> str:
         config = Config.load()
         build = proton.find(config.proton_name)
         if build is None:
-            raise RuntimeError("Ingen Proton hittad")
+            raise RuntimeError("No Proton found")
         return str(battlenet.reinstall(config, build, keep_games=keep_games, on_progress=report))
 
     def done(_log_path: str) -> None:
         button.set_sensitive(True)
         _clear_activity(window)
         _refresh_root(window)
-        window.toast("Återinstallerat" + (" (spel behållna)" if keep_games else ""))  # type: ignore[attr-defined]
+        window.toast("Reinstalled" + (" (games kept)" if keep_games else ""))  # type: ignore[attr-defined]
 
     def error(exc: Exception) -> None:
         button.set_sensitive(True)
         _clear_activity(window)
-        window.toast(f"Fel: {exc}")  # type: ignore[attr-defined]
+        window.toast(f"Error: {exc}")  # type: ignore[attr-defined]
 
     run_async(work, done, error)
 
@@ -780,8 +777,8 @@ def _remove(
     keep_games = keep.get_active()
     remove_installer = drop.get_active()
     report = _reporter(window)
-    window.set_activity("Tar bort Battle.net ...")  # type: ignore[attr-defined]
-    window.toast("Tar bort Battle.net ...")  # type: ignore[attr-defined]
+    window.set_activity("Removing Battle.net ...")  # type: ignore[attr-defined]
+    window.toast("Removing Battle.net ...")  # type: ignore[attr-defined]
 
     def work() -> None:
         battlenet.remove(
@@ -795,12 +792,12 @@ def _remove(
         button.set_sensitive(True)
         _clear_activity(window)
         _refresh_root(window)
-        window.toast("Battle.net borttaget" + (" (spel behållna)" if keep_games else ""))  # type: ignore[attr-defined]
+        window.toast("Battle.net removed" + (" (games kept)" if keep_games else ""))  # type: ignore[attr-defined]
 
     def error(exc: Exception) -> None:
         button.set_sensitive(True)
         _clear_activity(window)
-        window.toast(f"Fel: {exc}")  # type: ignore[attr-defined]
+        window.toast(f"Error: {exc}")  # type: ignore[attr-defined]
 
     run_async(work, done, error)
 
@@ -810,17 +807,17 @@ def _pick_runner(window: Adw.ApplicationWindow, name: str) -> None:
     config.proton_name = name
     config.save()
     _refresh_root(window)
-    window.toast(f"Runner satt till {name}")  # type: ignore[attr-defined]
+    window.toast(f"Runner set to {name}")  # type: ignore[attr-defined]
 
 
 def _pick_gpu(window: Adw.ApplicationWindow, preference: str) -> None:
     try:
         service.set_gpu_preference(preference)
     except (OSError, ValueError) as exc:
-        window.toast(f"Misslyckades: {exc}")  # type: ignore[attr-defined]
+        window.toast(f"Failed: {exc}")  # type: ignore[attr-defined]
         return
     _refresh_root(window)
-    window.toast("Grafikval sparat – starta om Battle.net och spelet.")  # type: ignore[attr-defined]
+    window.toast("Graphics choice saved - restart Battle.net and the game.")  # type: ignore[attr-defined]
 
 
 def _help_button(text: str) -> Gtk.Widget:
@@ -857,7 +854,7 @@ def _switch(
 
     if shutil.which(tool) is None:
         row.set_sensitive(False)
-        row.set_subtitle(f"{subtitle} – {tool} är inte installerat")
+        row.set_subtitle(f"{subtitle} - {tool} is not installed")
         return row
 
     def on_active(row: Adw.SwitchRow, _pspec: object) -> None:
@@ -878,7 +875,7 @@ def _show_logs(window: Adw.ApplicationWindow) -> None:
     )
     names = [path.name for path in logs]
 
-    dropdown = Gtk.DropDown.new_from_strings(names or ["(inga loggar)"])
+    dropdown = Gtk.DropDown.new_from_strings(names or ["(no logs)"])
     view = Gtk.TextView()
     view.set_monospace(True)
     view.set_editable(False)
@@ -906,7 +903,7 @@ def _show_logs(window: Adw.ApplicationWindow) -> None:
     toolbar.set_content(box)
 
     dialog = Adw.Dialog()
-    dialog.set_title("Loggar")
+    dialog.set_title("Logs")
     dialog.set_content_width(820)
     dialog.set_content_height(600)
     dialog.set_child(toolbar)
@@ -926,12 +923,12 @@ def _command_row(command: str) -> Gtk.Widget:
     entry.set_editable(False)
     entry.set_hexpand(True)
     entry.add_css_class("monospace")
-    button = _button("Kopiera")
-    button.set_tooltip_text("Kopiera kommandot till urklipp")
+    button = _button("Copy")
+    button.set_tooltip_text("Copy the command to the clipboard")
 
     def copy(*_args: object) -> None:
         _copy_to_clipboard(command)
-        button.set_label("Kopierat")
+        button.set_label("Copied")
 
     button.connect("clicked", copy)
     row.append(entry)
@@ -944,11 +941,11 @@ def _persistenced_control(window: Adw.ApplicationWindow) -> Gtk.Widget:
     box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
     active = recommend.persistenced_state() == "active"
     button = _button(
-        "Inaktivera GPU-persistens" if active else "Aktivera GPU-persistens",
+        "Disable GPU persistence" if active else "Enable GPU persistence",
         primary=not active,
     )
     note = Gtk.Label(
-        label="Reversibelt – kör igen för att stänga av. Kräver din lösenordsbekräftelse.",
+        label="Reversible - run again to turn it off. Requires your password confirmation.",
         xalign=0,
     )
     note.set_wrap(True)
@@ -964,19 +961,19 @@ def _toggle_persistenced(
 ) -> None:
     enable = recommend.persistenced_state() != "active"
     button.set_sensitive(False)
-    note.set_label("Väntar på godkännande ...")
+    note.set_label("Waiting for authorisation ...")
 
     def work() -> None:
         service.set_persistenced(enable)
 
     def done(_result: object) -> None:
         button.set_sensitive(True)
-        button.set_label("Inaktivera GPU-persistens" if enable else "Aktivera GPU-persistens")
-        note.set_label("Klart – starta om spelet och testa." if enable else "Avstängt.")
+        button.set_label("Disable GPU persistence" if enable else "Enable GPU persistence")
+        note.set_label("Done - restart the game and test." if enable else "Turned off.")
 
     def error(exc: Exception) -> None:
         button.set_sensitive(True)
-        note.set_label(f"Misslyckades: {exc}")
+        note.set_label(f"Failed: {exc}")
 
     run_async(work, done, error)
 
@@ -1029,7 +1026,7 @@ def _show_recommendations(
     toolbar.set_content(scroller)
 
     dialog = Adw.Dialog()
-    dialog.set_title("Rekommendationer")
+    dialog.set_title("Recommendations")
     dialog.set_content_width(620)
     dialog.set_content_height(540)
     dialog.set_child(toolbar)

@@ -171,7 +171,7 @@ def test_hybrid_warns_and_points_to_graphics(monkeypatch, tmp_path: Path) -> Non
     item = recommend._check_hybrid_gpu(make_config(tmp_path))
     assert item.level == "warn"
     assert item.action_id == ""
-    assert "Grafik" in item.action
+    assert "Graphics" in item.action
     assert any("DXVK_FILTER_DEVICE_NAME" in command for command in item.commands)
 
 

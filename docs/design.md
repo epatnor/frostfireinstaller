@@ -1,100 +1,105 @@
 # Design — Frostfire Installer
 
-## Namn och motiv
+## Name and motif
 
-- **Visningsnamn:** Frostfire Installer
-- **Tekniskt namn:** `frostfireinstaller` (paket, CLI, app-id `io.github.frostfireinstaller`)
-- **Motiv:** frost/eld. Isen bevarar, elden förstör.
+- **Display name:** Frostfire Installer
+- **Technical name:** `frostfireinstaller` (package, CLI, app id `io.github.frostfireinstaller`)
+- **Motif:** frost/fire. Ice preserves, fire destroys.
 
-## Is och eld (UI-koncept)
+## Ice and fire (UI concept)
 
-Åtgärderna är uppdelade i två områden med varsitt tema:
+The actions are split into two areas, each with its own theme:
 
-| Område | Tema | Innehåll |
+| Area | Theme | Contents |
 |---|---|---|
-| **Installation & underhåll** | **Is** (bevara, hålla igång) | Battle.net-status + Reparera (samma rad) |
-| **Återställ & ta bort** | **Eld** (förstörande) | Behåll spel, Återinstallera, Ta bort |
+| **Installation & maintenance** | **Ice** (preserve, keep running) | Battle.net status + Repair (same row) |
+| **Reset & remove** | **Fire** (destructive) | Keep games, Reinstall, Remove |
 
-- **Startknappen gör allt**: den kör `ensure()` först — saknas klienten heter den
-  *"Installera"* (installerar och startar), annars *"Starta"*/*"Stoppa"*. Ingen
-  separat installationsknapp behövs (den var en dublett).
-- **Kompakt men logiskt**: val som hör till en åtgärd ligger i samma rad — *Även
-  installeraren* är en kryssruta bredvid *Ta bort*, inte en egen rad. Status och
-  *Reparera* delar rad.
-- **Behåll spel** är is-sidan av de förstörande åtgärderna: elden tar klienten, isen räddar spelen.
-- **Framtid:** accentfärger per område är på plats (isblå primärknappar, eld-orange
-  destruktiva); kvar att utforska är t.ex. spelkort och fler piller/tabbar.
+- **The start button does everything**: it runs `ensure()` first — if the client is
+  missing it says *"Install"* (installs and starts), otherwise *"Start"*/*"Stop"*.
+  No separate install button is needed (it was a duplicate).
+- **Compact but logical**: options that belong to an action live on the same row —
+  *Also the installer* is a checkbox next to *Remove*, not a row of its own. Status
+  and *Repair* share a row.
+- **Keep games** is the ice side of the destructive actions: fire takes the client,
+  ice saves the games.
+- **Future:** per-area accent colours are in place (ice-blue primary buttons,
+  fire-orange destructive); still to explore are e.g. game cards and more
+  pills/tabs.
 
-## Battle.net-inspirerad form
+## Battle.net-inspired form
 
-Appen lånar **struktur och formspråk** från Blizzard's Battle.net-launcher (utan
-deras logotyper eller bildmaterial), men behåller vårt eget frost/eld-färgschema:
+The app borrows **structure and visual language** from Blizzard's Battle.net
+launcher (without their logos or artwork), but keeps our own frost/fire palette:
 
-- **Platta paneler** med 1 px ram (`rgba(120,200,255,0.12)`), 4 px radie och tunna
-  1 px-avgränsare mellan raderna — i stället för libadwaitas stora rundade kort.
-- **Sektionsrubriker** i små, genomgående versaler med spärrad bokstavsbredd.
-- **Knappar** med svag vertikal gradient: blå primär (`#1c86e6` → `#0a5fb8` med
-  ljusblå tunn ram `#63c2ff`), mörk sekundär, eld-orange destruktiv
-  (`#ff8f45` → `#d9591a`), 3 px radie och ~30 px höjd.
-- **Status-piller** för tillståndet i run-baren (grön/orange/dämpad).
-- **Typsnitt:** inbäddad **Open Sans** (Regular/SemiBold/Bold) som UI-typsnitt,
-  samma familj som Battle.net-appen använder.
+- **Flat panels** with a 1 px border (`rgba(120,200,255,0.12)`), 4 px radius and
+  thin 1 px separators between rows — instead of libadwaita's large rounded cards.
+- **Section headings** in small, consistently uppercase type with letter spacing.
+- **Buttons** with a subtle vertical gradient: blue primary (`#1c86e6` → `#0a5fb8`
+  with a light-blue thin border `#63c2ff`), dark secondary, fire-orange destructive
+  (`#ff8f45` → `#d9591a`), 3 px radius and ~30 px height.
+- **Status pills** for the run-bar state (green/orange/dimmed).
+- **Typeface:** bundled **Open Sans** (Regular/SemiBold/Bold) as the UI font, the
+  same family the Battle.net app uses.
 
-## Färger
+## Colours
 
-| Roll | Färg |
+| Role | Colour |
 |---|---|
-| Bakgrund | djup marinblå (`#00070f`) |
-| Panel / yta | `#07121d` (ram `rgba(120,200,255,0.12)`) |
-| Infofält | `#00070f` |
-| Konfigurationsband | `#051320` |
-| Battle.net-band (run bar) | `#061520` |
-| Is / primär | cyan-blå (`#74D8FF`, ljus `#EAF9FF`); primärknapp `#1c86e6` → `#0a5fb8`, ram `#63c2ff` |
-| Eld / destruktiv | glödbrand (`#FF7A2F`, knapp `#ff8f45` → `#d9591a`) |
-| Text | `#eaf9ff`, dämpad `rgba(234,249,255,0.5)` |
+| Background | deep navy (`#00070f`) |
+| Panel / surface | `#07121d` (border `rgba(120,200,255,0.12)`) |
+| Info strip | `#00070f` |
+| Config band | `#051320` |
+| Battle.net band (run bar) | `#061520` |
+| Ice / primary | cyan-blue (`#74D8FF`, light `#EAF9FF`); primary button `#1c86e6` → `#0a5fb8`, border `#63c2ff` |
+| Fire / destructive | ember (`#FF7A2F`, button `#ff8f45` → `#d9591a`) |
+| Text | `#eaf9ff`, dimmed `rgba(234,249,255,0.5)` |
 
 ## Layout
 
-- **En kolumn:** fönstrets menyrad (header bar) → fullbredds-banner → infofält →
-  konfigurationsband → Battle.net-band → "Visa avancerat"-footer → rullbar yta med
-  panelerna (som visas först när footern fälls ut).
-- **Fast bredd:** fönstret är **608 px brett och inte användar-resizbart** (samma
-  som bannern, så den fyller bredden).
-- **Fast bannerstorlek:** bannern skalas vid laddning till **608×198 px** (20 %
-  mindre än full bredd) och ritas fast, centrerad — den ändrar sig aldrig. Vid
-  toggle ändras bara fönstrets höjd (350 ↔ 770) och appen växer nedåt.
-- **Infofältet** (mörkt, `#00070f`) är en rad systeminfo: distro + kernel, session,
-  GPU (namn, drivrutin).
-- **Konfigurationsbandet** (`#051320`, smalt) visar Proton och prefix — hur appen är
-  uppsatt — så att bandet nedanför bara behöver bära tillstånd. Saknad Proton visas i
-  eld-orange (`#ff7a2f`).
-- **Battle.net-bandet** (`#061520`) bär tillståndet (piller) och åtgärdsknappen.
-- **Aktivitetsrad** under bandet visar pågående operation (spinner + text) medan
-  nedladdning/installation/körning sker.
-- **"Visa avancerat"-footern** (chevron ned/upp) fäller ut allt annat i en rullbar
-  yta; **Installation & underhåll** och **Återställ & ta bort** döljs dessutom när
-  klienten inte är installerad (run-baren erbjuder då *Installera*).
-- GTK4 + libadwaita; appen använder en fast mörk palett (följer inte systemtema).
+- **One column:** the window header bar → full-width banner → info strip → config
+  band → Battle.net band → "Show advanced" footer → scrollable area with the panels
+  (shown only when the footer is expanded).
+- **Fixed width:** the window is **608 px wide and not user-resizable** (the same as
+  the banner, so it fills the width).
+- **Fixed banner size:** the banner is scaled at load to **608×198 px** (20 % smaller
+  than full width) and painted at a fixed, centred size — it never changes. On toggle
+  only the window height changes (350 ↔ 770) and the app grows downwards.
+- **The info strip** (dark, `#00070f`) is one line of system info: distro + kernel,
+  session, GPU (name, driver).
+- **The config band** (`#051320`, narrow) shows Proton and prefix — how the app is
+  configured — so the band below only has to carry state. A missing Proton is shown
+  in fire-orange (`#ff7a2f`).
+- **The Battle.net band** (`#061520`) carries the state (pill) and the action button.
+- **Activity strip** below the band shows the operation in progress (spinner + text)
+  while downloading/installing/running.
+- **The "Show advanced" footer** (chevron down/up) expands everything else in a
+  scrollable area; **Installation & maintenance** and **Reset & remove** are also
+  hidden when the client is not installed (the run bar then offers *Install*).
+- GTK4 + libadwaita; the app uses a fixed dark palette (does not follow the system
+  theme).
 
-## Tillgångar (assets)
+## Assets
 
-- **Banner:** `assets/header/frostfire_installer_header_no_installer.png` (FROSTFIRE-
-  ordmärket utan underrubrik); `tools/make_header.py` bakar in raden "Battle.net
-  installer" och skriver `src/frostfireinstaller/data/header/frostfire_installer_header.png`.
-- **App-ikon:** `assets/icon/frostfireinstaller.png` — porten med is till vänster och
-  lava/eld till höger. Härleds till hela hicolor-setet (16–512 px, rundade hörn) med
-  `tools/make_icon.py`; paketet skeppar 512 px-versionen
+- **Banner:** `assets/header/frostfire_installer_header_no_installer.png` (the
+  FROSTFIRE wordmark without a subtitle); `tools/make_header.py` bakes in the line
+  "Battle.net installer" and writes
+  `src/frostfireinstaller/data/header/frostfire_installer_header.png`.
+- **App icon:** `assets/icon/frostfireinstaller.png` — the gateway with ice on the
+  left and lava/fire on the right. Derived into the full hicolor set (16–512 px,
+  rounded corners) with `tools/make_icon.py`; the package ships the 512 px version
   (`src/frostfireinstaller/data/icons/frostfireinstaller.png`).
-- **Äldre koncept:** `assets/icon/legacy-ice-portal.svg` (isporten, ersatt).
-- Spelomslag (ej paketerade, för framtida bruk): `assets/covers/`.
+- **Older concept:** `assets/icon/legacy-ice-portal.svg` (the ice portal, replaced).
+- Game covers (not packaged, for future use): `assets/covers/`.
 
-## Ikonografi i UI
+## UI iconography
 
-- **Material Symbols (outlined, light)** — ett litet urval (9 glyfer) inbäddat i
-  `data/fonts/MaterialSymbols.ttf`. Subseten byggs med `tools/make_symbols.py`
-  (FILL 0, wght 200, GRAD 0, opsz 24) och färgkodas:
-  - is `#74d8ff` (bevara/underhåll), eld `#ff7a2f` (förstörande),
-    röd `#f66151` (stoppa), grön `#57e389` (starta).
-- Övriga ikoner från tema-ikonen (libadwaita), t.ex. `help-about-symbolic`.
-- **Hjälp-popovertrar:** varje prestandaväxel har en "?"-knapp som förklarar vad
-  verktyget gör och att det gäller spelen (samma Wine-session), inte bara launchern.
+- **Material Symbols (outlined, light)** — a small selection (9 glyphs) bundled in
+  `data/fonts/MaterialSymbols.ttf`. The subset is built with `tools/make_symbols.py`
+  (FILL 0, wght 200, GRAD 0, opsz 24) and colour-coded:
+  - ice `#74d8ff` (preserve/maintain), fire `#ff7a2f` (destructive),
+    red `#f66151` (stop), green `#57e389` (start).
+- Other icons come from the theme icon set (libadwaita), e.g. `help-about-symbolic`.
+- **Help popovers:** every performance toggle has a "?" button that explains what
+  the tool does and that it applies to the games (same Wine session), not just the
+  launcher.

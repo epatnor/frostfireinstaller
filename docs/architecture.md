@@ -75,13 +75,13 @@ GTK4 + libadwaita (`frostfireinstaller gui`), one column:
    missing `umu-run`/Proton, low disk, NTFS/exFAT prefix, missing performance
    tools). It opens a dialog with copy-ready fix commands and one **reversible
    in-app toggle** (`nvidia-persistenced` via `systemctl`, Polkit-prompted). The
-   full report — every check including the passing ones — is under **Avancerat →
-   Diagnostik → Systemkontroll** and in `doctor`. The app never makes large
+   full report — every check including the passing ones — is under **Advanced →
+   Diagnostics → System check** and in `doctor`. The app never makes large
    system changes.
-7. **Advanced footer expander** — right under the Battle.net band; "Visa
-   avancerat" (chevron-down/up) reveals, in a scroll area below, "Installation &
-   underhåll", "Återställ & ta bort", Prestanda / Runner / Sökvägar (with *Visa
-   loggar*) / Om. The window is a fixed **608 px wide** (not user-resizable) with
+7. **Advanced footer expander** — right under the Battle.net band; "Show
+   advanced" (chevron-down/up) reveals, in a scroll area below, "Installation &
+   maintenance", "Reset & remove", Performance / Runner / Paths (with *View
+   logs*) / About. The window is a fixed **608 px wide** (not user-resizable) with
    a banner scaled to 608 × 198; only its height changes (350 ↔ 770) on toggle,
    so the banner never resizes.
 

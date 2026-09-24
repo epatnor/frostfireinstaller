@@ -36,27 +36,28 @@ Born from a working recipe on Bazzite: `umu-launcher` + GE-Proton (see `docs/`).
 frostfireinstaller gui
 ```
 
-- **Banner** (fast höjd) → **infofält** (distro + kernel, session, GPU) →
-  **konfigurationsband** (Proton och prefix) → **Battle.net-bandet**.
-- **Battle.net-bandet**: status-piller och åtgärdsknappen (*Installera* / *Starta* /
-  *Stoppa*). Startknappen kör `ensure()` först, så en saknad klient installeras.
-- **Aktivitetsrad**: spinner + text som visar pågående operation.
-- **Systemkontroll & rekommendationer**: appen kontrollerar `umu-run`, Proton,
-  diskutrymme, prefixens filsystem, hybrid-GPU, NVIDIA-drivrutin/modul och senaste
-  `NVRM: Xid`/`NV_ERR_NO_MEMORY`, saknade prestandaverktyg och runner. En
-  **varningsrad** (under bandet) visas bara vid problem och öppnar en dialog med
-  **färdiga kommandon att kopiera**; hela rapporten (inkl. OK) ligger under
-  **Avancerat → Diagnostik → Systemkontroll** och i `doctor`. Den **reversibla**
-  åtgärden (GPU-persistens) kan slås på/av direkt i appen — appen gör aldrig
-  stora systemändringar själv.
-- **"Visa avancerat"** (footer med chevron) fäller ut allt annat:
-  - **Installation & underhåll** (is): status + *Reparera* i samma rad.
-  - **Återställ & ta bort** (eld): *Behåll spel*, *Återinstallera*, *Ta bort* (med
-    kryssrutan **Även installeraren**).
-  - **Prestanda** (med "?"-förklaring per växel), **Runner**, **Sökvägar**
-    (inkl. *Öppna mapp* och **Visa loggar**) och **Om**.
+- **Banner** (fixed height) → **info strip** (distro + kernel, session, GPU) →
+  **config band** (Proton and prefix) → **Battle.net band**.
+- **Battle.net band**: status pill and the action button (*Install* / *Start* /
+  *Stop*). The start button runs `ensure()` first, so a missing client is installed.
+- **Activity strip**: spinner + text showing the operation in progress.
+- **System check & recommendations**: the app checks `umu-run`, Proton, free disk
+  space, the prefix filesystem, hybrid GPU, the NVIDIA driver/module and recent
+  `NVRM: Xid`/`NV_ERR_NO_MEMORY`, missing performance tools and the runner. A
+  **warning strip** (below the band) appears only on problems and opens a dialog
+  with **copy-ready commands**; the full report (including OK) is under
+  **Advanced → Diagnostics → System check** and in `doctor`. The **reversible**
+  action (GPU persistence) can be toggled in the app — the app never makes large
+  system changes itself.
+- **"Show advanced"** (footer with a chevron) expands everything else:
+  - **Installation & maintenance** (ice): status + *Repair* in the same row.
+  - **Reset & remove** (fire): *Keep games*, *Reinstall*, *Remove* (with the
+    **Also the installer** checkbox).
+  - **Performance** (with a "?" explanation per toggle), **Runner**, **Paths**
+    (incl. *Open folder* and **View logs**) and **About**.
 
-Fönstret är **608 px brett och inte resizbart**; vid expandering växer det bara nedåt.
+The window is **608 px wide and not resizable**; when expanded it only grows
+downwards.
 
 ---
 

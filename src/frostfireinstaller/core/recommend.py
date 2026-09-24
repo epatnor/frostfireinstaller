@@ -9,7 +9,7 @@ runner suggestion.
 Each finding carries copy-ready commands (and, for the reversible GPU mitigation,
 an in-app toggle) so the user has the tools to act. ``collect()`` returns the
 actionable warnings for the GUI strip; ``report()`` returns every check,
-including the passing ones, for the "Systemkontroll" dialog and ``doctor``.
+including the passing ones, for the "System check" dialog and ``doctor``.
 """
 
 from __future__ import annotations
@@ -148,17 +148,17 @@ def _vram_mib() -> int | None:
 def _check_vram() -> Recommendation:
     mib = _vram_mib()
     if mib is None:
-        return Recommendation("vram", "info", "Grafikminne kunde inte läsas", "")
+        return Recommendation("vram", "info", "Video memory could not be read", "")
     gb = mib / 1024
     if mib < 6 * 1024:
         return Recommendation(
             "vram",
             "info",
-            f"Lågt grafikminne ({gb:.0f} GB)",
-            "Moderna Blizzard-spel vill gärna ha mer. Det är sällan orsaken till "
-            "frysningar (drivrutinen är), men håll grafikinställningarna måttliga.",
+            f"Low video memory ({gb:.0f} GB)",
+            "Modern Blizzard games prefer more. It is rarely the cause of freezes "
+            "(the driver is), but keep the graphics settings moderate.",
         )
-    return Recommendation("vram", "ok", f"{gb:.0f} GB grafikminne", "")
+    return Recommendation("vram", "ok", f"{gb:.0f} GB video memory", "")
 
 
 def _driver_commands(is_open: bool, serious: bool) -> tuple[str, ...]:
@@ -201,8 +201,8 @@ def _check_nvidia() -> list[Recommendation]:
             Recommendation(
                 "nvidia",
                 "info",
-                "Inget NVIDIA-kort hittat",
-                "Körs på AMD/Intel – inga NVIDIA-specifika kontroller.",
+                "No NVIDIA GPU found",
+                "Running on AMD/Intel - no NVIDIA-specific checks.",
             )
         ]
 
@@ -221,12 +221,12 @@ def _check_nvidia() -> list[Recommendation]:
             Recommendation(
                 "nvidia-fault",
                 "warn",
-                f"NVIDIA GPU-fel upptäckt ({' + '.join(signals)})",
-                "GPU:n tappade sin kontext / kunde inte allokera minne – spel kan "
-                "frysa vid tunga laddningar (t.ex. när en värld öppnas). Vanligt med "
-                "open-kärnmodulerna.",
-                "Prova de reversibla åtgärderna först; byt annars till den "
-                "proprietàra drivrutinen. Se docs/troubleshooting.md.",
+                f"NVIDIA GPU fault detected ({' + '.join(signals)})",
+                "The GPU lost its context / could not allocate memory - games can "
+                "freeze under heavy loads (e.g. when a world opens). Common with the "
+                "open kernel modules.",
+                "Try the reversible steps first; otherwise switch to the "
+                "proprietary driver. See docs/troubleshooting.md.",
                 commands=_driver_commands(is_open, True),
                 action_id=action_id,
             )
@@ -236,9 +236,9 @@ def _check_nvidia() -> list[Recommendation]:
             Recommendation(
                 "nvidia-open",
                 "info",
-                f"NVIDIA open-drivrutin {version}",
-                "Open-kärnmodulerna har kända Xid/minnesproblem i vissa spel.",
-                "Om spel fryser, byt till den proprietàra drivrutinen.",
+                f"NVIDIA open driver {version}",
+                "The open kernel modules have known Xid/memory issues in some games.",
+                "If games freeze, switch to the proprietary driver.",
                 commands=_driver_commands(True, False),
                 action_id=action_id,
             )
@@ -247,8 +247,8 @@ def _check_nvidia() -> list[Recommendation]:
         Recommendation(
             "nvidia-ok",
             "ok",
-            f"NVIDIA-drivrutin {version}",
-            "Inga GPU-fel i kernelloggen den här uppstarten.",
+            f"NVIDIA driver {version}",
+            "No GPU faults in the kernel log this boot.",
         )
     ]
 
@@ -276,38 +276,39 @@ def _check_hybrid_gpu(config: Config) -> Recommendation:
     version, _ = nvidia_driver_info()
     integrated = integrated_gpu_name()
     if not (version and integrated):
-        return Recommendation("hybrid", "ok", "Enkel GPU-konfiguration", "")
+        return Recommendation("hybrid", "ok", "Single-GPU configuration", "")
 
     if gpu_preference(config) == "integrated":
         return Recommendation(
             "hybrid",
             "ok",
-            f"Hybrid-GPU: spelar på {integrated}",
-            "Spelet är bundet till samma kort som skärmen – ingen kopiering mellan korten.",
+            f"Hybrid GPU: playing on {integrated}",
+            "The game is bound to the same GPU as the screen - no cross-GPU copy.",
         )
 
     log = _kernel_log()
     trouble = any(x in _SERIOUS_XIDS for x in _XID_RE.findall(log)) or "NV_ERR_NO_MEMORY" in log
     detail = (
-        f"Laptopen har både NVIDIA och ett integrerat {integrated}-kort, och skärmen "
-        "sitter på det integrerade kortet. Kör spelet på NVIDIA kopieras därför varje "
-        "bildruta mellan korten (PRIME). Den vägen kan ge GPU-häng (Xid 109 / 'GPU "
-        "Hung') och sessioner som blir allt långsammare – det är inte minnesbrist och "
-        "inte strömläget."
+        f"The laptop has both NVIDIA and an integrated {integrated} GPU, and the "
+        "screen is wired to the integrated one. Running the game on NVIDIA therefore "
+        "copies every frame between the GPUs (PRIME). That path can cause GPU hangs "
+        "(Xid 109 / 'GPU Hung') and sessions that get slower and slower - it is not "
+        "memory pressure and not the power profile."
     )
     if trouble:
-        detail += " Kernelloggen visar redan sådana fel."
+        detail += " The kernel log already shows such faults."
     return Recommendation(
         "hybrid",
         "warn" if trouble else "info",
-        "Hybrid-GPU: skärmen sitter på det integrerade kortet",
+        "Hybrid GPU: the screen is wired to the integrated GPU",
         detail,
-        "Välj grafikkort under Avancerat → Grafik: NVIDIA för dGPU-prestanda, "
-        f"Integrerad ({integrated}) som felsökningsläge vid GPU-häng. Reversibelt.",
+        "Choose the GPU under Advanced -> Graphics: NVIDIA for dGPU performance, "
+        f"Integrated ({integrated}) as a troubleshooting mode for GPU hangs. "
+        "Reversible.",
         commands=(
-            '[env]\nDXVK_FILTER_DEVICE_NAME = "NVIDIA"     # tvinga NVIDIA',
-            f'[env]\nDXVK_FILTER_DEVICE_NAME = "{integrated}"  # felsökningsläge',
-            "vulkaninfo --summary   # visa exakta kortnamn",
+            '[env]\nDXVK_FILTER_DEVICE_NAME = "NVIDIA"     # force NVIDIA',
+            f'[env]\nDXVK_FILTER_DEVICE_NAME = "{integrated}"  # troubleshooting mode',
+            "vulkaninfo --summary   # show exact device names",
         ),
     )
 
@@ -322,7 +323,7 @@ def _find_wow_configs(config: Config) -> list[Path]:
 def _check_wow_tuning(config: Config) -> Recommendation:
     configs = _find_wow_configs(config)
     if not configs:
-        return Recommendation("wow-tuning", "ok", "Ingen WoW-installation hittad", "")
+        return Recommendation("wow-tuning", "ok", "No WoW installation found", "")
 
     unset = []
     for path in configs:
@@ -338,58 +339,58 @@ def _check_wow_tuning(config: Config) -> Recommendation:
         return Recommendation(
             "wow-tuning",
             "info",
-            "WoW: höj bakgrunds-FPS (maxFPSBK)",
-            "När spelet står stilla (t.ex. vid karaktärsvalet) sänker WoW "
-            "bildfrekvensen hårt i bakgrunden. Tillsammans med hybrid-GPU:n kan det "
-            f"bidra till GPU-häng. Stäng spelet och lägg raden i {target} – ta bort "
-            "den för att återställa.",
+            "WoW: raise background FPS (maxFPSBK)",
+            "When the game is idle (e.g. at character select) WoW drops the frame "
+            "rate hard in the background. Combined with a hybrid GPU this can "
+            f"contribute to GPU hangs. Close the game and add the line to {target} - "
+            "remove it to restore.",
             commands=('SET maxFPSBK "60"',),
         )
-    return Recommendation("wow-tuning", "ok", "WoW: bakgrunds-FPS satt", "")
+    return Recommendation("wow-tuning", "ok", "WoW: background FPS set", "")
 
 
 def _check_wow_forever(config: Config) -> Recommendation:
-    """Surface the two known World of Warcraft: Forever build-69913 bugs."""
+    """Surface the World of Warcraft: Forever build-69913 bugs and their fix."""
     betas = [path for path in _find_wow_configs(config) if "_classic_beta_" in str(path)]
     if not betas:
-        return Recommendation("wow-forever", "ok", "Ingen Forever-beta hittad", "")
+        return Recommendation("wow-forever", "ok", "No Forever beta found", "")
     return Recommendation(
         "wow-forever",
         "info",
-        "WoW Forever: kända buggar i build 69913",
-        "Två oberoende fel i betan, båda olösta och inte orsakade av grafikkortet: "
-        "(1) ERROR #135 – narration/röst-assert i VoiceSpeakManager vid inloggningen, "
-        "ofarlig (ASSERTSAFE), ignorera dialogen; (2) ERROR #109 / NVIDIA Xid 109 – "
-        "GPU-häng vid världsinträde. Build 69893 var stabil. Drivrutinen är inte för "
-        "gammal – det är en klientregression.",
-        "Vid GPU-häng: sätt Secondary Lighting till Fair under Options → Graphics "
-        "(och ev. GxApi D3D11). Se docs/troubleshooting.md.",
+        "WoW Forever: build 69913 bugs (fixed in 69977)",
+        "Build 69913 had an ERROR #109 / NVIDIA Xid 109 GPU hang on world entry, "
+        "caused by an unbounded Global Illumination compute shader (not the driver - "
+        "it also affects AMD/Windows and macOS). Build 69977 fixes it. A separate, "
+        "still-open issue is a session-long FPS drop / apparent memory leak.",
+        "Update to build 69977 or later. If you are stuck on 69913, set Secondary "
+        "Lighting to Fair (Options -> Graphics) or use the integrated GPU. See "
+        "docs/troubleshooting.md.",
     )
 
 
 # --- requirements --------------------------------------------------------
 def _check_umu() -> Recommendation:
     if shutil.which("umu-run"):
-        return Recommendation("umu", "ok", "umu-launcher hittad", "")
+        return Recommendation("umu", "ok", "umu-launcher found", "")
     return Recommendation(
         "umu",
         "warn",
-        "umu-launcher saknas",
-        "Utan umu-run kan Battle.net inte startas.",
-        "Installera umu-launcher (finns i Bazzite/Fedora och hos Open-Wine-Components).",
+        "umu-launcher is missing",
+        "Without umu-run, Battle.net cannot be started.",
+        "Install umu-launcher (available on Bazzite/Fedora and from Open-Wine-Components).",
     )
 
 
 def _check_proton() -> Recommendation:
     builds = proton.all_builds()
     if builds:
-        return Recommendation("proton", "ok", f"{len(builds)} Proton-byggen hittade", "")
+        return Recommendation("proton", "ok", f"{len(builds)} Proton builds found", "")
     return Recommendation(
         "proton",
         "warn",
-        "Ingen Proton hittad",
-        "En Proton-runner (GE-Proton/UMU-Proton) behövs i en compatibilitytools.d-katalog.",
-        "Installera en via ProtonPlus (https://github.com/Vysp3r/ProtonPlus).",
+        "No Proton found",
+        "A Proton runner (GE-Proton/UMU-Proton) is needed in a compatibilitytools.d directory.",
+        "Install one via ProtonPlus (https://github.com/Vysp3r/ProtonPlus).",
     )
 
 
@@ -397,17 +398,17 @@ def _check_disk(config: Config) -> Recommendation:
     try:
         usage = shutil.disk_usage(_existing(config.bnet_dir))
     except OSError:
-        return Recommendation("disk", "info", "Diskutrymme kunde inte läsas", "")
+        return Recommendation("disk", "info", "Disk space could not be read", "")
     free_gb = usage.free / 1024**3
     if free_gb < _MIN_FREE_GB:
         return Recommendation(
             "disk",
             "warn",
-            f"Lite diskutrymme ({free_gb:.0f} GB ledigt)",
-            "Spelen är stora och prefixen växer.",
-            "Frigör utrymme eller flytta prefixen: sätt [paths] bnet_dir till en större disk.",
+            f"Low disk space ({free_gb:.0f} GB free)",
+            "Games are large and prefixes grow.",
+            "Free up space or move the prefix: set [paths] bnet_dir to a larger disk.",
         )
-    return Recommendation("disk", "ok", f"{free_gb:.0f} GB ledigt", "")
+    return Recommendation("disk", "ok", f"{free_gb:.0f} GB free", "")
 
 
 def _mount_fstype(path: Path) -> str | None:
@@ -432,12 +433,12 @@ def _check_prefix_fs(config: Config) -> Recommendation:
         return Recommendation(
             "prefix-fs",
             "warn",
-            f"Prefixen ligger på {fstype}",
-            "Wine behöver ett Linux-filsystem (skiftlägeskänsligt, stöd för symlänkar "
-            "och rättigheter). NTFS/exFAT kan ge konstiga fel.",
-            "Flytta prefixen till t.ex. ~/Games (sätt [paths] bnet_dir).",
+            f"The prefix is on {fstype}",
+            "Wine needs a Linux filesystem (case-sensitive, with symlink and "
+            "permission support). NTFS/exFAT can cause odd errors.",
+            "Move the prefix to e.g. ~/Games (set [paths] bnet_dir).",
         )
-    return Recommendation("prefix-fs", "ok", f"Filsystem: {fstype or 'okänt'}", "")
+    return Recommendation("prefix-fs", "ok", f"Filesystem: {fstype or 'unknown'}", "")
 
 
 def _check_perf_tools(config: Config) -> Recommendation:
@@ -454,27 +455,27 @@ def _check_perf_tools(config: Config) -> Recommendation:
         return Recommendation(
             "perf-tools",
             "warn",
-            f"Prestandaverktyg saknas: {', '.join(missing)}",
-            "En påslagen växel pekar på ett paket som inte är installerat.",
-            "Installera paketet eller stäng av växeln under Avancerat → Prestanda.",
+            f"Performance tools missing: {', '.join(missing)}",
+            "A toggle is on but points at a package that is not installed.",
+            "Install the package or turn the toggle off under Advanced -> Performance.",
         )
-    return Recommendation("perf-tools", "ok", "Prestandaverktyg OK", "")
+    return Recommendation("perf-tools", "ok", "Performance tools OK", "")
 
 
 def _check_runner(config: Config) -> Recommendation:
     names = {build.name for build in proton.all_builds()}
     if not names:
-        return Recommendation("runner", "info", "Ingen runner att rekommendera", "")
+        return Recommendation("runner", "info", "No runner to recommend", "")
     preferred = next((name for name in sorted(names) if "UMU-Proton" in name), None)
     if preferred and config.proton_name != preferred:
         return Recommendation(
             "runner",
             "info",
-            f"Rekommenderad runner: {preferred}",
-            "UMU-Proton fungerar ofta bäst för Battle.net.",
-            "Välj den under Avancerat → Runner.",
+            f"Recommended runner: {preferred}",
+            "UMU-Proton often works best for Battle.net.",
+            "Pick it under Advanced -> Runner.",
         )
-    return Recommendation("runner", "ok", "Runner vald", "")
+    return Recommendation("runner", "ok", "Runner selected", "")
 
 
 def report(config: Config) -> list[Recommendation]:

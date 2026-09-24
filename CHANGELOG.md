@@ -10,11 +10,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
 - Logging: per-run and per-installation logs with full diagnostics.
 - **GUI** (GTK4 + libadwaita, `frostfireinstaller gui`): a compact, fixed-width
   single column with the Frostfire banner, system/config strips and the Battle.net
-  band; everything else sits behind the *Visa avancerat* footer. Background
+  band; everything else sits behind the *Show advanced* footer. Background
   operations show an activity strip and toasts.
 - **Activity strip** under the run bar: a spinner + label showing the current operation
   (searching for Proton, downloading the installer, installing, starting, removing).
-- Reinstall / remove Battle.net with a **"Behåll spel"** (keep games) option.
+- Reinstall / remove Battle.net with a **"Keep games"** (keep games) option.
 - **`[env]` config section**: extra environment for the Wine session (umu-run →
   Battle.net → games), merged last so it overrides the defaults — handy for
   driver workarounds such as `DXVK_FILTER_DEVICE_NAME` (see
@@ -25,7 +25,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   recent `NVRM: Xid` / `NV_ERR_NO_MEMORY` faults, enabled-but-missing performance
   tools, and the runner. A strip under the Battle.net band appears **only for
   warnings** and opens a dialog with copy-ready commands; the full report
-  (including OK checks) is under **Avancerat → Diagnostik → Systemkontroll** and
+  (including OK checks) is under **Advanced → Diagnostics → System check** and
   in `frostfireinstaller doctor`. The one **reversible** mitigation
   (`nvidia-persistenced`) is an in-app toggle (Polkit-prompted); the app never
   makes large system changes itself.
@@ -42,17 +42,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   matrix.
 - Tests (pytest) and CI (ruff / mypy / pytest).
 
-- **Även installeraren** checkbox in the *Ta bort* row and `--purge-installer` (CLI):
+- **Also the installer** checkbox in the *Remove* row and `--purge-installer` (CLI):
   drop the cached `Battle.net-Setup.exe` so the download path can be re-tested.
-- Avancerat → Sökvägar shows where the installer is cached and whether it is present;
-  the row updates live after actions and has an **Öppna mapp** button so removal can
+- Advanced → Paths shows where the installer is cached and whether it is present;
+  the row updates live after actions and has an **Open folder** button so removal can
   be verified.
-- GUI: client status and *Reparera* share one row; logs moved under Avancerat
-  (a *Visa* button on the Loggar row).
+- GUI: client status and *Repair* share one row; logs moved under Advanced
+  (a *View* button on the Logs row).
 - New narrow **config band** (`#051320`) with Proton and prefix, so the run bar
   carries state only and configuration is always visible; a missing Proton is
   highlighted.
-- Run bar status now has three states: *Startat* / *Stoppat* / *Ej installerat*.
+- Run bar status now has three states: *Running* / *Stopped* / *Not installed*.
 - **Battle.net band**: state, Proton and prefix moved from the info strip into the
   run bar (dimmed second line); the info strip is now a single line of system info.
 
@@ -79,8 +79,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   config/state paths, desktop entry and icon.
 - Scope: a **Battle.net installer helper** (not a game launcher or library).
 - **Consolidated actions**: the start button installs the client when missing
-  ("Installera"); the maintenance row is status-only (plus Reparera).
-- GUI actions split into "Installation & underhåll" (ice) and "Återställ & ta bort" (fire).
+  ("Install"); the maintenance row is status-only (plus Repair).
+- GUI actions split into "Installation & maintenance" (ice) and "Reset & remove" (fire).
 - Icon install now includes the hicolor `index.theme` so the app icon resolves.
 - New app icon: the frostfire gateway (half ice, half lava), installed as a full
   hicolor PNG set (16-512 px) via `tools/make_icon.py`; help popovers on the
@@ -94,13 +94,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   bundled **Open Sans** is now the app font; `Adw.PreferencesPage`/`Group` were
   replaced by custom `Section` panels.
 - **Compact layout**: everything except the run controls is hidden behind an
-  **Advanced footer expander** right under the Battle.net band ("Visa avancerat"
+  **Advanced footer expander** right under the Battle.net band ("Show advanced"
   with a chevron-down/up). The window is a fixed **608 px wide** (not
   user-resizable) with a banner scaled down 20 % (608 × 198, fixed size); only
   its height changes (350 ↔ 770) when toggled, so the banner never resizes.
-- *Installation & underhåll* and *Återställ & ta bort* are hidden while no client
-  is installed (the run bar already offers *Installera*); the "Is/Eld" section
+- *Installation & maintenance* and *Reset & remove* are hidden while no client
+  is installed (the run bar already offers *Install*); the "Is/Eld" section
   descriptions were removed.
+- **English-only**: all UI strings, CLI/`doctor` output, log messages, comments
+  and documentation are now in English (the app was Swedish-only).
 - UI icons are now **outlined and light** (Material Symbols FILL 0, weight 200)
   instead of solid; the subset is rebuilt with `tools/make_symbols.py`.
 - Internal: renamed the `FrostyApplication` class to `FrostfireApplication`.
@@ -112,8 +114,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   and the unused `gui.helpers.make_icon()` helper (it referenced the removed SVG).
 
 ### Notes
-- Project URLs and packaging point at `epatnor/frostfireinstaller`; the repo is not
-  pushed yet, so install from a clone until it is.
+- Project URLs and packaging point at `epatnor/frostfireinstaller`.
 - Ported from the verified `bnetstarter` bash prototype (umu-launcher + GE-Proton on Bazzite).
 - **Field result (Bazzite, RTX 3050 Ti Laptop):** the WoW: Forever build-69913
   `Xid 109` GPU hang was a **client shader bug** (unbounded GI-probe compute

@@ -642,7 +642,7 @@ fault.
    `WaitForFence`, which turns any device loss into a hang. **Workarounds:** set
    **Secondary Lighting to Fair** (Options → Graphics), lower GI/Volumetric Fog,
    or run on the **integrated GPU** (bypasses the NVIDIA path entirely — the app
-   exposes Auto / NVIDIA / Integrerad under **Avancerat → Grafik**). The game
+   exposes Auto / NVIDIA / Integrated under **Advanced → Graphics**). The game
    often **recovers by re-creating its D3D11 device**
    (`Device Destroy Successful` → `Dx11 Device Create Successful`). On **69977**
    the reference machine plays on the NVIDIA GPU with **no** `Xid` (2026-09-24).

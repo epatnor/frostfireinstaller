@@ -20,7 +20,7 @@ log = get_logger()
 
 def _show_log(path: Path) -> int:
     if not path.is_file():
-        log.error("Ingen logg hittad: %s", path)
+        log.error("No log found: %s", path)
         return 1
     if sys.stdout.isatty() and shutil.which("less"):
         subprocess.run(["less", "-R", str(path)], check=False)
@@ -38,9 +38,9 @@ def cmd_run(_args: argparse.Namespace) -> int:
         health.remediate(config)
         service.launch(config, build)
         if not health.wait_for_ui(40):
-            log.error("Kunde inte starta Battle.net.")
+            log.error("Could not start Battle.net.")
             return 1
-    log.info("Klart.")
+    log.info("Done.")
     return 0
 
 
@@ -67,9 +67,9 @@ def cmd_remove(args: argparse.Namespace) -> int:
     setup_run_log(config.log_dir)
     battlenet.remove(config, keep_games=not args.purge, remove_installer=args.purge_installer)
     log.info(
-        "Battle.net borttaget%s%s",
-        "" if args.purge else " (spel behållna)",
-        " + installeraren" if args.purge_installer else "",
+        "Battle.net removed%s%s",
+        "" if args.purge else " (games kept)",
+        " + the installer" if args.purge_installer else "",
     )
     return 0
 
@@ -80,36 +80,35 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
     host = distro.detect()
     print(f"frostfireinstaller {__version__}")
     print(f"distro     : {host.distro}")
-    print(f"atomic     : {'ja' if host.atomic else 'nej'}")
+    print(f"atomic     : {'yes' if host.atomic else 'no'}")
     print(f"session    : {host.session}")
     print(f"desktop    : {host.desktop}")
     print(f"kernel     : {host.kernel}")
     print(f"gpu        : {host.gpu or '-'}")
-    print(f"umu        : {shutil.which('umu-run') or 'saknas'}")
-    print(f"winetricks : {shutil.which('winetricks') or 'saknas'}")
-    print(f"proton     : {proton.find(config.proton_name) or 'saknas'}")
-    print(f"prefix     : {config.prefix} {'(finns)' if config.prefix.is_dir() else '(saknas)'}")
-    print(f"bnet       : {'installerat' if battlenet.installed(config) else 'ej installerat'}")
-    print(f"running    : {'ja' if health.running() else 'nej'}")
-    print(
-        f"installer  : {config.installer} {'(finns)' if config.installer.is_file() else '(saknas)'}"
-    )
-    print(f"loggar     : {config.log_dir}")
+    print(f"umu        : {shutil.which('umu-run') or 'missing'}")
+    print(f"winetricks : {shutil.which('winetricks') or 'missing'}")
+    print(f"proton     : {proton.find(config.proton_name) or 'missing'}")
+    print(f"prefix     : {config.prefix} {'(present)' if config.prefix.is_dir() else '(missing)'}")
+    print(f"bnet       : {'installed' if battlenet.installed(config) else 'not installed'}")
+    print(f"running    : {'yes' if health.running() else 'no'}")
+    installer_state = "present" if config.installer.is_file() else "missing"
+    print(f"installer  : {config.installer} ({installer_state})")
+    print(f"logs       : {config.log_dir}")
 
     builds = proton.all_builds()
     if builds:
-        print("proton-byggen:")
+        print("proton builds:")
         for build in builds:
             print(f"  - {build}")
 
     games = profiles.load_all()
     if games:
-        print("spelprofiler:")
+        print("game profiles:")
         for game in games.values():
             print(f"  - {game.id}: {game.name}")
 
     recommendations = recommend.report(config)
-    print("systemkontroll:")
+    print("system check:")
     for item in recommendations:
         print(f"  [{item.level:4}] {item.title}")
         if item.detail:
@@ -149,11 +148,11 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
     sizes = (16, 24, 32, 48, 64, 128, 256, 512)
     icons = [data_home / f"icons/hicolor/{size}x{size}/apps/{service.APP_ID}.png" for size in sizes]
     icons.append(data_home / f"icons/hicolor/scalable/apps/{service.APP_ID}.svg")
-    log.warning("Tar bort: %s, genväg och ikon", config.bnet_dir)
+    log.warning("Removing: %s, shortcut and icon", config.bnet_dir)
     if not args.yes:
-        answer = input("Säker? [j/N] ").strip().lower()
-        if answer not in ("j", "ja", "y", "yes"):
-            log.info("Avbrutet")
+        answer = input("Are you sure? [y/N] ").strip().lower()
+        if answer not in ("y", "yes"):
+            log.info("Cancelled")
             return 0
     health.kill_all()
     shutil.rmtree(config.bnet_dir, ignore_errors=True)
@@ -161,7 +160,7 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
     (apps / "frostfireinstaller.desktop").unlink(missing_ok=True)
     for icon in icons:
         icon.unlink(missing_ok=True)
-    log.info("Borttaget")
+    log.info("Removed")
     return 0
 
 

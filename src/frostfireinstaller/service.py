@@ -142,8 +142,8 @@ def find_proton(config: Config) -> Path:
     build = proton.find(config.proton_name)
     if not build:
         raise RuntimeError(
-            "Hittade ingen Proton. Installera GE-Proton/UMU-Proton i en "
-            "compatibilitytools.d-katalog (t.ex. via ProtonPlus)."
+            "No Proton found. Install GE-Proton/UMU-Proton in a "
+            "compatibilitytools.d directory (e.g. via ProtonPlus)."
         )
     return build
 
@@ -151,26 +151,26 @@ def find_proton(config: Config) -> Path:
 def ensure(config: Config, on_progress: Progress | None = None) -> Path:
     """Idempotently set everything up and return the chosen Proton build."""
     if not shutil.which("umu-run"):
-        raise RuntimeError("umu-run saknas. Installera umu-launcher och försök igen.")
+        raise RuntimeError("umu-run is missing. Install umu-launcher and try again.")
 
     config.bnet_dir.mkdir(parents=True, exist_ok=True)
 
-    _emit(on_progress, "Söker efter Proton ...")
+    _emit(on_progress, "Looking for Proton ...")
     build = find_proton(config)
     log.info("Proton: %s", build)
 
     battlenet.ensure_installer(config, on_progress=on_progress)
 
     if battlenet.installed(config):
-        log.info("Battle.net redan installerat")
+        log.info("Battle.net already installed")
     else:
         log_path = battlenet.install(config, build, on_progress=on_progress)
-        log.info("Installationslogg: %s", log_path)
+        log.info("Install log: %s", log_path)
 
     if battlenet.ensure_config(config):
-        log.info("Stängde av 'starta minimerad'")
+        log.info("Turned off 'start minimized'")
 
-    _emit(on_progress, "Skapar genväg ...")
+    _emit(on_progress, "Creating shortcut ...")
     ensure_shortcut(config)
     return build
 
@@ -179,7 +179,7 @@ def launch(config: Config, build: Path) -> None:
     from .core import health
 
     if health.running():
-        log.info("Battle.net kör redan")
+        log.info("Battle.net is already running")
         return
-    log.info("Startar Battle.net ...")
+    log.info("Starting Battle.net ...")
     umu.spawn(config, build, config.battlenet_exe)

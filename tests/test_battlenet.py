@@ -125,4 +125,4 @@ def test_ensure_installer_reports_progress(tmp_path: Path, monkeypatch) -> None:
 
     battlenet.ensure_installer(config, on_progress=seen.append)
 
-    assert any("Laddar ner" in message for message in seen)
+    assert any("Downloading" in message for message in seen)
