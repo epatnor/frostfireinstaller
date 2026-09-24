@@ -29,7 +29,16 @@
   <url type="bugtracker">https://github.com/epatnor/frostfireinstaller/issues</url>
   <url type="vcs-browser">https://github.com/epatnor/frostfireinstaller</url>
   <content_rating type="oars-1.1"/>
-  <!-- TODO(flathub): add <screenshots> before submitting to Flathub. -->
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/epatnor/frostfireinstaller/main/assets/screenshots/main.png</image>
+      <caption>The compact main window</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/epatnor/frostfireinstaller/main/assets/screenshots/advanced.png</image>
+      <caption>Advanced options, maintenance and performance</caption>
+    </screenshot>
+  </screenshots>
   <releases>
     <release version="0.1.0" date="2026-09-24">
       <description>

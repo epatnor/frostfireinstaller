@@ -11,7 +11,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   `io.github.frostfireinstaller` entry/icon is cleaned up on setup.
 
 ### Added
-- README header image (`assets/frostfire_installer_github.png`).
+- README header image (`assets/frostfire_installer_github.png`) and screenshots
+  (`assets/screenshots/`), also referenced from the Flatpak metainfo.
 - **AI disclosure**: `docs/ai-disclosure.md`, a README badge/notice and a
   CONTRIBUTING note — the project is built with generative AI under human
   supervision (the maintainer reviews, tests and is responsible).

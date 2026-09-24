@@ -65,6 +65,12 @@ frostfireinstaller gui
 The window is **608 px wide and not resizable**; when expanded it only grows
 downwards.
 
+### Screenshots
+
+| Main window | Advanced |
+|---|---|
+| ![Frostfire Installer main window](assets/screenshots/main.png) | ![Frostfire Installer advanced options](assets/screenshots/advanced.png) |
+
 ---
 
 ## Requirements
