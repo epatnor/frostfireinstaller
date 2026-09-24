@@ -17,7 +17,27 @@ Check everything with:
 frostfireinstaller doctor
 ```
 
-## Channel 1 — pipx (recommended)
+## Distro support
+
+The tool only needs Python 3.11+ plus the host's `umu-run`/Proton, so the **pipx
+and curl channels work everywhere**. Native channels exist where a distro has a
+package manager convention.
+
+| Distro | Recommended channel |
+|---|---|
+| Bazzite / Silverblue / ublue (Fedora atomic) | `ujust` recipe, or Flatpak (experimental) |
+| Fedora Workstation, Nobara | pipx / curl |
+| Arch, CachyOS, EndeavourOS, Manjaro | AUR |
+| Debian, Ubuntu, Mint, Pop!_OS | pipx / curl |
+| openSUSE (Tumbleweed/Leap) | pipx / curl |
+| Alpine, Void, Gentoo | pipx / curl |
+| SteamOS | pipx / curl (or Flatpak) |
+| macOS (for reference/testing) | Homebrew |
+
+Immutable/atomic distros that cannot install host `umu-launcher` should use the
+Flatpak (once it ships) or install umu via `rpm-ostree`/Homebrew and use pipx.
+
+## Channel 1 — pipx (recommended, universal)
 
 ```bash
 pipx install frostfireinstaller
@@ -31,7 +51,15 @@ pipx install git+https://github.com/epatnor/frostfireinstaller
 curl -fsSL https://raw.githubusercontent.com/epatnor/frostfireinstaller/main/packaging/install.sh | bash
 ```
 
-## Channel 3 — Bazzite (`ujust`)
+## Channel 3 — AUR (Arch family)
+
+```bash
+yay -S frostfireinstaller          # or: paru -S frostfireinstaller
+```
+
+(Package source: `packaging/aur/PKGBUILD`.)
+
+## Channel 4 — Bazzite (`ujust`)
 
 Once the recipe ships in your image:
 
@@ -41,7 +69,7 @@ ujust install-frostfireinstaller
 
 (Recipe source: `packaging/frostfireinstaller.ujust`.)
 
-## Channel 4 — Homebrew
+## Channel 5 — Homebrew
 
 ```bash
 brew tap epatnor/frostfireinstaller
@@ -50,11 +78,12 @@ brew install frostfireinstaller
 
 (Formula source: `packaging/brew/frostfireinstaller.rb`.)
 
-## Channel 5 — Flatpak (experimental)
+## Channel 6 — Flatpak (experimental)
 
 See `packaging/flatpak/`. A sandboxed app cannot run the host's `umu-run`
 directly, so the manifest currently relies on `flatpak-spawn --host`. A future
-version will bundle umu + Proton inside the sandbox and ship on Flathub.
+version will bundle umu + Proton inside the sandbox and ship on Flathub (and thus
+appear in Bazaar).
 
 ## After install
 
@@ -102,15 +131,17 @@ frostfireinstaller remove --purge-installer   # also drop the cached installer
 frostfireinstaller uninstall    # remove prefix, desktop entry and icon
 ```
 
-> The project is not published yet, so the PyPI/curl/brew commands only work once
-> `epatnor/frostfireinstaller` is pushed. Until then, install from a clone:
+> The project is not published yet, so the PyPI/curl/AUR/brew commands only work
+> once `epatnor/frostfireinstaller` is pushed and released. Until then, install
+> from a clone:
 >
 > ```bash
 > git clone https://github.com/epatnor/frostfireinstaller
 > cd frostfireinstaller && pipx install .
 > ```
 >
-> The Homebrew tap expects a companion repo named `homebrew-frostfireinstaller`.
+> The Homebrew tap expects a companion repo named `homebrew-frostfireinstaller`;
+> the AUR package must be pushed to the AUR (`packaging/aur/PKGBUILD`).
 
 ## Troubleshooting
 

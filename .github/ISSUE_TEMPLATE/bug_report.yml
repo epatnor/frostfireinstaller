@@ -1,0 +1,49 @@
+name: Bug report
+description: Report something that is broken
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! For problems *inside a game* (after you press
+        Play), see `docs/troubleshooting.md` first — those are usually
+        Wine/Proton/graphics issues, not the installer.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: frostfireinstaller version
+      description: Output of `frostfireinstaller --version`.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`frostfireinstaller doctor` output"
+      description: Paste the full output — it contains the environment and status.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: distro
+    attributes:
+      label: Distribution
+      placeholder: e.g. Bazzite 44, Arch, Ubuntu 24.04
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: |
+        App logs: `~/.local/state/frostfireinstaller/logs`.
+        Client log: `<prefix>/drive_c/users/*/AppData/Local/Battle.net/Logs/`.
+      render: text
+    validations:
+      required: false

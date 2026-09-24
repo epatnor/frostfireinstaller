@@ -30,10 +30,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   (`nvidia-persistenced`) is an in-app toggle (Polkit-prompted); the app never
   makes large system changes itself.
 - Performance toggles: MangoHud, GameMode, Gamescope (persisted in `config.toml`).
-- Packaging: `install.sh` (curl | bash), Bazzite `ujust` recipe, Homebrew formula,
-  experimental Flatpak manifest + AppStream metadata.
+- Packaging: `install.sh` (curl | bash), Bazzite `ujust` recipe, AUR `PKGBUILD`,
+  Homebrew formula, experimental Flatpak manifest + AppStream metadata.
+- **Release workflow** (`.github/workflows/release.yml`): on a `v*` tag, builds the
+  sdist/wheel, verifies the wheel installs, and creates a GitHub release; optional
+  PyPI publish via Trusted Publishing (repo variable `PUBLISH_PYPI=true`).
+- Project hygiene: `SECURITY.md`, issue templates and a pull-request template.
 - Docs: `docs/architecture.md`, `docs/install.md`, `docs/design.md`,
-  `docs/troubleshooting.md`.
+  `docs/troubleshooting.md`, `docs/technical-reference.md`,
+  `docs/wow-forever-error-history.md`; `docs/install.md` now has a distro support
+  matrix.
 - Tests (pytest) and CI (ruff / mypy / pytest).
 
 - **Även installeraren** checkbox in the *Ta bort* row and `--purge-installer` (CLI):

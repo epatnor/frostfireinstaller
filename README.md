@@ -3,6 +3,10 @@
 > A **Battle.net installer helper** for Linux — stable and compatible, with a
 > cool GUI. Backend: **umu-launcher + Proton**.
 
+[![CI](https://github.com/epatnor/frostfireinstaller/actions/workflows/ci.yml/badge.svg)](https://github.com/epatnor/frostfireinstaller/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+
 **Status:** early development (v0.1, Python port of a verified prototype).
 
 ---
@@ -67,13 +71,24 @@ Fönstret är **608 px brett och inte resizbart**; vid expandering växer det ba
 
 ## Install
 
+Any distro with **Python 3.11+** works via `pipx`; there are also native
+channels. Full matrix in [`docs/install.md`](docs/install.md).
+
+| Channel | Command | For |
+|---|---|---|
+| pipx (universal) | `pipx install frostfireinstaller` | any distro |
+| curl \| bash | `curl -fsSL .../packaging/install.sh \| bash` | any distro |
+| AUR | `yay -S frostfireinstaller` | Arch, CachyOS, EndeavourOS, Manjaro |
+| Bazzite / ublue | `ujust install-frostfireinstaller` | Fedora atomic images |
+| Homebrew | `brew install epatnor/frostfireinstaller/frostfireinstaller` | Linux & macOS |
+| Flatpak | *(experimental, Flathub pending)* | immutable desktops |
+
+Not published yet — until the first release, install from a clone:
+
 ```bash
 git clone https://github.com/epatnor/frostfireinstaller
 cd frostfireinstaller
 pipx install .                           # or: pip install --user .
-
-# once published:
-pipx install frostfireinstaller
 ```
 
 ## Usage

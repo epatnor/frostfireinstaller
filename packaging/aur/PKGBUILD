@@ -1,0 +1,28 @@
+# Maintainer: Patrik Nordlund (@epatnor) <epatnor@users.noreply.github.com>
+pkgname=frostfireinstaller
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Battle.net installer helper for Linux (umu-launcher + Proton)"
+arch=('any')
+url="https://github.com/epatnor/frostfireinstaller"
+license=('MIT')
+depends=('python' 'umu-launcher')
+optdepends=(
+  'python-gobject: GUI (GTK4 + libadwaita)'
+  'mangohud: performance overlay'
+  'gamemode: CPU/GPU governor'
+  'gamescope: micro-compositor'
+)
+makedepends=('python-build' 'python-installer' 'python-hatchling' 'python-wheel')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$pkgname-$pkgver"
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  python -m installer --destdir="$pkgdir" dist/*.whl
+}

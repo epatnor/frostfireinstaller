@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Troubleshooting
+    url: https://github.com/epatnor/frostfireinstaller/blob/main/docs/troubleshooting.md
+    about: Common failures and fixes (D3D12 freeze, launcher, logs).
+  - name: Security
+    url: https://github.com/epatnor/frostfireinstaller/security/advisories/new
+    about: Report a vulnerability privately.
