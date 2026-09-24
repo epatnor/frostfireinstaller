@@ -45,6 +45,9 @@ Never commit API keys: `.env`, `*.key` and `assets/generated/` are gitignored.
 - Keep the **core** GUI-free and dependency-light (stdlib first).
 - Every behavior change needs a test where feasible.
 - Update `CHANGELOG.md`.
+- **AI-assisted contributions are welcome but must be reviewed and tested by
+  you.** Disclose it in the PR and say how you verified it — see
+  [`docs/ai-disclosure.md`](docs/ai-disclosure.md).
 - Be kind in issues and reviews.
 
 ## Commit style

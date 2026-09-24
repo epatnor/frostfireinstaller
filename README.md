@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/frostfire_installer_github.png" alt="Frostfire Installer — Battle.net installer helper for Linux (umu-launcher + Proton)" width="100%">
+</p>
+
 # Frostfire Installer
 
 > A **Battle.net installer helper** for Linux — stable and compatible, with a
@@ -6,10 +10,14 @@
 [![CI](https://github.com/epatnor/frostfireinstaller/actions/workflows/ci.yml/badge.svg)](https://github.com/epatnor/frostfireinstaller/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+[![AI-assisted](https://img.shields.io/badge/AI--assisted-human--reviewed-blueviolet)](docs/ai-disclosure.md)
 
 **Status:** v0.1 — first public release (a Python port of a verified prototype).
 Early, but used daily on the reference machine. See [`docs/support.md`](docs/support.md)
 for what is supported and what is out of scope.
+
+> **AI disclosure:** this project is built with generative AI under human
+> supervision — see [`docs/ai-disclosure.md`](docs/ai-disclosure.md).
 
 ---
 
@@ -136,6 +144,7 @@ frostfireinstaller uninstall    # remove prefix, shortcut, icon
 | `docs/architecture.md` | backend, lifecycle, GUI, security, paths |
 | `docs/install.md` | install channels, distro matrix, prefix override, update/remove |
 | `docs/support.md` | support scope, what's in/out of scope, safety, no warranty |
+| `docs/ai-disclosure.md` | how the project is built with AI, and under whose supervision |
 | `docs/design.md` | naming, ice/fire concept, assets, iconography |
 | `docs/troubleshooting.md` | common failures and fixes (D3D12 freeze, launcher, logs) |
 | `docs/wow-forever-error-history.md` | observed WoW: Forever (69913 → 69977) error history and Xid correlation |
