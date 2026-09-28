@@ -22,6 +22,70 @@ Play) are usually Wine/Proton/graphics issues, not the installer.
 - Per-game crash dumps: `<game dir>/Errors/*.txt` (e.g. `_retail_/Errors/`).
 - `frostfireinstaller doctor` prints the environment and current status.
 
+## Gamescope strobes the entire screen — NVIDIA + Wayland **[verified]**
+
+> **Photosensitivity hazard.** On the reference machine (RTX 4070, driver
+> 615.71.09 open module, KDE on Wayland) enabling **Gamescope** made the whole
+> display strobe immediately on launch. This is not a cosmetic glitch.
+
+**Get out of it:** `Alt+F4` closes the game window, then
+
+```bash
+pkill -f gamescope
+```
+
+**Stop it recurring** — killing the process does not change the setting:
+
+```bash
+sed -i 's/^gamescope = true/gamescope = false/' ~/.config/frostfireinstaller/config.toml
+```
+
+Then **restart the GUI.** The switches read their state once when the page is
+built, so a value changed on disk leaves the row drawing the old position — and
+clicking a row that wrongly shows *on* turns the setting back on.
+
+**Cause.** Nesting gamescope inside an existing Wayland session on the
+proprietary NVIDIA driver can collapse presentation between gamescope and the
+outer compositor. `gamescope_force_fullscreen` makes it worse: it forces
+fullscreen presentation every frame. The app now detects NVIDIA + Wayland and
+says so on the switch itself.
+
+**Instead**, for window-geometry problems, prefer a **KWin window rule** — it is
+the compositor you already run, adds nothing to the presentation path, and
+cannot flicker. Start minimal: force only which screen the window opens on,
+and add size/position only if that is not enough.
+
+## The game window returns at the wrong size or on the wrong monitor
+
+Usually after the monitor slept mid-session. When DPMS turns an output off and
+KDE re-probes it, the X/Wayland screen geometry changes under the running
+client; a borderless (windowed-maximized) window follows that change, and WoW
+then persists the result to `Config.wtf` on exit — so it survives a restart.
+
+**Attack the cause first:** keep the screen awake with
+**Performance → Keep awake while playing** (`inhibit_idle`). Verify it actually
+took, *while the game runs*:
+
+```bash
+pgrep -a -f "systemd-inhibit|kde-inhibit"
+```
+
+Two processes means the lock is held. Nothing means the sidecar did not start —
+check the app log for `idle inhibitor started`.
+
+**Then clean up what the client already stored.** With WoW **closed** (it
+rewrites the file on exit), in `<edition>/WTF/Config.wtf`:
+
+| Key | Meaning |
+|---|---|
+| `GxMonitor` | pinned output **index** — not stable across re-probing |
+| `GxMaximize` | `1` = windowed-maximized, the mode that follows screen geometry |
+| `RenderScale` | should be `1.0`; an odd value such as `1.383…` was computed from a bogus resolution |
+| `GxWindowedResolution` / `GxFullscreenResolution` | stored geometry |
+
+Renaming `Config.wtf` makes WoW regenerate it with defaults and re-run
+`hwDetect` — a clean slate at the cost of every graphics setting.
+
 ## Known bugs in World of Warcraft: Forever
 
 > **Resolved in build 69977 (2026-09-22).** The `ERROR #109` / NVIDIA `Xid 109`

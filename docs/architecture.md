@@ -94,13 +94,45 @@ and toasts report the result.
 
 | Option | Effect |
 |---|---|
-| MangoHud | sets `MANGOHUD=1` (overlay/diagnostics) |
+| MangoHud | sets `MANGOHUD=1` (overlay/diagnostics; via `--mangoapp` under gamescope) |
 | GameMode | wraps the command in `gamemode` (system tuning while running) |
-| Gamescope | wraps the command in `gamescope -f --` (nested compositor, FSR, FPS cap) |
+| Gamescope | wraps the command in `gamescope -f --`, plus `-W`/`-H` (fixed virtual output), `-O` (pin to one monitor), `--force-grab-cursor` and `--force-windows-fullscreen` |
+| Keep awake | holds an idle/suspend lock for the session (`inhibit_idle`) |
 
 Because Battle.net and the games it starts share one Wine session, these settings
 follow into the games — not just the launcher. Toggles whose tool is missing are
 disabled in the UI.
+
+> **Gamescope is not a safe default.** On NVIDIA + Wayland, nesting it inside the
+> running session can collapse presentation against the outer compositor and
+> strobe the whole display — a photosensitivity hazard, observed on the reference
+> machine. `_gamescope_is_risky()` detects that combination and the switch warns
+> in place. See `docs/troubleshooting.md`.
+
+#### The idle lock is a sidecar, not a wrapper
+
+`inhibit_idle` deliberately does **not** wrap the launch command, and
+`launch_command()` stays a plain argv list. Two reasons:
+
+- **Lifetime.** A wrapper's lock dies with its direct child. Battle.net starts
+  the game and is then normally closed, so the lock would be released part-way
+  into the session — which is exactly what let the monitor sleep mid-game. The
+  sidecar tracks the prefix's **wineserver** instead, the process that really
+  spans the session.
+- **Structure.** Folding the command into `sh -c` to append a wait loop sinks the
+  gamescope flags into a shell string.
+
+`_spawn_inhibitor()` starts it detached from `spawn()`. The script waits up to
+two minutes for a wineserver to appear (then gives up, rather than leaking a lock
+that keeps the machine awake), and exits only after **three consecutive misses** —
+relaunching Battle.net leaves the old wineserver dying as the new one starts, and
+quitting on the first miss made the sidecar kill itself seconds after launch.
+
+Coverage needs both tools: `systemd-inhibit --what=idle:sleep` blocks logind's own
+idle and suspend actions, while KDE's PowerDevil runs its screen-blanking timer off
+the freedesktop ScreenSaver/PowerManagement interfaces and can fire straight through
+a logind-only lock — `kde-inhibit --power --screenSaver` covers that. Each is applied
+when present.
 
 ## Security and robustness
 
