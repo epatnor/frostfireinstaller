@@ -84,7 +84,10 @@ rewrites the file on exit), in `<edition>/WTF/Config.wtf`:
 | `GxWindowedResolution` / `GxFullscreenResolution` | stored geometry |
 
 Renaming `Config.wtf` makes WoW regenerate it with defaults and re-run
-`hwDetect` — a clean slate at the cost of every graphics setting.
+`hwDetect` — a clean slate at the cost of every graphics setting. **Prefer
+editing just the keys above.** A regenerated file also loses the narration keys
+that suppress the `ERROR #135` dialog, which can make the login screen
+unusable — see below.
 
 ## Known bugs in World of Warcraft: Forever
 
@@ -119,18 +122,40 @@ caused by your GPU choice, the installer, or an outdated driver. Sources:
 ### 1. `ERROR #135` — narration/voice assert at the login screen
 
 ```
-ASSERTSAFE(m_platformInterface != nullptr)  VoiceSpeakManager.cpp:204
+ASSERTSAFE(m_platformInterface != nullptr)  VoiceSpeakManager.cpp:188
 ERROR #135    Lua: StopSpeakingText -> NarrateCurrentScreen ("Login Screen")
 GxRestarts: 0   GxDeviceLostCount: 0
 ```
 
+> The line number tracks the build: **204** on 69913/69977, **188** on
+> **70009** (client `1.60.1.70009`, verified 2026-09-28). Match on the assert
+> text and the file, not the line.
+
 This is the **new narration / text-to-speech subsystem** — not graphics, and
 unaffected by the GPU you run on. It fires repeatedly at the login/character
-screen (~every 1.7 s) **even with screen narration disabled**, on both builds.
-It is a soft assert (`ASSERTSAFE`), so you can dismiss the dialog and play on;
-the dialog is a separate Blizzard Error process and may linger after you quit.
-There is no client-side fix yet — this is usually the dismissible error seen at
-character select.
+screen (~every 1.7 s) **even with screen narration disabled**, on every build so
+far. It is a soft assert (`ASSERTSAFE`), so you can dismiss the dialog and play
+on; the dialog is a separate Blizzard Error process and may linger after you
+quit. There is no client-side fix yet — this is usually the dismissible error
+seen at character select.
+
+**Keep these two keys** in `<edition>/WTF/Config.wtf`:
+
+```
+SET showScreenNarrationDialog "0"
+SET accessibilityScreenNarrationEnabled "0"
+```
+
+They do not stop the assert — it fires regardless — but they suppress the
+dialog, which is the difference between a nuisance and an unplayable login
+screen. **They are the first casualty of resetting `Config.wtf`.** Observed
+2026-09-28: regenerating the file from defaults to clear bad window geometry
+produced six of these asserts in 13 s at *Connecting*, ending in a hard
+`BC_ASSERT(result == WAIT_OBJECT_0)` fatal error. Restoring the config, keeping
+only the window keys reset, fixed it.
+
+So: prefer editing the handful of offending keys over regenerating the file.
+If you do regenerate, add these two back before the next launch.
 
 ### 2. `ERROR #109` / `Xid 109` — GPU hang on world entry (regression, fixed in 69977)
 
