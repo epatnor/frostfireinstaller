@@ -1,0 +1,10 @@
+{
+  "id": "diablo4",
+  "name": "Diablo IV",
+  "product": "fenris",
+  "proton": null,
+  "env": {},
+  "args": [],
+  "anti_cheat": null,
+  "notes": "Battle.net version. May need a recent Proton build."
+}

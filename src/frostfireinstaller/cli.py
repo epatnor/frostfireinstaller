@@ -1,0 +1,216 @@
+"""Command-line interface for frostfireinstaller."""
+
+from __future__ import annotations
+
+import argparse
+import logging
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+from . import __version__, service
+from .config import Config
+from .core import battlenet, distro, health, profiles, proton, recommend
+from .logsetup import get_logger, setup_console, setup_run_log
+
+log = get_logger()
+
+
+def _show_log(path: Path) -> int:
+    if not path.is_file():
+        log.error("No log found: %s", path)
+        return 1
+    if sys.stdout.isatty() and shutil.which("less"):
+        subprocess.run(["less", "-R", str(path)], check=False)
+    else:
+        sys.stdout.write(path.read_text(encoding="utf-8", errors="ignore"))
+    return 0
+
+
+def cmd_run(_args: argparse.Namespace) -> int:
+    config = Config.load()
+    setup_run_log(config.log_dir)
+    build = service.ensure(config)
+    service.launch(config, build)
+    if not health.wait_for_ui(40):
+        health.remediate(config)
+        service.launch(config, build)
+        if not health.wait_for_ui(40):
+            log.error("Could not start Battle.net.")
+            return 1
+    log.info("Done.")
+    return 0
+
+
+def cmd_ensure(_args: argparse.Namespace) -> int:
+    config = Config.load()
+    setup_run_log(config.log_dir)
+    service.ensure(config)
+    return 0
+
+
+def cmd_reinstall(args: argparse.Namespace) -> int:
+    config = Config.load()
+    setup_run_log(config.log_dir)
+    build = service.find_proton(config)
+    log_path = battlenet.reinstall(
+        config, build, keep_games=not args.purge, remove_installer=args.purge_installer
+    )
+    log.info("Installationslogg: %s", log_path)
+    return 0
+
+
+def cmd_remove(args: argparse.Namespace) -> int:
+    config = Config.load()
+    setup_run_log(config.log_dir)
+    battlenet.remove(config, keep_games=not args.purge, remove_installer=args.purge_installer)
+    log.info(
+        "Battle.net removed%s%s",
+        "" if args.purge else " (games kept)",
+        " + the installer" if args.purge_installer else "",
+    )
+    return 0
+
+
+def cmd_doctor(_args: argparse.Namespace) -> int:
+    config = Config.load()
+    setup_run_log(config.log_dir)
+    host = distro.detect()
+    print(f"frostfireinstaller {__version__}")
+    print(f"distro     : {host.distro}")
+    print(f"atomic     : {'yes' if host.atomic else 'no'}")
+    print(f"session    : {host.session}")
+    print(f"desktop    : {host.desktop}")
+    print(f"kernel     : {host.kernel}")
+    print(f"gpu        : {host.gpu or '-'}")
+    print(f"umu        : {shutil.which('umu-run') or 'missing'}")
+    print(f"winetricks : {shutil.which('winetricks') or 'missing'}")
+    print(f"proton     : {proton.find(config.proton_name) or 'missing'}")
+    print(f"prefix     : {config.prefix} {'(present)' if config.prefix.is_dir() else '(missing)'}")
+    print(f"bnet       : {'installed' if battlenet.installed(config) else 'not installed'}")
+    print(f"running    : {'yes' if health.running() else 'no'}")
+    installer_state = "present" if config.installer.is_file() else "missing"
+    print(f"installer  : {config.installer} ({installer_state})")
+    print(f"logs       : {config.log_dir}")
+
+    builds = proton.all_builds()
+    if builds:
+        print("proton builds:")
+        for build in builds:
+            print(f"  - {build}")
+
+    games = profiles.load_all()
+    if games:
+        print("game profiles:")
+        for game in games.values():
+            print(f"  - {game.id}: {game.name}")
+
+    recommendations = recommend.report(config)
+    print("system check:")
+    for item in recommendations:
+        print(f"  [{item.level:4}] {item.title}")
+        if item.detail:
+            print(f"           {item.detail}")
+        if item.action:
+            print(f"           {item.action}")
+        for command in item.commands:
+            print(f"           $ {command}")
+    return 0
+
+
+def cmd_logs(_args: argparse.Namespace) -> int:
+    config = Config.load()
+    return _show_log(config.log_dir / "latest.log")
+
+
+def cmd_install_logs(_args: argparse.Namespace) -> int:
+    config = Config.load()
+    return _show_log(config.log_dir / "latest-install.log")
+
+
+def cmd_kill(_args: argparse.Namespace) -> int:
+    health.kill_all()
+    return 0
+
+
+def cmd_gui(_args: argparse.Namespace) -> int:
+    from . import gui
+
+    return gui.main([sys.argv[0]])
+
+
+def cmd_uninstall(args: argparse.Namespace) -> int:
+    config = Config.load()
+    apps = service.applications_dir()
+    data_home = Path(os.environ.get("XDG_DATA_HOME", "~/.local/share")).expanduser()
+    sizes = (16, 24, 32, 48, 64, 128, 256, 512)
+    icons = [data_home / f"icons/hicolor/{size}x{size}/apps/{service.APP_ID}.png" for size in sizes]
+    icons.append(data_home / f"icons/hicolor/scalable/apps/{service.APP_ID}.svg")
+    log.warning("Removing: %s, shortcut and icon", config.bnet_dir)
+    if not args.yes:
+        answer = input("Are you sure? [y/N] ").strip().lower()
+        if answer not in ("y", "yes"):
+            log.info("Cancelled")
+            return 0
+    health.kill_all()
+    shutil.rmtree(config.bnet_dir, ignore_errors=True)
+    (apps / f"{service.APP_ID}.desktop").unlink(missing_ok=True)
+    (apps / "frostfireinstaller.desktop").unlink(missing_ok=True)
+    for icon in icons:
+        icon.unlink(missing_ok=True)
+    log.info("Removed")
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="frostfireinstaller",
+        description="A Battle.net installer helper for Linux (umu-launcher + Proton).",
+    )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument("-v", "--verbose", action="store_true", help="verbose output")
+    sub = parser.add_subparsers(dest="command")
+
+    sub.add_parser("run", help="ensure everything and launch (default)")
+    sub.add_parser("ensure", help="set up/verify only, do not launch")
+    reinstall = sub.add_parser("reinstall", help="reinstall Battle.net (keeps games by default)")
+    reinstall.add_argument("--purge", action="store_true", help="also remove installed games")
+    reinstall.add_argument(
+        "--purge-installer", action="store_true", help="also remove the cached installer"
+    )
+    remove = sub.add_parser("remove", help="remove the Battle.net client (keeps games by default)")
+    remove.add_argument("--purge", action="store_true", help="also remove installed games")
+    remove.add_argument(
+        "--purge-installer", action="store_true", help="also remove the cached installer"
+    )
+    sub.add_parser("doctor", help="show environment and status")
+    sub.add_parser("logs", help="show the latest run log")
+    sub.add_parser("install-logs", help="show the latest installation log")
+    sub.add_parser("kill", help="stop all Battle.net processes")
+    sub.add_parser("gui", help="open the graphical interface")
+    uninstall = sub.add_parser("uninstall", help="remove prefix, shortcut and icon")
+    uninstall.add_argument("-y", "--yes", action="store_true", help="do not ask for confirmation")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    setup_console(logging.DEBUG if args.verbose else logging.INFO)
+
+    handlers = {
+        "run": cmd_run,
+        "ensure": cmd_ensure,
+        "reinstall": cmd_reinstall,
+        "remove": cmd_remove,
+        "doctor": cmd_doctor,
+        "logs": cmd_logs,
+        "install-logs": cmd_install_logs,
+        "kill": cmd_kill,
+        "gui": cmd_gui,
+        "uninstall": cmd_uninstall,
+    }
+    command = args.command or "run"
+    return handlers[command](args)

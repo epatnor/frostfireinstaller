@@ -1,0 +1,10 @@
+{
+  "id": "overwatch",
+  "name": "Overwatch 2",
+  "product": "prometheus",
+  "proton": null,
+  "env": {},
+  "args": [],
+  "anti_cheat": "user-space (Warden)",
+  "notes": "Multiplayer works under Wine/Proton; Warden is user-space, not kernel-level."
+}

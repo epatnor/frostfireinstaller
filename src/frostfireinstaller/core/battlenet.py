@@ -1,0 +1,317 @@
+"""Battle.net install / readiness / config helpers."""
+
+from __future__ import annotations
+
+import hashlib
+import platform
+import shutil
+import time
+import urllib.error
+import urllib.request
+from collections.abc import Callable
+from datetime import datetime
+from pathlib import Path
+
+from ..config import Config
+from ..logsetup import get_logger, open_install_log
+from . import distro, health, umu
+
+log = get_logger()
+
+Progress = Callable[[str], None]
+
+
+def _emit(on_progress: Progress | None, message: str) -> None:
+    """Report a human-readable step; never let a UI callback break the work."""
+    if on_progress is None:
+        return
+    try:
+        on_progress(message)
+    except Exception:  # noqa: BLE001
+        log.debug("progress callback failed", exc_info=True)
+
+
+# --- state ---------------------------------------------------------------
+def installed(config: Config) -> bool:
+    return config.battlenet_exe_unix.is_file()
+
+
+def _wine_user_dir(config: Config, *parts: str) -> Path | None:
+    """First existing ``drive_c/users/<user>/<parts...>`` (user name varies)."""
+    users = config.prefix / "drive_c" / "users"
+    if not users.is_dir():
+        return None
+    for path in sorted(users.iterdir()):
+        candidate = path.joinpath(*parts)
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def client_log_dir(config: Config) -> Path | None:
+    path = _wine_user_dir(config, "AppData", "Local", "Battle.net", "Logs")
+    return path if path and path.is_dir() else None
+
+
+def _mtime(path: Path) -> float:
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+def latest_client_log(config: Config) -> Path | None:
+    directory = client_log_dir(config)
+    if not directory:
+        return None
+    logs = sorted(directory.glob("battle.net-*.log"), key=_mtime, reverse=True)
+    return logs[0] if logs else None
+
+
+def launcher_ready(config: Config) -> bool:
+    """Reliable signal that the launcher finished initialising."""
+    path = latest_client_log(config)
+    if not path:
+        return False
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return False
+    return "*** LOAD COMPLETE ***" in text or "login.app?app=app" in text
+
+
+def wait_for_launcher_ready(config: Config, timeout: int = 300, interval: int = 2) -> bool:
+    log.info("Waiting for Battle.net to become ready (max %ss)...", timeout)
+    waited = 0
+    while waited < timeout:
+        if installed(config) and launcher_ready(config):
+            return True
+        time.sleep(interval)
+        waited += interval
+    return False
+
+
+# --- installer -----------------------------------------------------------
+def _retryable(exc: OSError) -> bool:
+    """A 5xx/timeout/connection error is worth retrying; a 4xx is not."""
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code >= 500
+    return True
+
+
+def ensure_installer(
+    config: Config, attempts: int = 3, on_progress: Progress | None = None
+) -> Path:
+    if config.installer.is_file():
+        return config.installer
+    config.bnet_dir.mkdir(parents=True, exist_ok=True)
+    tmp = config.installer.with_suffix(".exe.part")
+    last: OSError | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            _emit(on_progress, f"Downloading the installer ({attempt}/{attempts}) ...")
+            log.info("Fetching Battle.net-Setup.exe (attempt %d/%d) ...", attempt, attempts)
+            with (
+                urllib.request.urlopen(config.installer_url, timeout=120) as resp,
+                tmp.open(  # noqa: S310
+                    "wb"
+                ) as fh,
+            ):
+                shutil.copyfileobj(resp, fh)
+            tmp.replace(config.installer)
+            return config.installer
+        except OSError as exc:
+            last = exc
+            if not _retryable(exc) or attempt == attempts:
+                break
+            log.warning("The download failed (%s), retrying ...", exc)
+            _emit(on_progress, "The download failed, retrying ...")
+            time.sleep(2 * attempt)
+    tmp.unlink(missing_ok=True)
+    raise RuntimeError(f"Could not download the installer: {last}") from last
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def install(config: Config, proton: Path, on_progress: Progress | None = None) -> Path:
+    """Run the installer, wait for readiness, then auto-close the first run.
+
+    Returns the path to the installation log.
+    """
+    log_path = open_install_log(config.log_dir)
+    _write_header(log_path, config, proton)
+
+    _emit(on_progress, "Installing Battle.net (this can take a few minutes) ...")
+    log.info("Starting the Battle.net installation (click 'Continue' in the window if asked)...")
+    with log_path.open("a", encoding="utf-8") as out:
+        umu.spawn(config, proton, str(config.installer), stdout=out, stderr=out)
+        ready = wait_for_launcher_ready(config)
+        out.write("\n--- Ready signal ---\n")
+        out.write(f"launcher_ready       : {'yes' if ready else 'no'}\n")
+        out.write(f"battlenet_installed  : {'yes' if installed(config) else 'no'}\n")
+        _append_client_log(out, config)
+
+    ok = installed(config)
+    if ok:
+        log.info("Closing the first run automatically (recommended before logging in).")
+        health.kill_all()
+    _append_result(log_path, ready, ok)
+    return log_path
+
+
+# --- config --------------------------------------------------------------
+def ensure_config(config: Config) -> bool:
+    """Turn off 'start minimized' so the login window shows. Returns True if changed."""
+    cfg = _wine_user_dir(config, "AppData", "Roaming", "Battle.net", "Battle.net.config")
+    if cfg is None:
+        return False
+    text = cfg.read_text(encoding="utf-8", errors="ignore")
+    if '"MinimizedOnStartup": "true"' not in text:
+        return False
+    cfg.write_text(
+        text.replace('"MinimizedOnStartup": "true"', '"MinimizedOnStartup": "false"'),
+        encoding="utf-8",
+    )
+    return True
+
+
+# --- log helpers ---------------------------------------------------------
+def _write_header(path: Path, config: Config, proton: Path) -> None:
+    host = distro.detect()
+    prefix_new = "yes" if not config.prefix.is_dir() else "no"
+    lines = [
+        "=" * 60,
+        " frostfireinstaller - INSTALLATION LOG",
+        "=" * 60,
+        f"date            : {datetime.now().isoformat(timespec='seconds')}",
+        f"host            : {platform.node()}",
+        f"kernel          : {platform.release()}",
+        f"distro          : {host.distro}",
+        f"atomic          : {'yes' if host.atomic else 'no'}",
+        f"session         : {host.session}",
+        f"desktop         : {host.desktop}",
+        f"gpu             : {host.gpu or '-'}",
+        "",
+        "--- Configuration ---",
+        f"prefix          : {config.prefix}",
+        f"prefix_new      : {prefix_new}",
+        f"gameid          : {config.gameid}",
+        f"proton          : {proton}",
+        f"installer       : {config.installer}",
+        f"installer_url   : {config.installer_url}",
+        "env             : WINE_SIMULATE_WRITECOPY=1",
+        "                  WINEDLLOVERRIDES=locationapi=d",
+    ]
+    if config.installer.is_file():
+        lines.append(f"installer_size  : {config.installer.stat().st_size} bytes")
+        lines.append(f"installer_sha256: {sha256(config.installer)}")
+    lines += ["", "--- Installer output (umu / Proton / Wine) ---"]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _append_client_log(out: object, config: Config) -> None:
+    path = latest_client_log(config)
+    out.write("\n--- Battle.net client log (last 150 lines) ---\n")  # type: ignore[attr-defined]
+    if path:
+        out.write(f"# {path}\n")  # type: ignore[attr-defined]
+        tail = path.read_text(encoding="utf-8", errors="ignore").splitlines()[-150:]
+        out.write("\n".join(tail) + "\n")  # type: ignore[attr-defined]
+    else:
+        out.write("(no client log found)\n")  # type: ignore[attr-defined]
+
+
+def _append_result(path: Path, ready: bool, ok: bool) -> None:
+    with path.open("a", encoding="utf-8") as out:
+        out.write("\n--- Result ---\n")
+        out.write(f"status          : {'OK - Battle.net installed' if ok else 'FAILED'}\n")
+        out.write(f"finished        : {datetime.now().isoformat(timespec='seconds')}\n")
+
+
+# --- reinstall -----------------------------------------------------------
+GAME_DIR_NAMES: tuple[str, ...] = (
+    "World of Warcraft",
+    "Diablo II Resurrected",
+    "Diablo III",
+    "Diablo IV",
+    "Overwatch",
+    "Hearthstone",
+    "StarCraft",
+    "StarCraft II",
+    "Heroes of the Storm",
+    "Warcraft III",
+    "Call of Duty",
+)
+
+CLIENT_DIRS: tuple[str, ...] = (
+    "drive_c/Program Files (x86)/Battle.net",
+    "drive_c/ProgramData/Battle.net",
+    "drive_c/users/steamuser/AppData/Local/Battle.net",
+    "drive_c/users/steamuser/AppData/Roaming/Battle.net",
+)
+
+
+def installed_games(config: Config) -> list[Path]:
+    """Return game directories found inside the prefix."""
+    found: list[Path] = []
+    roots = (
+        config.prefix / "drive_c/Program Files (x86)",
+        config.prefix / "drive_c/Program Files",
+    )
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for name in GAME_DIR_NAMES:
+            candidate = root / name
+            if candidate.is_dir():
+                found.append(candidate)
+    return found
+
+
+def remove(
+    config: Config,
+    keep_games: bool = True,
+    remove_installer: bool = False,
+    on_progress: Progress | None = None,
+) -> None:
+    """Remove the Battle.net client.
+
+    With *keep_games* the installed games (and their data) are preserved;
+    only the client, Agent and caches are removed. Otherwise the whole
+    prefix (including games) is deleted. With *remove_installer* the cached
+    ``Battle.net-Setup.exe`` is deleted too (next start downloads it again).
+    """
+    _emit(on_progress, "Removing Battle.net ...")
+    health.kill_all()
+    if keep_games:
+        kept = installed_games(config)
+        log.info("Keeping %d game installation(s)", len(kept))
+        for rel in CLIENT_DIRS:
+            shutil.rmtree(config.prefix / rel, ignore_errors=True)
+    else:
+        log.info("Removing the whole prefix (including games)")
+        shutil.rmtree(config.prefix, ignore_errors=True)
+    if remove_installer:
+        config.installer.unlink(missing_ok=True)
+        config.installer.with_suffix(".exe.part").unlink(missing_ok=True)
+        log.info("Removed the installer: %s", config.installer)
+
+
+def reinstall(
+    config: Config,
+    proton: Path,
+    keep_games: bool = True,
+    remove_installer: bool = False,
+    on_progress: Progress | None = None,
+) -> Path:
+    """Reinstall Battle.net, optionally keeping installed games.
+
+    Returns the installation log path.
+    """
+    remove(config, keep_games, remove_installer, on_progress=on_progress)
+    return install(config, proton, on_progress=on_progress)

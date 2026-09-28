@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Frostfire Installer
+Comment=Battle.net installer helper (umu + Proton)
+Exec=frostfireinstaller-gui
+Icon=io.github.epatnor.frostfireinstaller
+Terminal=false
+Type=Application
+Categories=Game;
+Keywords=blizzard;battlenet;wow;world of warcraft;
+StartupNotify=true

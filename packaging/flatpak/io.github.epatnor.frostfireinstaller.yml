@@ -1,0 +1,89 @@
+# Flatpak manifest.
+#
+# Design (see docs/flatpak.md): like io.github.Faugus.faugus-launcher, umu-launcher
+# runs INSIDE the sandbox — there is no `flatpak-spawn --host` escape.
+#   - base org.winehq.Wine provides a Wine/Proton-compatible environment and the
+#     32-bit libraries Battle.net needs;
+#   - umu-launcher (the official zipapp) is bundled as /app/bin/umu-run;
+#   - --allow=per-app-dev-shm lets pressure-vessel run nested;
+#   - --filesystem=home exposes the prefix and Steam's compatibilitytools.d.
+# umu fetches Proton and the Steam Linux Runtime on first use, into the app data.
+#
+# Build:
+#   flatpak-builder --user --install --force-clean build-dir \
+#     packaging/flatpak/io.github.epatnor.frostfireinstaller.yml
+#
+# NOTE: this manifest has not been built end-to-end yet; treat it as experimental.
+
+app-id: io.github.epatnor.frostfireinstaller
+runtime: org.gnome.Platform
+runtime-version: "50"
+sdk: org.gnome.Sdk
+command: frostfireinstaller-gui
+base: org.winehq.Wine
+base-version: stable-25.08
+
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=wayland
+  - --socket=x11
+  - --socket=pulseaudio
+  - --filesystem=xdg-run/pipewire-0
+  - --device=all
+  - --allow=multiarch
+  - --allow=per-app-dev-shm        # pressure-vessel (umu's container)
+  - --filesystem=home              # prefix + Steam compatibilitytools.d
+
+inherit-extensions:
+  - org.freedesktop.Platform.GL32
+  - org.freedesktop.Platform.Compat.i386
+
+modules:
+  - name: bundle-setup
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/lib/i386-linux-gnu
+      - mkdir -p /app/lib/debug/lib/i386-linux-gnu
+      - mkdir -p /app/lib/i386-linux-gnu/GL
+      - install -Dm644 ld.so.conf /app/etc/ld.so.conf
+    sources:
+      - type: inline
+        dest-filename: ld.so.conf
+        contents: |
+          /app/lib32
+          /app/lib/i386-linux-gnu
+
+  - name: umu-launcher
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 umu/umu-run /app/bin/umu-run
+    sources:
+      - type: archive
+        url: https://github.com/Open-Wine-Components/umu-launcher/releases/download/1.4.4/umu-launcher-1.4.4-zipapp.tar
+        sha256: eb590691841f7fad3fc3ad8fd5db4ccb87849fe7948e62b28ece7a4ee48cc851
+
+  - name: frostfireinstaller
+    buildsystem: simple
+    build-commands:
+      # Install the released wheel (no build backend needed, works offline).
+      - pip3 install --prefix=/app --no-index --no-deps frostfireinstaller-0.1.0-py3-none-any.whl
+      - install -Dm644 io.github.epatnor.frostfireinstaller.desktop /app/share/applications/io.github.epatnor.frostfireinstaller.desktop
+      - install -Dm644 /app/lib/python3*/site-packages/frostfireinstaller/data/icons/frostfireinstaller.png /app/share/icons/hicolor/512x512/apps/io.github.epatnor.frostfireinstaller.png
+    sources:
+      - type: file
+        url: https://github.com/epatnor/frostfireinstaller/releases/download/v0.1.0/frostfireinstaller-0.1.0-py3-none-any.whl
+        sha256: 218b925120ce1568b2c48433df1dd23cfde550e57c32ecc1887e173c2eed8435
+      - type: inline
+        dest-filename: io.github.epatnor.frostfireinstaller.desktop
+        contents: |
+          [Desktop Entry]
+          Name=Frostfire Installer
+          Comment=Battle.net installer helper (umu + Proton)
+          Exec=frostfireinstaller-gui
+          Icon=io.github.epatnor.frostfireinstaller
+          Terminal=false
+          Type=Application
+          Categories=Game;
+          Keywords=blizzard;battlenet;wow;world of warcraft;
+          StartupNotify=true
