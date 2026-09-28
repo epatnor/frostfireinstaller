@@ -13,6 +13,9 @@ from pathlib import Path
 from typing import IO, Any
 
 from ..config import Config
+from ..logsetup import get_logger
+
+log = get_logger()
 
 # Environment required for a reliable Battle.net CEF UI (see docs/architecture.md).
 BASE_ENV: dict[str, str] = {
@@ -22,13 +25,22 @@ BASE_ENV: dict[str, str] = {
 
 # Battle.net starts the game and is then usually closed, so the launcher process
 # exits long before the play session does. The idle lock therefore rides on the
-# wineserver: wait up to two minutes for it to appear, then hold until it is
-# gone. If it never appears the sidecar exits on its own rather than leaking a
+# wineserver: wait up to two minutes for one to appear, then hold until it is
+# gone. If none ever appears the sidecar exits on its own rather than leaking a
 # lock that would keep the machine awake indefinitely.
+#
+# The exit needs a grace period. Relaunching Battle.net leaves the previous
+# session's wineserver dying while the new one starts, and a sidecar that quit
+# on the first miss would take that gap for the end of the session and release
+# the lock seconds after being started. Only give up after several consecutive
+# misses.
 _HAS_WINESERVER = 'pgrep -x -u "$(id -u)" wineserver >/dev/null 2>&1'
+_GRACE_CHECKS = 3
 _INHIBIT_SCRIPT = (
     f"for _ in $(seq 60); do {_HAS_WINESERVER} && break; sleep 2; done; "
-    f"while {_HAS_WINESERVER}; do sleep 10; done"
+    f"miss=0; while [ \"$miss\" -lt {_GRACE_CHECKS} ]; do "
+    f"if {_HAS_WINESERVER}; then miss=0; else miss=$((miss+1)); fi; "
+    f"sleep 10; done"
 )
 
 
@@ -128,14 +140,23 @@ def _spawn_inhibitor() -> None:
     """Start the idle-lock sidecar, detached. Best effort - never fatal."""
     cmd = inhibit_command()
     if cmd is None:
+        log.warning(
+            "inhibit_idle is on but neither systemd-inhibit nor kde-inhibit was "
+            "found; the screen may blank mid-game"
+        )
         return
-    subprocess.Popen(  # noqa: S603
-        cmd,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
+    try:
+        proc = subprocess.Popen(  # noqa: S603
+            cmd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except OSError:
+        log.exception("could not start the idle inhibitor")
+        return
+    log.info("idle inhibitor started (pid %s)", proc.pid)
 
 
 def run_blocking(

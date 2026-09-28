@@ -6,6 +6,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
 ## [Unreleased]
 
 ### Fixed
+- **Gamescope switch now warns about NVIDIA on Wayland.** It described itself as
+  "can help on Wayland" with no caveat. Nesting gamescope inside a Wayland
+  session on the proprietary NVIDIA driver can collapse presentation against the
+  outer compositor and strobe the entire display - a photosensitivity hazard,
+  reported from a real session on an RTX 4070. When NVIDIA and Wayland are both
+  detected the row says so in its subtitle and the help text spells out the risk
+  and the way out (Alt+F4, `pkill -f gamescope`). *Force fullscreen* notes that
+  it makes the flicker worse.
+- **The idle-lock sidecar no longer quits seconds after starting.** It treated
+  the first missing wineserver as the end of the session, but relaunching
+  Battle.net leaves the old wineserver dying as the new one starts - so the lock
+  was released into that gap every time. It now gives up only after three
+  consecutive misses, and logs when it starts, when no inhibit tool is found and
+  when it fails to spawn, instead of failing silently.
 - **`inhibit_idle` no longer releases the lock mid-session.** It wrapped
   `umu-run`, so the lock died with the launcher - and Battle.net is normally
   closed once the game is up, leaving the rest of the play session unprotected.

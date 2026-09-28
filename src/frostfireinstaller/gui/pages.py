@@ -545,16 +545,32 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "percent smoother FPS. Requires the gamemode package.",
         )
     )
+    risky = _gamescope_is_risky()
     performance.add(
         _switch(
             config,
             "Gamescope",
-            "Nested compositor (can help on Wayland)",
+            "Nested compositor - flickers badly on NVIDIA + Wayland"
+            if risky
+            else "Nested compositor (can help on Wayland)",
             "gamescope",
             "gamescope",
             "Runs Battle.net and the games in a nested compositor. Can scale "
             "resolution, apply FSR upscaling and cap FPS, and fix Wayland window "
-            "issues. Leave it off if everything works.",
+            "issues. Leave it off if everything works.\n\n"
+            + (
+                "WARNING - this machine is NVIDIA on Wayland. Nesting gamescope "
+                "inside a Wayland session on the proprietary NVIDIA driver is a "
+                "known-bad combination: presentation between gamescope and the "
+                "outer compositor can collapse and make the whole screen strobe. "
+                "If you are sensitive to flashing light, do not enable this. "
+                "Should it happen, close the game with Alt+F4 and run "
+                "'pkill -f gamescope'."
+                if risky
+                else "On some setups - notably NVIDIA on Wayland - nesting a "
+                "compositor can make the screen flicker or strobe. Test it with "
+                "the launcher before trusting it with a game in fullscreen."
+            ),
         )
     )
     performance.add(
@@ -567,7 +583,9 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
             "Passes --force-windows-fullscreen to gamescope so the game window is "
             "always the nested display size. Helps it survive the screen blanking "
             "or the compositor resizing the gamescope window after a monitor "
-            "sleep. Only applies when Gamescope is on.",
+            "sleep. Only applies when Gamescope is on - and it makes the NVIDIA "
+            "on Wayland flicker described there worse, because it forces "
+            "fullscreen presentation every frame.",
         )
     )
     performance.add(
@@ -929,6 +947,19 @@ def _help_button(text: str) -> Gtk.Widget:
     button.set_valign(Gtk.Align.CENTER)
     button.set_popover(popover)
     return button
+
+
+def _gamescope_is_risky() -> bool:
+    """True when nesting gamescope here is known to risk a strobing screen.
+
+    NVIDIA's proprietary driver on a Wayland session is the combination that
+    bites: presentation between gamescope and the outer compositor can collapse
+    and flash the whole display. That is a photosensitivity hazard, not a
+    cosmetic glitch, so it is called out on the switch itself rather than left
+    for the user to discover.
+    """
+    version, _is_open = recommend.nvidia_driver_info()
+    return version is not None and distro.detect().session == "Wayland"
 
 
 def _switch(

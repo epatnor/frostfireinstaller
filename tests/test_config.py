@@ -148,6 +148,10 @@ def test_inhibit_command_outlives_the_launcher(monkeypatch: pytest.MonkeyPatch) 
     # around forever if no Wine session ever starts.
     assert "wineserver" in cmd[-1]
     assert "seq 60" in cmd[-1]
+    # Relaunching leaves the old wineserver dying as the new one starts, so a
+    # single miss must not be read as the end of the session.
+    assert "miss=0" in cmd[-1]
+    assert f'-lt {umu._GRACE_CHECKS}' in cmd[-1]
 
 
 def test_inhibit_command_without_tools(monkeypatch: pytest.MonkeyPatch) -> None:
