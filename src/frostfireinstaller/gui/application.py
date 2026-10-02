@@ -265,6 +265,10 @@ button.bn-footer .material-icon {{
 .bn-panel row:hover {{
     background-color: rgba(120, 200, 255, 0.035);
 }}
+.row-value {{
+    color: rgba(234, 249, 255, 0.62);
+    font-size: 0.9em;
+}}
 row.row-inactive .title {{
     color: rgba(234, 249, 255, 0.40);
 }}

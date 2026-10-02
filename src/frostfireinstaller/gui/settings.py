@@ -18,7 +18,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, Gtk  # noqa: E402
+from gi.repository import Adw, Gdk, Gtk, Pango  # noqa: E402
 
 from ..config import Config  # noqa: E402
 from ..core import distro, gpu, proton, recommend, sysinfo  # noqa: E402
@@ -155,7 +155,11 @@ class SettingsWindow(Adw.Window):
         content.append(self._build_content(Config.load()))
 
         self.toasts = Adw.ToastOverlay()
-        self.toasts.set_child(toolbar_page("Frostfire Installer Settings", content)[0])
+        about = Gtk.Button(
+            icon_name="help-about-symbolic", tooltip_text="About Frostfire Installer"
+        )
+        about.connect("clicked", lambda *_: dialogs.show_about(self))
+        self.toasts.set_child(toolbar_page("Frostfire Installer Settings", content, end=about)[0])
         self.set_content(self.toasts)
         self._fit_height()
         self.connect("close-request", self._on_close)
@@ -281,9 +285,9 @@ class SettingsWindow(Adw.Window):
             return row
 
         pairs = (
-            (self._battlenet_card(action_row), self._graphics_card(config)),
-            (self._performance_card(config), self._paths_card(config, buttons)),
-            (self._runner_card(config), self._more_card(action_row)),
+            (self._battlenet_card(action_row), self._runner_graphics_card(config)),
+            (self._performance_card(config), self._system_card()),
+            (self._paths_card(config, buttons), self._diagnostics_card(config, buttons)),
         )
 
         # A grid built from rows of two: cards side by side share a height (the
@@ -407,8 +411,9 @@ class SettingsWindow(Adw.Window):
         )
         return card
 
-    def _runner_card(self, config: Config) -> Section:
-        card = Section("Runner", "Which Proton build the games use.")
+    def _runner_graphics_card(self, config: Config) -> Section:
+        """What the games run on: the Proton build and the GPU."""
+        card = Section("Runner & graphics", "Which Proton build and GPU the games use.")
         builds = proton.all_builds()
         if builds:
             candidates = list(builds)
@@ -418,7 +423,7 @@ class SettingsWindow(Adw.Window):
             candidates = []
 
         if candidates:
-            row = Adw.ActionRow(title="Proton runner")
+            runner_row = Adw.ActionRow(title="Proton runner")
             dropdown = Gtk.DropDown(model=Gtk.StringList.new([c.name for c in candidates]))
             dropdown.set_valign(Gtk.Align.CENTER)
             dropdown.add_css_class("runner-dropdown")
@@ -434,24 +439,24 @@ class SettingsWindow(Adw.Window):
                 return next((i for i, c in enumerate(candidates) if c == current), 0)
 
             dropdown.set_selected(selected(ClientState(config, False, False)))
-            handler = dropdown.connect("notify::selected", on_runner)
+            runner_handler = dropdown.connect("notify::selected", on_runner)
 
-            def sync(state: ClientState) -> None:
+            def sync_runner(state: ClientState) -> None:
                 index = selected(state)
                 if dropdown.get_selected() != index:
-                    dropdown.handler_block(handler)
+                    dropdown.handler_block(runner_handler)
                     dropdown.set_selected(index)
-                    dropdown.handler_unblock(handler)
+                    dropdown.handler_unblock(runner_handler)
 
-            self._register(sync)
-            row.add_suffix(dropdown)
-            row.add_suffix(
+            self._register(sync_runner)
+            runner_row.add_suffix(dropdown)
+            runner_row.add_suffix(
                 help_button(
                     "Codenames (UMU-Proton, GE-Proton) are downloaded by umu-launcher "
                     "on first launch. Saved in config.toml."
                 )
             )
-            card.add(row)
+            card.add(runner_row)
         else:
             card.add(
                 Adw.ActionRow(
@@ -460,31 +465,6 @@ class SettingsWindow(Adw.Window):
                 )
             )
 
-        # Host summary: lspci/lsblk/dmidecode can take a moment, so fill it in later.
-        rows = {name: Adw.ActionRow(title=name, subtitle="...") for name in ("CPU", "Memory")}
-        rows["Disks"] = Adw.ActionRow(title="Disks", subtitle="...")
-        for row in rows.values():
-            card.add(row)
-
-        def read() -> dict[str, str]:
-            return {
-                "CPU": sysinfo.cpu(),
-                "Memory": sysinfo.memory(),
-                "Disks": " · ".join(sysinfo.disks()) or "unknown",
-            }
-
-        def fill(values: dict[str, str]) -> None:
-            for name, value in values.items():
-                rows[name].set_subtitle(value)
-
-        run_async(read, fill)
-        return card
-
-    def _graphics_card(self, config: Config) -> Section:
-        card = Section(
-            "Graphics",
-            "Which GPU the games use. Only the GPUs found on this machine are listed.",
-        )
         options: list[tuple[str, str, str]] = [
             ("auto", "Auto", "Let the game choose, without forcing a GPU.")
         ]
@@ -535,7 +515,7 @@ class SettingsWindow(Adw.Window):
             row.add_suffix(help_button(help_text))
             card.add(row)
 
-        def sync(state: ClientState) -> None:
+        def sync_gpu(state: ClientState) -> None:
             wanted = preference(state.config)
             for _value, radio, handler in radios:
                 radio.handler_block(handler)
@@ -544,18 +524,41 @@ class SettingsWindow(Adw.Window):
             for _value, radio, handler in radios:
                 radio.handler_unblock(handler)
 
-        self._register(sync)
+        self._register(sync_gpu)
+        return card
 
-        gpus_row = Adw.ActionRow(title="GPU", subtitle="...")
-        card.add(gpus_row)
-        run_async(
-            lambda: " · ".join(sysinfo.gpus()) or "unknown",
-            gpus_row.set_subtitle,
-        )
+    def _system_card(self) -> Section:
+        """Detected hardware, one line per item (filled in off the GTK thread)."""
+        card = Section("System", "The hardware the games run on.")
+        values: dict[str, Gtk.Label] = {}
+        for name in ("CPU", "Memory", "GPU", "Disks"):
+            row = Adw.ActionRow(title=name)
+            value = Gtk.Label(label="...", xalign=1)
+            value.set_ellipsize(Pango.EllipsizeMode.END)
+            value.set_hexpand(True)
+            value.add_css_class("row-value")
+            row.add_suffix(value)
+            card.add(row)
+            values[name] = value
+
+        def read() -> dict[str, str]:
+            return {
+                "CPU": sysinfo.cpu(),
+                "Memory": sysinfo.memory(),
+                "GPU": " · ".join(sysinfo.gpus()) or "unknown",
+                "Disks": " · ".join(sysinfo.disks()) or "unknown",
+            }
+
+        def fill(found: dict[str, str]) -> None:
+            for name, text in found.items():
+                values[name].set_label(text)
+                values[name].set_tooltip_text(text)
+
+        run_async(read, fill)
         return card
 
     def _paths_card(self, config: Config, buttons: Gtk.SizeGroup) -> Section:
-        card = Section("Paths", "Where the installer, config and logs live.")
+        card = Section("Paths", "Where the installer and the config live.")
         installer_row = Adw.ActionRow(title="Installer")
         open_button = button("Open folder", tooltip="Open the folder where the installer is cached")
         buttons.add_widget(open_button)
@@ -568,17 +571,14 @@ class SettingsWindow(Adw.Window):
             )
         )
         card.add(kv("Config", home_relative(config.config_file)))
-
-        log_row = Adw.ActionRow(title="Logs", subtitle=home_relative(config.log_dir))
-        log_button = button("View", tooltip="Run and installation logs")
-        buttons.add_widget(log_button)
-        log_button.connect("clicked", lambda *_: dialogs.show_logs(self))
-        log_row.add_suffix(log_button)
-        card.add(log_row)
         return card
 
-    def _more_card(self, action_row: Callable[..., Adw.ActionRow]) -> Section:
-        card = Section("Diagnostics & about", "Check the system or read about the app.")
+    def _diagnostics_card(self, config: Config, buttons: Gtk.SizeGroup) -> Section:
+        card = Section("Diagnostics", "Check the system or read the logs.")
+
+        check_row = Adw.ActionRow(title="System check")
+        check_button = button("Run", tooltip="Run every check and show the report")
+        buttons.add_widget(check_button)
 
         def run_check(widget: Gtk.Button) -> None:
             widget.set_sensitive(False)
@@ -593,15 +593,16 @@ class SettingsWindow(Adw.Window):
 
             run_async(lambda: recommend.report(Config.load()), done, error)
 
-        card.add(action_row("System check", "Run", run_check))
-        card.add(
-            action_row(
-                "Frostfire Installer",
-                "About",
-                lambda _b: dialogs.show_about(self),
-                glyph=MATERIAL["info"],
-            )
-        )
+        check_button.connect("clicked", run_check)
+        check_row.add_suffix(check_button)
+        card.add(check_row)
+
+        log_row = Adw.ActionRow(title="Logs", subtitle=home_relative(config.log_dir))
+        log_button = button("View", tooltip="Run and installation logs")
+        buttons.add_widget(log_button)
+        log_button.connect("clicked", lambda *_: dialogs.show_logs(self))
+        log_row.add_suffix(log_button)
+        card.add(log_row)
         return card
 
 
