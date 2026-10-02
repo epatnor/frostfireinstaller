@@ -36,6 +36,9 @@ non-Steam path and performs best.
 3. **Install** (first time): run the installer, wait for readiness, auto-close the
    first run. Ready = the client log (`drive_c/users/*/AppData/Local/Battle.net/Logs/battle.net-*.log`)
    contains `*** LOAD COMPLETE ***` or resolves the login URL (`login.app?app=app`).
+   The GUI's start animation follows the *new* log of each launch more strictly:
+   *Starting* until it appears, *Loading* until it logs `Attempting to show main
+   window` (~10 s after the process starts), then *Running*.
 4. **Launch** and **health-check**: wait for a UI window (`xwininfo`; on pure
    Wayland there is no X tree, so the check reports "fine"); on failure kill
    (SIGTERM, then SIGKILL), clear `Cache`/`CEF`, relaunch.
