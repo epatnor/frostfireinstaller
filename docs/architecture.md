@@ -52,8 +52,8 @@ is one column, **608 px wide and not resizable**:
    first, so a missing client reads *Install*, otherwise *Start*/*Stop*.
 5. **Activity strip** — spinner + the operation in progress.
 6. **Warning strip** — only when `core/recommend.py` finds a problem; opens a
-   dialog with copy-ready commands and one reversible toggle
-   (`nvidia-persistenced`, Polkit-prompted). The full report is under
+   dialog with copy-ready commands (the app never changes the system itself).
+   The full report is under
    *Settings → Diagnostics → System check* and in `doctor`.
 7. **Settings footer** — opens a separate, resizable window of equal-height cards
    (Battle.net, Performance, Runner, Graphics, Paths, Diagnostics & about) in a
@@ -62,8 +62,16 @@ is one column, **608 px wide and not resizable**:
 
 While Battle.net runs, the header subtitle, a taskbar badge (Unity Launcher API)
 and a tray icon (StatusNotifierItem, spoken over D-Bus directly because GTK4
-cannot load the GTK3 indicator bindings) show it. Long-running work runs in worker
-threads and reports through the activity strip and toasts.
+cannot load the GTK3 indicator bindings) show it. Long-running work — including
+host detection and the system check at startup — runs in worker threads and
+reports through the activity strip and toasts.
+
+**State:** `gui/state.ClientState` (config, installed, running) is read once per
+refresh — after every action and whenever a window gains focus — and handed to
+every widget in both windows, so values changed in `config.toml` show up without
+a restart. Code layout: `pages.py` (main column), `settings.py`, `widgets.py`,
+`actions.py` (background actions), `dialogs.py`, `window.py` (the refresh hub),
+`tray.py`.
 
 **Look:** Battle.net-inspired structure (flat panels with 1 px borders, uppercase
 section labels, gradient buttons, bundled Open Sans), our own frost/fire palette —
@@ -90,8 +98,8 @@ Battle.net and its games share one Wine session, so these follow into the games.
 Toggles whose tool is missing are disabled.
 
 > **Gamescope is not a safe default.** On NVIDIA + Wayland, nesting it can strobe
-> the whole display (photosensitivity hazard, observed on the reference machine).
-> `_gamescope_is_risky()` detects the combination and the switch warns in place.
+> the whole display (photosensitivity hazard, observed with an RTX 4070 on KDE Wayland).
+> `settings.gamescope_is_risky()` detects the combination and the switch warns in place.
 > See [troubleshooting](troubleshooting.md).
 
 **The idle lock is a sidecar, not a wrapper.** A wrapper's lock dies with the

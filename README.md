@@ -11,7 +11,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 
-**Status:** early, but used daily on the reference machine. Scope and support:
+**Status:** early, but used daily by the maintainer. Scope and support:
 [`docs/support.md`](docs/support.md).
 
 ## Focus

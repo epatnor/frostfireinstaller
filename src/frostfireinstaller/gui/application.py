@@ -48,7 +48,7 @@ headerbar {{
 .info-strip {{
     background-color: #00030a;
     color: #eaf9ff;
-    padding: 8px 14px;
+    padding: 8px 16px;
     font-size: 0.8em;
 }}
 .info-key {{
@@ -59,7 +59,7 @@ headerbar {{
 .config-strip {{
     background-color: #051320;
     color: #eaf9ff;
-    padding: 8px 18px;
+    padding: 8px 16px;
     border-top: 1px solid rgba(120, 200, 255, 0.10);
     border-bottom: 1px solid rgba(120, 200, 255, 0.10);
     font-size: 0.86em;
@@ -70,7 +70,7 @@ headerbar {{
 
 .run-bar {{
     background-color: #061520;
-    padding: 14px 18px;
+    padding: 14px 16px;
     border-bottom: 1px solid rgba(120, 200, 255, 0.10);
 }}
 .run-bar .heading {{
@@ -100,7 +100,7 @@ headerbar {{
 .activity-bar {{
     background-color: #07141f;
     color: #cfe9f7;
-    padding: 8px 18px;
+    padding: 8px 16px;
     border-bottom: 1px solid rgba(120, 200, 255, 0.10);
     font-size: 0.9em;
 }}
@@ -111,13 +111,9 @@ headerbar {{
 .recommend-bar {{
     background-color: rgba(255, 122, 47, 0.14);
     color: #ffd9b3;
-    padding: 8px 14px;
+    padding: 8px 16px;
     border-bottom: 1px solid rgba(120, 200, 255, 0.10);
     font-size: 0.86em;
-}}
-.recommend-bar.info {{
-    background-color: rgba(116, 216, 255, 0.10);
-    color: #cfe9f7;
 }}
 
 button.bn-footer {{
@@ -127,8 +123,8 @@ button.bn-footer {{
     border-bottom: 1px solid rgba(120, 200, 255, 0.10);
     border-radius: 0;
     box-shadow: none;
-    padding: 0 18px;
-    min-height: 44px;
+    padding: 0 16px;
+    min-height: 40px;
     color: #9fc6dd;
     font-weight: 600;
     font-size: 0.9em;
@@ -150,13 +146,6 @@ button.bn-footer .material-icon {{
 }}
 .bn-section {{
     margin-bottom: 14px;
-}}
-.section-title {{
-    font-size: 0.74em;
-    font-weight: 700;
-    letter-spacing: 0.11em;
-    color: #7fb6d9;
-    margin: 0 2px 8px 2px;
 }}
 .bn-panel .card-head {{
     padding: 7px 14px 6px 14px;
@@ -186,9 +175,14 @@ button.bn-footer .material-icon {{
     border-radius: 4px;
 }}
 .bn-panel row {{
-    padding: 3px 14px;
-    min-height: 34px;
+    padding: 0 14px;
+    min-height: 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+}}
+.bn-panel row > box.header {{
+    min-height: 38px;
+    margin: 0;
+    padding: 2px 0;
 }}
 .bn-panel row:last-child {{
     border-bottom: none;
@@ -205,8 +199,7 @@ row.row-inactive .subtitle {{
 
 button.bn-btn,
 button.bn-btn-primary,
-button.bn-btn-danger,
-button.bn-btn-flat {{
+button.bn-btn-danger {{
     border-radius: 3px;
     min-height: 26px;
     padding: 0 12px;
@@ -246,20 +239,21 @@ menubutton.help-button.help-warn > button:hover {{
     color: #ffd9b3;
 }}
 .runner-dropdown {{
-    border: 1px solid rgba(120, 200, 255, 0.35);
-    border-radius: 4px;
+    border: 1px solid rgba(120, 200, 255, 0.22);
+    border-radius: 3px;
     background-color: rgba(120, 200, 255, 0.05);
-    min-height: 22px;
-    margin-right: 6px;
+    min-height: 26px;
 }}
 .runner-dropdown button {{
     border: none;
     background: none;
     background-image: none;
     box-shadow: none;
-    min-height: 22px;
-    padding: 0 4px 0 8px;
-    color: #dcefff;
+    min-height: 26px;
+    padding: 0 4px 0 10px;
+    color: #d9edfa;
+    font-weight: 400;
+    font-size: 0.9em;
 }}
 button.bn-btn {{
     background-image: linear-gradient(to bottom, #16232f, #0d1720);
@@ -286,24 +280,12 @@ button.bn-btn-primary:active {{
     background-image: linear-gradient(to bottom, #0a5fb8, #1c86e6);
 }}
 button.bn-btn-danger {{
-    background-image: linear-gradient(to bottom, #ff8f45, #d9591a);
+    background-image: linear-gradient(to bottom, #cf5418, #a8400e);
     color: #ffffff;
-    border: 1px solid #b3450f;
+    border: 1px solid #ff8f45;
 }}
 button.bn-btn-danger:hover {{
-    background-image: linear-gradient(to bottom, #ffa15f, #e5641f);
-}}
-button.bn-btn-flat {{
-    background: none;
-    background-image: none;
-    border: none;
-    color: #9fc6dd;
-    padding: 0 8px;
-}}
-button.bn-btn-flat:hover {{
-    background-color: rgba(120, 200, 255, 0.08);
-    background-image: none;
-    color: #eaf9ff;
+    background-image: linear-gradient(to bottom, #dd5f20, #b8460f);
 }}
 
 .material-icon {{

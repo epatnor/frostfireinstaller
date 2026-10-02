@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 from .config import Config
-from .core import battlenet, proton, recommend, umu
+from .core import battlenet, gpu, proton, umu
 from .core.progress import Progress, emit
 from .logsetup import get_logger
 from .resources import data_file
@@ -90,23 +90,11 @@ def ensure_shortcut(config: Config) -> Path:
     return desktop
 
 
-def set_persistenced(enable: bool) -> None:
-    """Toggle ``nvidia-persistenced`` (reversible GPU mitigation).
-
-    Run as the user: systemd asks Polkit/the desktop for authorisation. Raises
-    ``subprocess.CalledProcessError`` if the user declines or it fails.
-    """
-    action = "enable" if enable else "disable"
-    subprocess.run(["systemctl", action, "--now", "nvidia-persistenced"], check=True)
-
-
 def set_gpu_preference(preference: str) -> None:
     """Set which GPU the games use: ``auto``, ``nvidia`` or ``integrated``.
 
-    Writes/removes ``DXVK_FILTER_DEVICE_NAME`` in config.toml. On a hybrid laptop
-    whose panel hangs off the integrated GPU, the "integrated" option renders on
-    the same GPU as the screen and avoids the cross-GPU (PRIME) copy that can hang
-    the NVIDIA driver. Fully reversible, no privileges.
+    Writes/removes ``DXVK_FILTER_DEVICE_NAME`` in config.toml (the whole Wine
+    session follows it). Fully reversible, no privileges.
     """
     if preference not in {"auto", "nvidia", "integrated"}:
         raise ValueError(f"unknown GPU preference: {preference!r}")
@@ -116,7 +104,7 @@ def set_gpu_preference(preference: str) -> None:
     elif preference == "nvidia":
         config.env["DXVK_FILTER_DEVICE_NAME"] = "NVIDIA"
     else:
-        integrated = recommend.integrated_gpu_name()
+        integrated = gpu.integrated_gpu_name()
         if not integrated:
             raise ValueError("no integrated GPU detected")
         config.env["DXVK_FILTER_DEVICE_NAME"] = integrated

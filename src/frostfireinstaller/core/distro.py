@@ -7,7 +7,7 @@ import platform
 import shutil
 from dataclasses import dataclass
 
-from .proc import capture
+from . import gpu
 
 
 @dataclass(slots=True)
@@ -31,39 +31,14 @@ def _os_release() -> str:
     return platform.platform()
 
 
-def _nvidia() -> str | None:
-    if not shutil.which("nvidia-smi"):
-        return None
-    out = capture(["nvidia-smi", "--query-gpu=name,driver_version", "--format=csv,noheader"], 10)
-    lines = (out or "").strip().splitlines()
-    if not lines:
-        return None
-    name, _, driver = lines[0].partition(",")
-    clean = name.strip().removeprefix("NVIDIA ").removesuffix(" Laptop GPU")
-    return f"{clean} ({driver.strip()})" if driver.strip() else clean
-
-
-def _pci() -> str | None:
-    if not shutil.which("lspci"):
-        return None
-    out = capture(["lspci"], 10)
-    if out is None:
-        return None
-    markers = ("VGA compatible controller", "3D controller", "Display controller")
-    for line in out.splitlines():
-        if any(marker in line for marker in markers):
-            name = line.split(": ", 1)[-1]
-            for prefix in ("Advanced Micro Devices, Inc. [AMD/ATI] ", "Intel Corporation "):
-                name = name.removeprefix(prefix)
-            return name
-    return None
-
-
 def _gpu() -> str | None:
-    return _nvidia() or _pci()
+    if summary := gpu.nvidia_summary():
+        return summary
+    names = gpu.pci_gpus()
+    return names[0] if names else None
 
 
-def _session() -> str:
+def session() -> str:
     raw = os.environ.get("XDG_SESSION_TYPE", "unknown")
     return {"wayland": "Wayland", "x11": "X11", "tty": "TTY"}.get(raw.lower(), raw)
 
@@ -72,7 +47,7 @@ def detect() -> HostInfo:
     return HostInfo(
         distro=_os_release(),
         atomic=shutil.which("rpm-ostree") is not None,
-        session=_session(),
+        session=session(),
         desktop=os.environ.get("XDG_CURRENT_DESKTOP", "unknown"),
         kernel=platform.release(),
         gpu=_gpu(),

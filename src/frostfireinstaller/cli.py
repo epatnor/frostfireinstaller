@@ -58,7 +58,7 @@ def cmd_reinstall(args: argparse.Namespace) -> int:
     log_path = battlenet.reinstall(
         config, build, keep_games=not args.purge, remove_installer=args.purge_installer
     )
-    log.info("Installationslogg: %s", log_path)
+    log.info("Install log: %s", log_path)
     return 0
 
 

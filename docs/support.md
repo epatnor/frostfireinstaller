@@ -19,8 +19,8 @@ kernel-level anti-cheat such as Call of Duty's Ricochet, GPU driver bugs (NVIDIA
 `Xid`), distribution packaging of Wine/Proton, and Blizzard account/server issues.
 Known cases are in [troubleshooting](troubleshooting.md).
 
-**Safety:** no large or irreversible system changes on its own (the one system
-action, `nvidia-persistenced`, is opt-in, reversible and password-prompted); no
+**Safety:** the app changes nothing on your system outside its own prefix, config
+and desktop entry — system fixes are offered as copy-ready commands; no
 telemetry, secrets or accounts; subprocesses take argument lists, never a shell; the
 prefix is a normal directory you can inspect, move or delete.
 
