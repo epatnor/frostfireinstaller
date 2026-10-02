@@ -82,20 +82,6 @@ def test_env_section_is_read_and_applied(sandbox: Config) -> None:
     assert "DXVK_FILTER_DEVICE_NAME" in sandbox.config_file.read_text(encoding="utf-8")
 
 
-def test_set_persistenced_command(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: dict[str, object] = {}
-
-    def fake_run(cmd: list[str], check: bool = False) -> None:
-        calls["cmd"] = cmd
-        calls["check"] = check
-
-    monkeypatch.setattr(service.subprocess, "run", fake_run)
-    service.set_persistenced(True)
-    assert calls["cmd"] == ["systemctl", "enable", "--now", "nvidia-persistenced"]
-    service.set_persistenced(False)
-    assert calls["cmd"] == ["systemctl", "disable", "--now", "nvidia-persistenced"]
-
-
 def test_set_gpu_preference_roundtrips(sandbox: Config, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("frostfireinstaller.core.gpu.integrated_gpu_name", lambda: "AMD")
     service.set_gpu_preference("nvidia")

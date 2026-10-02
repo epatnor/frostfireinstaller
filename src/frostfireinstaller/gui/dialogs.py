@@ -8,11 +8,10 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, GLib, Gtk  # noqa: E402
 
-from .. import __version__, service  # noqa: E402
+from .. import __version__  # noqa: E402
 from ..config import Config  # noqa: E402
-from ..core import gpu, recommend  # noqa: E402
-from .helpers import run_async  # noqa: E402
-from .widgets import MATERIAL, button, command_row, icon  # noqa: E402
+from ..core import recommend  # noqa: E402
+from .widgets import MATERIAL, command_row, icon  # noqa: E402
 
 
 def _dialog(title: str, content: Gtk.Widget, width: int, height: int) -> Adw.Dialog:
@@ -64,43 +63,6 @@ def show_logs(parent: Gtk.Widget) -> None:
     _dialog("Logs", box, 820, 600).present(parent)
 
 
-def _persistenced_control() -> Gtk.Widget:
-    """Reversible in-app mitigation: keep the GPU initialised (nvidia-persistenced)."""
-    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-    active = gpu.persistenced_state() == "active"
-    toggle = button(
-        "Disable GPU persistence" if active else "Enable GPU persistence",
-        primary=not active,
-    )
-    note = Gtk.Label(
-        label="Reversible - run again to turn it off. Requires your password confirmation.",
-        xalign=0,
-    )
-    note.set_wrap(True)
-    note.add_css_class("section-desc")
-
-    def on_click(*_args: object) -> None:
-        enable = gpu.persistenced_state() != "active"
-        toggle.set_sensitive(False)
-        note.set_label("Waiting for authorisation ...")
-
-        def done(_result: object) -> None:
-            toggle.set_sensitive(True)
-            toggle.set_label("Disable GPU persistence" if enable else "Enable GPU persistence")
-            note.set_label("Done - restart the game and test." if enable else "Turned off.")
-
-        def error(exc: Exception) -> None:
-            toggle.set_sensitive(True)
-            note.set_label(f"Failed: {exc}")
-
-        run_async(lambda: service.set_persistenced(enable), done, error)
-
-    toggle.connect("clicked", on_click)
-    box.append(toggle)
-    box.append(note)
-    return box
-
-
 _LEVEL_ICONS = {
     "warn": (MATERIAL["info"], "fire"),
     "info": (MATERIAL["info"], "ice"),
@@ -131,8 +93,6 @@ def show_recommendations(parent: Gtk.Widget, items: list[recommend.Recommendatio
 
         for command in item.commands:
             card.append(command_row(command))
-        if item.action_id == "persistenced":
-            card.append(_persistenced_control())
         box.append(card)
 
     scroller = Gtk.ScrolledWindow(vexpand=True)

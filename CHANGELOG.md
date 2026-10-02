@@ -23,6 +23,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   *Force fullscreen* and *Keep awake while playing* (previously `config.toml` only).
 - README header image and screenshots; `docs/support.md`, `docs/ai-disclosure.md`,
   `CODE_OF_CONDUCT.md`.
+- **Render-scale check:** warns when a WoW `Config.wtf` stores `RenderScale` above
+  100 % (a 138 % value left by a monitor sleep made the game render ~1.9x the
+  pixels).
 
 ### Changed
 - **Graphics** lists *Dedicated* only when an NVIDIA GPU is present and *Integrated*
@@ -34,6 +37,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   desktop entry/icon is cleaned up on setup.
 - Docs consolidated: `design.md` merged into `architecture.md`, `flatpak.md` into
   `install.md`, and the WoW error history condensed into `troubleshooting.md`.
+
+- **GUI internals:** `pages.py` split into `widgets`, `actions`, `dialogs` and
+  `state`; GPU/Vulkan detection moved from `recommend.py` to `core/gpu.py`.
+- **System check reflects what WoW: Forever taught us.** The beta's lag and GPU
+  hangs turned out to be client bugs (fixed by build 1.60.1.70170), not Linux or
+  Proton. The hybrid-GPU check no longer blames the cross-GPU path, the NVIDIA check
+  no longer pushes a driver switch or sysfs/ASPM tweaks, and the `maxFPSBK` tip is
+  gone.
 
 ### Fixed
 - **Startup no longer blocks on the system check.** Host detection and the
@@ -53,10 +64,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   and exiting only after three consecutive misses. `--what=idle:sleep` plus
   `kde-inhibit --power --screenSaver` cover logind and KDE PowerDevil.
 
-- **GUI internals:** `pages.py` split into `widgets`, `actions`, `dialogs` and
-  `state`; GPU/Vulkan detection moved from `recommend.py` to `core/gpu.py`.
 
 ### Removed
+- The in-app **GPU persistence** toggle (`nvidia-persistenced` via `systemctl`), the
+  app's only system change, built for a hang that was a game bug.
 - Unused game covers, the legacy ice-portal SVG, `core/profiles.py` with its JSON
   profiles (only printed by `doctor`), and `tools/genassets.py` with `.env.example`.
 

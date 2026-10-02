@@ -1,11 +1,16 @@
 # Troubleshooting
 
-`frostfireinstaller` keeps the Battle.net client healthy; problems **inside a game**
-are usually Wine/Proton/graphics issues. The app checks for you: a warning strip
-appears when a check fails, and the full report is under
+`frostfireinstaller` keeps the Battle.net client healthy. The app checks for you:
+a warning strip appears when a check fails, and the full report is under
 *Settings → Diagnostics → System check* and in `frostfireinstaller doctor`
-(umu, Proton, Vulkan, disk, prefix filesystem, hybrid GPU, NVIDIA driver and recent
-`NVRM: Xid` faults, performance tools, runner).
+(umu, Proton, Vulkan, disk, prefix filesystem, GPU driver and recent `NVRM: Xid`
+faults, WoW render scale, performance tools, runner).
+
+> **Lesson learned.** Weeks of WoW: Forever beta stutter, lag and GPU hangs on the
+> reference machine looked like Linux/Proton/driver problems. They were not: the
+> game's own patches fixed them, and the rest was a 138 % render scale left behind
+> by a monitor that slept mid-session (below). **Update the game and check its
+> settings before tuning the system.**
 
 ## Logs
 
@@ -46,8 +51,11 @@ pgrep -a -f "systemd-inhibit|kde-inhibit"
 
 Then, with WoW **closed**, fix the stored keys in `<edition>/WTF/Config.wtf`:
 `GxMonitor` (output index, unstable), `GxMaximize` (`1` follows geometry),
-`RenderScale` (should be `1.0`), `GxWindowedResolution`/`GxFullscreenResolution`.
-**Edit just these keys** — regenerating the file loses the narration keys below.
+`GxWindowedResolution`/`GxFullscreenResolution`, and **`RenderScale`** — it should
+be `1`. A bogus resolution can leave an odd value such as `1.383333`: the game then
+renders ~1.9x the pixels and scales them down, a large hidden performance cost. The
+system check flags any render scale above 100 %. **Edit just these keys** —
+regenerating the file loses the narration keys below.
 
 ## WoW: Forever
 
@@ -66,49 +74,30 @@ SET accessibilityScreenNarrationEnabled "0"
 Resetting `Config.wtf` drops them (a regenerated file once produced six asserts in
 13 s and a fatal `BC_ASSERT(result == WAIT_OBJECT_0)`). Re-add them if you regenerate.
 
-**`ERROR #109` / `Xid 109` GPU hang — fixed.** Build 1.60.1.69913 had a client bug
-(an unbounded Global Illumination compute shader, hitting AMD/Windows and macOS too —
-not the driver, Proton or your setup). **Build 69977 (2026-09-22) fixes it**, and the
-2026-09-24 build fixed a separate memory leak that caused progressive FPS/VRAM
-decline. Just update the game. On an older build: set Secondary Lighting to *Fair*,
-lower Global Illumination/Volumetric Fog, try DirectX 11, or run on the integrated
-GPU (*Settings → Graphics → Integrated*).
+**Performance and GPU hangs — fixed by Blizzard.** The beta's `ERROR #109` /
+NVIDIA `Xid 109` hang (build 1.60.1.69913, an unbounded Global Illumination
+shader that also hit AMD/Windows and macOS), its session-long memory leak and the
+general stutter were client bugs, fixed in later builds (69977, the 2026-09-24
+build and on up to **70170**). Not Linux, Proton or the driver: switching NVIDIA
+driver flavours and power-management tweaks did not help, and running on the
+integrated GPU only sidestepped the hang; the game updates fixed it. Update the
+game first.
 
 ## Game freezes — `ERROR #109 (0x8510006d)` on D3D12
 
 Symptom: window freezes, crash file shows `dxgi.dll`/`d3d12core.dll` with `GxApi D3D12`.
-The vkd3d-proton path hangs; switch to **D3D11** (DXVK): in game *System → Graphics →
-Graphics API*, or `SET GxApi "D3D11"` in `<edition>/WTF/Config.wtf`, or launch with
-`-d3d11`. The most common fix for Blizzard titles on Linux.
+If an update does not help, try **D3D11** (DXVK, the more mature path): in game
+*System → Graphics → Graphics API*, or `SET GxApi "D3D11"` in
+`<edition>/WTF/Config.wtf`, or launch with `-d3d11`.
 
-## NVIDIA `Xid ... 109` / `CTX SWITCH TIMEOUT` (other titles or old builds)
+## NVIDIA `Xid` / `NV_ERR_NO_MEMORY` in the kernel log
 
-```bash
-journalctl -k | grep -i nvrm
-```
-
-Common on hybrid laptops with NVIDIA's open modules; changing Proton or lowering
-settings usually does not help. In order:
-
-1. **GPU persistence** (reversible, in the warning dialog): `systemctl enable --now nvidia-persistenced`.
-2. **Disable runtime power management:** `sudo sh -c 'echo on > /sys/bus/pci/devices/0000:01:00.0/power/control'`;
-   persist with `options nvidia NVreg_DynamicPowerManagement=0x00` in `/etc/modprobe.d/`.
-3. **PCIe ASPM:** `sudo sh -c 'echo performance > /sys/module/pcie_aspm/parameters/policy'`;
-   persist with kernel arg `pcie_aspm.policy=performance`.
-4. **Update the driver** (`rpm-ostree upgrade` on Bazzite). Switching from open to
-   proprietary did not help in our tests.
-5. **Run on the integrated GPU** (enough for WoW): *Settings → Graphics*, or
-   `[env] DXVK_FILTER_DEVICE_NAME = "AMD Radeon"` in `config.toml` (a substring from
-   `vulkaninfo --summary`). Rendering on the GPU that drives the panel also avoids the
-   cross-GPU (PRIME) copy.
-
-## Slowdown over a session = VRAM pressure
-
-`gx.log` "Periodic Gpu Status Report" shows `Mem Budget` filling while clocks and
-temperature stay healthy, and the kernel logs `NV_ERR_NO_MEMORY`. A 4 GB GPU leaves
-~3.3 GB for the game. Run on the iGPU, close the Battle.net window after the game
-starts (~0.4 GB), cap FPS/render scale, and raise the background cap with
-`SET maxFPSBK "60"` in `Config.wtf`. `/reload` does not touch GPU resources.
+The system check warns when the driver logged a GPU fault this boot
+(`journalctl -k -b | grep -i nvrm`). In our experience it is a symptom of a game bug
+far more often than of the driver: note which game and build triggered it, update
+the game, and keep the driver current (`rpm-ostree upgrade` on Bazzite). Report it
+upstream if it persists on the latest build. On a laptop, *Settings → Graphics →
+Integrated* is a quick way to tell whether the dedicated GPU path is involved.
 
 ## No Proton build found
 

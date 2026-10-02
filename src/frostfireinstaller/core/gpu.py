@@ -119,34 +119,10 @@ def nvidia_driver_info() -> tuple[str | None, bool]:
     return (match.group(1) if match else None), "Open Kernel Module" in text
 
 
-def nvidia_pci() -> str | None:
-    """The NVIDIA GPU's PCI address (e.g. ``0000:01:00.0``), if it can be found."""
-    if not shutil.which("nvidia-smi"):
-        return None
-    query = ["nvidia-smi", "--query-gpu=pci.bus_id", "--format=csv,noheader"]
-    out = (capture(query, 5) or "").strip()
-    line = out.splitlines()[0].strip() if out else ""
-    # "00000000:01:00.0" -> "0000:01:00.0"
-    return line[-12:] if len(line) >= 12 else None
-
-
 def kernel_log(limit: int = 300) -> str:
     if not shutil.which("journalctl"):
         return ""
     return capture(["journalctl", "-k", "-b", "-n", str(limit), "--no-pager"], 6) or ""
-
-
-def recent_xids(limit: int = 300) -> list[str]:
-    """Return Nvidia Xid codes from the current boot's kernel log (best effort)."""
-    return XID_RE.findall(kernel_log(limit))
-
-
-def persistenced_state() -> str | None:
-    """Return nvidia-persistenced's state, or ``None`` if unavailable."""
-    if not shutil.which("nvidia-persistenced") or not shutil.which("systemctl"):
-        return None
-    out = capture(["systemctl", "is-active", "nvidia-persistenced"], 5)
-    return (out or "").strip() or None
 
 
 # --- Vulkan --------------------------------------------------------------

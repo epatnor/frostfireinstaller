@@ -8,43 +8,6 @@ from test_recommend import make_config
 from frostfireinstaller.core import gpu
 
 
-def test_recent_xids_parses_kernel_log(monkeypatch) -> None:
-    def fake_run(*_args, **_kwargs):
-        return subprocess.CompletedProcess(
-            args=[],
-            returncode=0,
-            stdout=(
-                "NVRM: Xid (PCI:0000:01:00): 109, pid=1, name=WowB.exe, CTX SWITCH TIMEOUT\n"
-                "unrelated line\n"
-                "NVRM: Xid (PCI:0000:01:00): 13, pid=2\n"
-            ),
-        )
-
-    monkeypatch.setattr(gpu.shutil, "which", lambda _name: "/usr/bin/journalctl")
-    monkeypatch.setattr(subprocess, "run", fake_run)
-    assert gpu.recent_xids() == ["109", "13"]
-
-
-def test_recent_xids_without_journalctl(monkeypatch) -> None:
-    monkeypatch.setattr(gpu.shutil, "which", lambda _name: None)
-    assert gpu.recent_xids() == []
-
-
-def test_persistenced_state_active(monkeypatch) -> None:
-    monkeypatch.setattr(gpu.shutil, "which", lambda name: f"/usr/bin/{name}")
-    monkeypatch.setattr(
-        subprocess,
-        "run",
-        lambda *_a, **_k: subprocess.CompletedProcess([], 0, stdout="active\n"),
-    )
-    assert gpu.persistenced_state() == "active"
-
-
-def test_persistenced_state_unavailable(monkeypatch) -> None:
-    monkeypatch.setattr(gpu.shutil, "which", lambda _name: None)
-    assert gpu.persistenced_state() is None
-
-
 def test_integrated_gpu_name(monkeypatch) -> None:
     monkeypatch.setattr(gpu, "_integrated_vendor", lambda: "AMD")
     assert gpu.integrated_gpu_name() == "AMD"

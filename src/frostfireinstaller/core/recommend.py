@@ -2,18 +2,19 @@
 
 The app cannot know NVIDIA's or Blizzard's release schedule, so it reports what
 it *can* see locally: whether the tools exist, where the prefix lives, how much
-disk is free, the NVIDIA driver/module type and any recent ``NVRM: Xid`` /
-``NV_ERR_NO_MEMORY`` faults in the kernel log, hybrid-GPU setups, and a Proton
-runner suggestion.
+disk is free, the GPU driver and any recent ``NVRM: Xid`` / ``NV_ERR_NO_MEMORY``
+faults in the kernel log, Vulkan support, WoW's render scale, and a Proton runner
+suggestion.
 
-Each finding carries copy-ready commands (and, for the reversible GPU mitigation,
-an in-app toggle) so the user has the tools to act. ``collect()`` returns the
-actionable warnings for the GUI strip; ``report()`` returns every check,
-including the passing ones, for the "System check" dialog and ``doctor``.
+Each finding carries copy-ready commands so the user has the tools to act; the
+app itself changes nothing on the system. ``collect()`` returns the actionable
+findings for the GUI strip; ``report()`` returns every check, including the
+passing ones, for the "System check" dialog and ``doctor``.
 """
 
 from __future__ import annotations
 
+import re
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -30,6 +31,8 @@ _LINUX_FSTYPES = {"ext2", "ext3", "ext4", "btrfs", "xfs", "f2fs", "zfs", "tmpfs"
 _VULKAN_MIN = (1, 3)
 _SOFTWARE_VULKAN = ("llvmpipe", "lavapipe", "swiftshader")
 
+_RENDER_SCALE_RE = re.compile(r'^SET RenderScale "([0-9.]+)"', re.MULTILINE)
+
 
 @dataclass(slots=True)
 class Recommendation:
@@ -39,7 +42,6 @@ class Recommendation:
     detail: str = ""
     action: str = ""
     commands: tuple[str, ...] = field(default_factory=tuple)
-    action_id: str = ""  # a reversible in-app action, e.g. "persistenced"
 
 
 def _level_rank(item: Recommendation) -> int:
@@ -63,8 +65,7 @@ def _check_vram() -> Recommendation:
             "vram",
             "info",
             f"Low video memory ({gb:.0f} GB)",
-            "Modern Blizzard games prefer more. It is rarely the cause of freezes "
-            "(the driver is), but keep the graphics settings moderate.",
+            "Modern Blizzard games prefer more; keep texture quality and render scale moderate.",
         )
     return Recommendation("vram", "ok", f"{gb:.0f} GB video memory", "")
 
@@ -119,21 +120,6 @@ def _check_vulkan() -> Recommendation:
     return Recommendation("vulkan", "ok", f"Vulkan {best_text} ({len(real)} GPU)", "")
 
 
-def _driver_commands(is_open: bool, serious: bool) -> tuple[str, ...]:
-    commands: list[str] = []
-    if serious:
-        commands.append("sudo systemctl enable --now nvidia-persistenced")
-        address = gpu.nvidia_pci()
-        if address:
-            commands.append(f"sudo sh -c 'echo on > /sys/bus/pci/devices/{address}/power/control'")
-        commands.append("sudo sh -c 'echo performance > /sys/module/pcie_aspm/parameters/policy'")
-    if is_open and shutil.which("rpm-ostree"):
-        commands.append(
-            "rpm-ostree rebase ostree-image-signed:docker://ghcr.io/ublue-os/bazzite-nvidia:stable"
-        )
-    return tuple(commands)
-
-
 def _check_nvidia() -> list[Recommendation]:
     version, is_open = gpu.nvidia_driver_info()
     if version is None:
@@ -149,8 +135,6 @@ def _check_nvidia() -> list[Recommendation]:
     log = gpu.kernel_log()
     serious = sorted({x for x in gpu.XID_RE.findall(log) if x in _SERIOUS_XIDS}, key=int)
     oom = "NV_ERR_NO_MEMORY" in log
-    action_id = "persistenced" if gpu.persistenced_state() is not None else ""
-
     if serious or oom:
         signals = []
         if serious:
@@ -161,33 +145,20 @@ def _check_nvidia() -> list[Recommendation]:
             Recommendation(
                 "nvidia-fault",
                 "warn",
-                f"NVIDIA GPU fault detected ({' + '.join(signals)})",
-                "The GPU lost its context / could not allocate memory - games can "
-                "freeze under heavy loads (e.g. when a world opens). Common with the "
-                "open kernel modules.",
-                "Try the reversible steps first; otherwise switch to the "
-                "proprietary driver. See docs/troubleshooting.md.",
-                commands=_driver_commands(is_open, True),
-                action_id=action_id,
+                f"NVIDIA GPU fault this boot ({' + '.join(signals)})",
+                "The driver reported a GPU hang or a failed allocation. In our "
+                "experience this is usually a game client bug that the game's own "
+                "patches fix, not Linux or Proton.",
+                "Update the game first. If it keeps happening, see docs/troubleshooting.md.",
+                commands=("journalctl -k -b | grep -i nvrm   # show the faults",),
             )
         ]
-    if is_open:
-        return [
-            Recommendation(
-                "nvidia-open",
-                "info",
-                f"NVIDIA open driver {version}",
-                "The open kernel modules have known Xid/memory issues in some games.",
-                "If games freeze, switch to the proprietary driver.",
-                commands=_driver_commands(True, False),
-                action_id=action_id,
-            )
-        ]
+    module = "open kernel module" if is_open else "proprietary module"
     return [
         Recommendation(
             "nvidia-ok",
             "ok",
-            f"NVIDIA driver {version}",
+            f"NVIDIA driver {version} ({module})",
             "No GPU faults in the kernel log this boot.",
         )
     ]
@@ -198,39 +169,14 @@ def _check_hybrid_gpu(config: Config) -> Recommendation:
     integrated = gpu.integrated_gpu_name()
     if not (version and integrated):
         return Recommendation("hybrid", "ok", "Single-GPU configuration", "")
-
-    if gpu.gpu_preference(config) == "integrated":
-        return Recommendation(
-            "hybrid",
-            "ok",
-            f"Hybrid GPU: playing on {integrated}",
-            "The game is bound to the same GPU as the screen - no cross-GPU copy.",
-        )
-
-    log = gpu.kernel_log()
-    trouble = any(x in _SERIOUS_XIDS for x in gpu.XID_RE.findall(log)) or "NV_ERR_NO_MEMORY" in log
-    detail = (
-        f"The laptop has both NVIDIA and an integrated {integrated} GPU, and the "
-        "screen is wired to the integrated one. Running the game on NVIDIA therefore "
-        "copies every frame between the GPUs (PRIME). That path can cause GPU hangs "
-        "(Xid 109 / 'GPU Hung') and sessions that get slower and slower - it is not "
-        "memory pressure and not the power profile."
-    )
-    if trouble:
-        detail += " The kernel log already shows such faults."
+    target = {"auto": "auto", "nvidia": "NVIDIA", "integrated": integrated}[
+        gpu.gpu_preference(config)
+    ]
     return Recommendation(
         "hybrid",
-        "warn" if trouble else "info",
-        "Hybrid GPU: the screen is wired to the integrated GPU",
-        detail,
-        "Choose the GPU under Settings -> Graphics: NVIDIA for dGPU performance, "
-        f"Integrated ({integrated}) as a troubleshooting mode for GPU hangs. "
-        "Reversible.",
-        commands=(
-            '[env]\nDXVK_FILTER_DEVICE_NAME = "NVIDIA"     # force NVIDIA',
-            f'[env]\nDXVK_FILTER_DEVICE_NAME = "{integrated}"  # troubleshooting mode',
-            "vulkaninfo --summary   # show exact device names",
-        ),
+        "ok",
+        f"Hybrid GPU: NVIDIA + {integrated}, games on {target}",
+        "Choose the GPU under Settings -> Graphics.",
     )
 
 
@@ -241,33 +187,43 @@ def _find_wow_configs(config: Config) -> list[Path]:
     return sorted(base.glob("*/WTF/Config.wtf"))
 
 
-def _check_wow_tuning(config: Config) -> Recommendation:
+def _render_scale(path: Path) -> float | None:
+    try:
+        match = _RENDER_SCALE_RE.search(path.read_text(encoding="utf-8", errors="replace"))
+    except OSError:
+        return None
+    try:
+        return float(match.group(1)) if match else None
+    except ValueError:
+        return None
+
+
+def _check_render_scale(config: Config) -> Recommendation:
+    """Flag a WoW render scale above 100 %.
+
+    WoW can store an odd scale (e.g. 1.38) computed from a bogus resolution after
+    the monitor slept mid-session. It then renders ~1.9x the pixels and
+    downsamples them - a large, invisible performance cost on a laptop.
+    """
     configs = _find_wow_configs(config)
     if not configs:
-        return Recommendation("wow-tuning", "ok", "No WoW installation found", "")
-
-    unset = []
-    for path in configs:
-        try:
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        if "maxFPSBK" not in text:
-            unset.append(path)
-
-    if unset:
-        target = unset[0]
-        return Recommendation(
-            "wow-tuning",
-            "info",
-            "WoW: raise background FPS (maxFPSBK)",
-            "When the game is idle (e.g. at character select) WoW drops the frame "
-            "rate hard in the background. Combined with a hybrid GPU this can "
-            f"contribute to GPU hangs. Close the game and add the line to {target} - "
-            "remove it to restore.",
-            commands=('SET maxFPSBK "60"',),
-        )
-    return Recommendation("wow-tuning", "ok", "WoW: background FPS set", "")
+        return Recommendation("render-scale", "ok", "No WoW installation found", "")
+    high = [(path, scale) for path in configs if (scale := _render_scale(path) or 1.0) > 1.01]
+    if not high:
+        return Recommendation("render-scale", "ok", "WoW render scale at or below 100 %", "")
+    path, scale = high[0]
+    edition = path.parent.parent.name
+    return Recommendation(
+        "render-scale",
+        "warn",
+        f"WoW renders at {scale * 100:.0f} % ({edition})",
+        f"The game draws about {scale * scale:.1f}x the pixels of your screen and then "
+        "scales them down - a big performance cost for no visible gain. Odd values "
+        "such as 138 % usually come from a monitor that slept mid-session.",
+        "In game: Options -> Graphics -> Render Scale 100 %. Or, with the game "
+        f"closed, set the line below in {path}.",
+        commands=('SET RenderScale "1"',),
+    )
 
 
 # --- requirements --------------------------------------------------------
@@ -407,7 +363,7 @@ def report(config: Config) -> list[Recommendation]:
         _check_vram(),
         _check_vulkan(),
         _check_hybrid_gpu(config),
-        _check_wow_tuning(config),
+        _check_render_scale(config),
         _check_umu(),
         _check_proton(),
         _check_disk(config),

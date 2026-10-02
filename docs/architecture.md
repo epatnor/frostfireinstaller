@@ -52,8 +52,8 @@ is one column, **608 px wide and not resizable**:
    first, so a missing client reads *Install*, otherwise *Start*/*Stop*.
 5. **Activity strip** — spinner + the operation in progress.
 6. **Warning strip** — only when `core/recommend.py` finds a problem; opens a
-   dialog with copy-ready commands and one reversible toggle
-   (`nvidia-persistenced`, Polkit-prompted). The full report is under
+   dialog with copy-ready commands (the app never changes the system itself).
+   The full report is under
    *Settings → Diagnostics → System check* and in `doctor`.
 7. **Settings footer** — opens a separate, resizable window of equal-height cards
    (Battle.net, Performance, Runner, Graphics, Paths, Diagnostics & about) in a

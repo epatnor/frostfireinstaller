@@ -503,7 +503,7 @@ class SettingsWindow(Adw.Window):
                     "integrated",
                     "Integrated",
                     f"Same GPU as the screen ({integrated}, detected automatically). "
-                    "Troubleshooting mode if the NVIDIA path causes GPU hangs.",
+                    "Uses less power; enough for lighter games.",
                 )
             )
 

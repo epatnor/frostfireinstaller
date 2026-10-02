@@ -101,18 +101,16 @@ but the Linux path is the same as retail: Battle.net under Wine/Proton with
 DXVK/vkd3d-proton. Select the API with `SET GxApi "D3D11"|"D3D12"` in
 `<edition>/WTF/Config.wtf` or `-d3d11`/`-d3d12`; D3D11 is the mature path.
 
-**The 69913 `Xid 109` hang.** Build 69913 hung the GPU on world entry (all NVIDIA
-generations, D3D11 and D3D12, also AMD/Windows and macOS). Root cause: the Global
-Illumination probe-update compute shader takes its loop counts from a constant
-buffer that is not yet valid on the first dispatch, so it never terminates and the
-driver times out (`giQuality >= 1` or `graphicsLightMode >= 2`). **Fixed in 69977**
-(verified 2026-09-24: RTX 3050 Ti, zero `Xid`). The temporary workaround — dump the
-shaders (`VKD3D_SHADER_DUMP_PATH`), bound every `OpLoopMerge`, run with
-`VKD3D_SHADER_OVERRIDE` — is only needed on older builds
-([thread](https://us.forums.blizzard.com/en/wow/t/linuxnvidia-forever-gi-secondary-lighting-gpu-hang-xid-109-cause-isolated-shader-override-workaround/2359917),
-[gist](https://gist.github.com/fx/88cf5be8bed8e9ce761e26e183b0ba90)). Switching the
-NVIDIA kernel module from open to proprietary did not help, confirming it was not
-the driver. Practical fixes live in [troubleshooting](troubleshooting.md).
+**Beta bugs were the client, not Linux.** Build 69913 hung the GPU on world entry
+(all NVIDIA generations, D3D11 and D3D12, also AMD/Windows and macOS): the Global
+Illumination probe-update compute shader read its loop count from a constant buffer
+that was not yet valid on the first dispatch, so it never terminated
+([analysis](https://us.forums.blizzard.com/en/wow/t/linuxnvidia-forever-gi-secondary-lighting-gpu-hang-xid-109-cause-isolated-shader-override-workaround/2359917)).
+69977 fixed it, the 2026-09-24 build fixed a session-long memory leak, and by
+**1.60.1.70170** the game runs smoother on the reference machine than ever. Driver
+flavour (open vs proprietary) and power tweaks made no difference. The other cost was
+a 138 % `RenderScale` stored after a monitor sleep (see
+[troubleshooting](troubleshooting.md)).
 
 ## 6. Reference machine **[verified]**
 
