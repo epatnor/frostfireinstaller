@@ -3,7 +3,7 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follows [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.2.14] - Unreleased
 
 ### Added
 - **Settings window:** the advanced options moved from an in-place expander into a
