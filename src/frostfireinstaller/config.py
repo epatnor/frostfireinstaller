@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import os
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
 APP = "frostfireinstaller"
@@ -122,16 +122,13 @@ class Config:
             proton_name = runtime.get("proton") or None
             env = {str(key): str(value) for key, value in dict(data.get("env", {})).items()}
             bnet_dir = Path(paths.get("bnet_dir", bnet_dir)).expanduser()
+            defaults = Performance()
             performance = Performance(
-                mangohud=bool(perf.get("mangohud", False)),
-                gamemode=bool(perf.get("gamemode", False)),
-                gamescope=bool(perf.get("gamescope", False)),
-                gamescope_output=str(perf.get("gamescope_output", "")),
-                gamescope_width=int(perf.get("gamescope_width", 0)),
-                gamescope_height=int(perf.get("gamescope_height", 0)),
-                gamescope_grab_cursor=bool(perf.get("gamescope_grab_cursor", False)),
-                gamescope_force_fullscreen=bool(perf.get("gamescope_force_fullscreen", False)),
-                inhibit_idle=bool(perf.get("inhibit_idle", False)),
+                **{
+                    f.name: type(getattr(defaults, f.name))(perf[f.name])
+                    for f in fields(Performance)
+                    if f.name in perf
+                }
             )
 
         return cls(
@@ -159,19 +156,7 @@ class Config:
         runtime["gameid"] = self.gameid
         if self.proton_name:
             runtime["proton"] = self.proton_name
-        data.setdefault("performance", {}).update(
-            {
-                "mangohud": self.performance.mangohud,
-                "gamemode": self.performance.gamemode,
-                "gamescope": self.performance.gamescope,
-                "gamescope_output": self.performance.gamescope_output,
-                "gamescope_width": self.performance.gamescope_width,
-                "gamescope_height": self.performance.gamescope_height,
-                "gamescope_grab_cursor": self.performance.gamescope_grab_cursor,
-                "gamescope_force_fullscreen": self.performance.gamescope_force_fullscreen,
-                "inhibit_idle": self.performance.inhibit_idle,
-            }
-        )
+        data.setdefault("performance", {}).update(asdict(self.performance))
         if self.env:
             data["env"] = dict(self.env)
         else:
