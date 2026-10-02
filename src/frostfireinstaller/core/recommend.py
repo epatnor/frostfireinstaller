@@ -298,7 +298,7 @@ def _mount_fstype(path: Path) -> str | None:
 
 
 def _check_prefix_fs(config: Config) -> Recommendation:
-    fstype = _mount_fstype(_existing(config.bnet_dir))
+    fstype = _mount_fstype(_existing(config.bnet_dir).resolve())
     if fstype and fstype not in _LINUX_FSTYPES:
         return Recommendation(
             "prefix-fs",

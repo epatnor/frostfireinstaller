@@ -219,3 +219,20 @@ def test_render_scale_default_when_unset(tmp_path: Path) -> None:
     _wow_config(config, "_retail_", 'SET gxApi "D3D11"\n')
     assert recommend._check_render_scale(config).level == "ok"
     assert recommend._check_render_scale(make_config(tmp_path / "none")).level == "ok"
+
+
+def test_prefix_fs_follows_symlinks(monkeypatch, tmp_path: Path) -> None:
+    # Fedora atomic: /home -> /var/home; the mount table only lists the real path.
+    real = tmp_path / "var/home/user/Games"
+    real.mkdir(parents=True)
+    link = tmp_path / "home"
+    link.symlink_to(tmp_path / "var/home")
+    mounts = f"overlay / overlay rw 0 0\n/dev/x {tmp_path / 'var/home'} btrfs rw 0 0\n"
+    real_read = Path.read_text
+    monkeypatch.setattr(
+        Path,
+        "read_text",
+        lambda self, *a, **k: mounts if str(self) == "/proc/mounts" else real_read(self, *a, **k),
+    )
+    config = make_config(link / "user/Games")
+    assert recommend._check_prefix_fs(config).title == "Filesystem: btrfs"
