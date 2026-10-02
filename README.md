@@ -11,30 +11,21 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 
-**Status:** v0.1 — first public release (a Python port of a verified prototype).
-Early, but used daily on the reference machine. See [`docs/support.md`](docs/support.md)
-for what is supported and what is out of scope.
-
----
+**Status:** early, but used daily on the reference machine. Scope and support:
+[`docs/support.md`](docs/support.md).
 
 ## Focus
 
-We are **not** building a game launcher or a game library. Games are started from
-Blizzard's own Battle.net launcher — `frostfireinstaller` is the helper underneath:
+Not a game launcher or library — games start from Blizzard's own Battle.net
+launcher. `frostfireinstaller` is the helper underneath:
 
-- **Install, verify and repair Battle.net** reliably (dedicated prefix, idempotent).
-- **Compatibility**: correct Proton runner and the required environment fixes.
-- **Performance**: optional MangoHud, GameMode and Gamescope wrappers that follow the
-  games (same Wine session), plus Proton's DXVK/VKD3D/NTSync.
+- **Install, verify and repair Battle.net** (dedicated prefix, idempotent).
+- **Compatibility:** the right Proton runner and the required environment fixes.
+- **Performance:** optional MangoHud, GameMode and Gamescope wrappers that follow
+  the games (same Wine session).
 - **Broad distro support** (Bazzite/Fedora atomic, Arch, Debian/Ubuntu, ...).
-- **Looks cool:** a Battle.net-inspired GTK4/libadwaita UI with our own frost/fire
-  palette — dark flat panels, uppercase section labels and gradient buttons. The
-  launcher is a compact, fixed 608 px wide; the advanced options open in a
-  separate, resizable **Settings** window.
-
-Born from a working recipe on Bazzite: `umu-launcher` + GE-Proton (see `docs/`).
-
----
+- **A cool GUI:** GTK4/libadwaita with a frost/fire palette; a compact fixed-width
+  launcher plus a resizable **Settings** window.
 
 ## GUI
 
@@ -42,82 +33,37 @@ Born from a working recipe on Bazzite: `umu-launcher` + GE-Proton (see `docs/`).
 frostfireinstaller gui
 ```
 
-- **Banner** (full width, height from the image) → **info strip** (distro + kernel, session, GPU) →
-  **config band** (Proton and prefix) → **Battle.net band**.
-- **Battle.net band**: status pill and the action button (*Install* / *Start* /
-  *Stop*). The start button runs `ensure()` first, so a missing client is installed.
-- **Activity strip**: spinner + text showing the operation in progress.
-- **System check & recommendations**: the app checks `umu-run`, Proton, **Vulkan**
-  (version, software-only, 32-bit loader), free disk space, the prefix filesystem,
-  hybrid GPU, the NVIDIA driver/module and recent `NVRM: Xid`/`NV_ERR_NO_MEMORY`,
-  missing performance tools and the runner. A
-  **warning strip** (below the band) appears only on problems and opens a dialog
-  with **copy-ready commands**; the full report (including OK) is under
-  **Settings → Diagnostics → System check** and in `doctor`. The **reversible**
-  action (GPU persistence) can be toggled in the app — the app never makes large
-  system changes itself.
-- **Settings** (a full-width footer button) opens a separate, **resizable**
-  window with every option grouped into compact cards that line up as an
-  equal-height grid (two columns when there is room, one when narrow). Each card
-  has a one-line subtitle and per-option explanations sit behind "(i)" buttons:
-  - **Battle.net**: status + *Repair*, *Reinstall*, *Remove*, and a *Keep
-    games* / *Keep installer* row.
-  - **Performance**: MangoHud, GameMode, Gamescope (with a *Force fullscreen*
-    checkbox), Keep awake. **Runner** is a dropdown; **Graphics** is a radio
-    choice; **Paths** has *Open folder* and **View logs**; plus
-    **Diagnostics & about**.
-
-While Battle.net is running the header shows *Battle.net running* and the app's
-taskbar icon carries a badge, so it stays visible after suspend even when the
-windows are minimised.
-
-- **Tray icon** (StatusNotifierItem, works on KDE Plasma and GNOME with an
-  AppIndicator extension) with *Show*, *Start/Stop Battle.net* and *Quit*; the
-  state is shown in its tooltip. No extra dependency - it speaks the D-Bus
-  protocol directly because GTK4 cannot load the GTK3 indicator bindings.
-
-The launcher window is **608 px wide and not resizable**; the Settings window can
-be resized freely.
-
-### Screenshots
+Banner → info strip (distro, session, GPU) → config band (Proton, prefix) →
+Battle.net band (status + *Install*/*Start*/*Stop*) → *Settings*. A warning strip
+appears only when the system check finds a problem, with copy-ready commands.
+A tray icon (StatusNotifierItem) and a taskbar badge show when Battle.net runs.
 
 | Main window | Settings |
 |---|---|
-| ![Frostfire Installer main window](assets/screenshots/main.png) | ![Frostfire Installer settings](assets/screenshots/advanced.png) |
-
----
+| ![Main window](assets/screenshots/main.png) | ![Settings](assets/screenshots/advanced.png) |
 
 ## Requirements
 
 - Linux, Python **3.11+**
 - [`umu-launcher`](https://github.com/Open-Wine-Components/umu-launcher) (`umu-run`)
-- A Proton build (GE-Proton, UMU-Proton or Proton-CachyOS) in a `compatibilitytools.d`
-  dir — or let `umu-launcher` download **UMU-Proton** automatically on first launch
-- GPU drivers with **Vulkan 1.3+** (and a 32-bit Vulkan loader; Battle.net is 32-bit)
-- Optional GUI extras: `python3-gobject` (GTK4 + libadwaita); MangoHud / GameMode /
-  Gamescope if you want the performance toggles
+- A Proton build (GE-Proton, UMU-Proton, Proton-CachyOS) — or let umu download
+  UMU-Proton on first launch
+- Vulkan 1.3+ drivers and a 32-bit Vulkan loader (Battle.net is 32-bit)
+- GUI only: `python3-gobject` (GTK4 + libadwaita)
 
 ## Install
 
-Any distro with **Python 3.11+** works via `pipx`; there are also native
-channels. Full matrix in [`docs/install.md`](docs/install.md).
+| Channel | Command |
+|---|---|
+| pipx (any distro) | `pipx install --system-site-packages frostfireinstaller` |
+| curl \| bash | `curl -fsSL .../packaging/install.sh \| bash` |
+| AUR | `yay -S frostfireinstaller` |
+| Bazzite / ublue | `ujust install-frostfireinstaller` |
+| Homebrew | `brew install epatnor/frostfireinstaller/frostfireinstaller` |
 
-| Channel | Command | For |
-|---|---|---|
-| pipx (universal) | `pipx install --system-site-packages frostfireinstaller` | any distro |
-| curl \| bash | `curl -fsSL .../packaging/install.sh \| bash` | any distro |
-| AUR | `yay -S frostfireinstaller` | Arch, CachyOS, EndeavourOS, Manjaro |
-| Bazzite / ublue | `ujust install-frostfireinstaller` | Fedora atomic images |
-| Homebrew | `brew install epatnor/frostfireinstaller/frostfireinstaller` | Linux & macOS |
-| Flatpak | *(experimental, Flathub pending)* | immutable desktops |
-
-Not published yet — until the first release, install from a clone:
-
-```bash
-git clone https://github.com/epatnor/frostfireinstaller
-cd frostfireinstaller
-pipx install --system-site-packages .    # or: pip install --user .
-```
+Only the repo and GitHub release are public so far; the other channels work once
+published. Until then: `git clone` the repo and `pipx install --system-site-packages .`.
+Details, Flatpak and distro matrix: [`docs/install.md`](docs/install.md).
 
 ## Usage
 
@@ -125,50 +71,31 @@ pipx install --system-site-packages .    # or: pip install --user .
 frostfireinstaller              # ensure + launch Battle.net
 frostfireinstaller gui          # graphical interface
 frostfireinstaller ensure       # set up/verify only
-frostfireinstaller doctor       # show environment and status
+frostfireinstaller doctor       # environment, status and system check
 frostfireinstaller reinstall    # reinstall the client (keeps games)
-frostfireinstaller remove       # remove the client (keeps games)
-frostfireinstaller remove --purge-installer   # ...and the cached installer
-frostfireinstaller logs         # latest run log
-frostfireinstaller install-logs # latest installation log
+frostfireinstaller remove [--purge-installer]   # remove the client (keeps games)
+frostfireinstaller logs | install-logs          # latest run / installation log
 frostfireinstaller kill         # stop all Battle.net processes
 frostfireinstaller uninstall    # remove prefix, shortcut, icon
 ```
 
-## Reliability
+## Supported games
 
-- Idempotent setup: `ensure` verifies prefix, installer, client, config and
-  shortcut every run.
-- The installer **retries** transient download failures (5xx/timeouts).
-- **Repair** stops a wedged client, clears CEF/cache and relaunches.
-- Reinstall/remove **keep your games** unless you ask otherwise.
-- Games run in Blizzard's own launcher; if a game itself misbehaves (e.g. a
-  D3D12 freeze), see `docs/troubleshooting.md`.
-
-## Security
-
-- No secrets are stored or required at runtime.
-- No shell: every subprocess call passes an argument list.
-- The only download is Blizzard's official installer over HTTPS; size and SHA-256 are
-  recorded in the installation log.
-- Wine/Proton come from your host — nothing is bundled or patched.
-- See `docs/architecture.md` for the full model.
+Everything Battle.net runs under Wine/Proton. Only titles whose anti-cheat refuses
+Linux at kernel level cannot work (Call of Duty / Ricochet) — a vendor limitation.
+WoW (retail, Classic, Forever), Diablo, Hearthstone, StarCraft, Heroes, Warcraft III
+and Overwatch 2 are fine.
 
 ## Documentation
 
 | Document | Contents |
 |---|---|
-| `docs/architecture.md` | backend, lifecycle, GUI, security, paths |
-| `docs/install.md` | install channels, distro matrix, prefix override, update/remove |
-| `docs/support.md` | support scope, what's in/out of scope, safety, no warranty |
-| `docs/ai-disclosure.md` | how the project is built with AI, and under whose supervision |
-| `docs/design.md` | naming, ice/fire concept, assets, iconography |
-| `docs/troubleshooting.md` | common failures and fixes (D3D12 freeze, launcher, logs) |
-| `docs/wow-forever-error-history.md` | observed WoW: Forever (69913 → 69977) error history and Xid correlation |
-| `docs/technical-reference.md` | deep-dive: Wine/Proton/Steam/umu stack, Battle.net + WoW: Forever specs, env reference |
-| `docs/flatpak.md` | Flatpak/Flathub status, blockers and plan |
-
-For how support works and what is out of scope, see [`docs/support.md`](docs/support.md).
+| [`docs/install.md`](docs/install.md) | channels, distro matrix, prefix override, update/remove, Flatpak |
+| [`docs/architecture.md`](docs/architecture.md) | backend, lifecycle, GUI and design, security, paths |
+| [`docs/troubleshooting.md`](docs/troubleshooting.md) | common failures and fixes |
+| [`docs/technical-reference.md`](docs/technical-reference.md) | Wine/Proton/umu and Battle.net background |
+| [`docs/support.md`](docs/support.md) | scope, safety, no warranty |
+| [`docs/ai-disclosure.md`](docs/ai-disclosure.md) | how the project is built with AI |
 
 ## Development
 
@@ -178,42 +105,14 @@ pip install -e ".[dev]"
 ruff check . && ruff format --check . && mypy && pytest
 ```
 
-Developer tools (never bundled, never needed at runtime):
-
-```bash
-python tools/genassets.py --prompt "..." --out assets/generated/x.png  # concept art
-python tools/make_icon.py --src assets/icon/frostfireinstaller.png --install --repo-copy \
-    src/frostfireinstaller/data/icons/frostfireinstaller.png
-python tools/make_header.py                     # bake the banner subtitle
-python tools/make_symbols.py                    # rebuild the Material Symbols subset
-```
-
-## How it works
-
-`frostfireinstaller` orchestrates the host's `umu-run` + a Proton build against a dedicated
-Wine prefix. It does **not** bundle Wine. See `docs/architecture.md`.
-
-## Supported games
-
-`frostfireinstaller` supports **everything Battle.net can run under Wine/Proton**. The only titles
-that can't work are those whose anti-cheat refuses Linux at the OS level — that is a
-**vendor/anti-cheat limitation, not a limitation of this tool**.
-
-| Game | Status |
-|---|---|
-| World of Warcraft (retail/Forever), Classic | ✅ |
-| Diablo II/III/IV, Hearthstone, StarCraft I/II, Heroes of the Storm, Warcraft III Reforged | ✅ |
-| Overwatch 2 | ✅ |
-| Call of Duty (Battle.net) | ⛔ blocked by kernel-level anti-cheat (Ricochet) — outside our control |
+Developer tools in `tools/` (never bundled): `make_icon.py`, `make_header.py`,
+`make_symbols.py`. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## AI disclosure
 
-This project is built with **generative AI under human supervision**: the code,
-tests, packaging, documentation and visual assets are largely AI-assisted, while
-the design, direction, review and testing are human. The maintainer runs it on
-real hardware and is responsible for the released result.
-
-Read the full statement in [`docs/ai-disclosure.md`](docs/ai-disclosure.md).
+Built with **generative AI under human supervision**; the maintainer designs,
+reviews, tests and is responsible for the result. See
+[`docs/ai-disclosure.md`](docs/ai-disclosure.md).
 
 ## License
 

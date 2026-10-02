@@ -1,431 +1,143 @@
 # Troubleshooting
 
-Practical fixes for the most common failures. `frostfireinstaller` keeps the
-Battle.net client healthy; problems that happen **inside a game** (after you press
-Play) are usually Wine/Proton/graphics issues, not the installer.
+`frostfireinstaller` keeps the Battle.net client healthy; problems **inside a game**
+are usually Wine/Proton/graphics issues. The app checks for you: a warning strip
+appears when a check fails, and the full report is under
+*Settings → Diagnostics → System check* and in `frostfireinstaller doctor`
+(umu, Proton, Vulkan, disk, prefix filesystem, hybrid GPU, NVIDIA driver and recent
+`NVRM: Xid` faults, performance tools, runner).
 
-> **The app checks for you.** A **recommendation strip** appears under the
-> Battle.net band when a check fails, with copy-ready commands. The full report —
-> every check, including the ones that pass — is under
-> **Settings → Diagnostics → System check** and in `frostfireinstaller doctor`.
-> It covers: `umu-run`, Proton builds, free disk space, the prefix filesystem
-> (NTFS/exFAT warning), hybrid GPUs, the NVIDIA driver/module and any recent
-> `NVRM: Xid` / `NV_ERR_NO_MEMORY` faults, missing performance tools and the
-> runner.
+## Logs
 
-## Where the logs are
+- App logs: `~/.local/state/frostfireinstaller/logs` (GUI: *Settings → Paths → View logs*).
+- Battle.net client: `<prefix>/drive_c/users/*/AppData/Local/Battle.net/Logs/battle.net-*.log`.
+- Game crash dumps: `<game dir>/Errors/*.txt`; GPU/memory data in `<edition>/Logs/gx.log`.
 
-- App run/installation logs: `~/.local/state/frostfireinstaller/logs`
-  (also in the GUI: *Settings → Paths → **View logs***).
-- Battle.net client log:
-  `<prefix>/drive_c/users/*/AppData/Local/Battle.net/Logs/battle.net-*.log`.
-- Per-game crash dumps: `<game dir>/Errors/*.txt` (e.g. `_retail_/Errors/`).
-- `frostfireinstaller doctor` prints the environment and current status.
+## Gamescope strobes the whole screen — NVIDIA + Wayland **[verified]**
 
-## Gamescope strobes the entire screen — NVIDIA + Wayland **[verified]**
+> **Photosensitivity hazard.** On the reference machine (driver 615.71.09 open
+> module, KDE Wayland) enabling **Gamescope** made the display strobe on launch.
 
-> **Photosensitivity hazard.** On the reference machine (RTX 4070, driver
-> 615.71.09 open module, KDE on Wayland) enabling **Gamescope** made the whole
-> display strobe immediately on launch. This is not a cosmetic glitch.
-
-**Get out of it:** `Alt+F4` closes the game window, then
-
-```bash
-pkill -f gamescope
-```
-
-**Stop it recurring** — killing the process does not change the setting:
+Get out: `Alt+F4`, then `pkill -f gamescope`. Stop it recurring (killing the
+process does not change the setting), then **restart the GUI** — the switches read
+their state once, so a stale on-disk value shows the wrong position:
 
 ```bash
 sed -i 's/^gamescope = true/gamescope = false/' ~/.config/frostfireinstaller/config.toml
 ```
 
-Then **restart the GUI.** The switches read their state once when the page is
-built, so a value changed on disk leaves the row drawing the old position — and
-clicking a row that wrongly shows *on* turns the setting back on.
+Cause: nesting gamescope in a Wayland session on NVIDIA can collapse presentation
+against the outer compositor; `gamescope_force_fullscreen` makes it worse. The
+switch now warns on this combination. For window-geometry problems prefer a **KWin
+window rule** (start by forcing only the screen); it adds nothing to the
+presentation path.
 
-**Cause.** Nesting gamescope inside an existing Wayland session on the
-proprietary NVIDIA driver can collapse presentation between gamescope and the
-outer compositor. `gamescope_force_fullscreen` makes it worse: it forces
-fullscreen presentation every frame. The app now detects NVIDIA + Wayland and
-says so on the switch itself.
+## Game window returns at the wrong size or monitor
 
-**Instead**, for window-geometry problems, prefer a **KWin window rule** — it is
-the compositor you already run, adds nothing to the presentation path, and
-cannot flicker. Start minimal: force only which screen the window opens on,
-and add size/position only if that is not enough.
-
-## The game window returns at the wrong size or on the wrong monitor
-
-Usually after the monitor slept mid-session. When DPMS turns an output off and
-KDE re-probes it, the X/Wayland screen geometry changes under the running
-client; a borderless (windowed-maximized) window follows that change, and WoW
-then persists the result to `Config.wtf` on exit — so it survives a restart.
-
-**Attack the cause first:** keep the screen awake with
-**Performance → Keep awake while playing** (`inhibit_idle`). Verify it actually
-took, *while the game runs*:
+Usually after the monitor slept mid-session: DPMS off + KDE re-probe changes the
+screen geometry, a borderless window follows, and WoW persists the result to
+`Config.wtf`. Fix the cause with **Performance → Keep awake while playing**
+(`inhibit_idle`); verify while the game runs — two processes mean the lock is held,
+none means the sidecar did not start (look for `idle inhibitor started` in the log):
 
 ```bash
 pgrep -a -f "systemd-inhibit|kde-inhibit"
 ```
 
-Two processes means the lock is held. Nothing means the sidecar did not start —
-check the app log for `idle inhibitor started`.
+Then, with WoW **closed**, fix the stored keys in `<edition>/WTF/Config.wtf`:
+`GxMonitor` (output index, unstable), `GxMaximize` (`1` follows geometry),
+`RenderScale` (should be `1.0`), `GxWindowedResolution`/`GxFullscreenResolution`.
+**Edit just these keys** — regenerating the file loses the narration keys below.
 
-**Then clean up what the client already stored.** With WoW **closed** (it
-rewrites the file on exit), in `<edition>/WTF/Config.wtf`:
+## WoW: Forever
 
-| Key | Meaning |
-|---|---|
-| `GxMonitor` | pinned output **index** — not stable across re-probing |
-| `GxMaximize` | `1` = windowed-maximized, the mode that follows screen geometry |
-| `RenderScale` | should be `1.0`; an odd value such as `1.383…` was computed from a bogus resolution |
-| `GxWindowedResolution` / `GxFullscreenResolution` | stored geometry |
-
-Renaming `Config.wtf` makes WoW regenerate it with defaults and re-run
-`hwDetect` — a clean slate at the cost of every graphics setting. **Prefer
-editing just the keys above.** A regenerated file also loses the narration keys
-that suppress the `ERROR #135` dialog, which can make the login screen
-unusable — see below.
-
-## Known bugs in World of Warcraft: Forever
-
-> **Resolved in build 69977 (2026-09-22).** The `ERROR #109` / NVIDIA `Xid 109`
-> GPU hang below was a **client regression in build 69913**, caused by an
-> unbounded compute shader (the **Global Illumination probe update**) whose loop
-> count is read from a not-yet-initialised constant buffer on its first dispatch.
-> It was **not** the driver, Proton or your setup — the same setting also times
-> out drivers on AMD/Windows and freezes macOS. Blizzard's 69977 build fixes it
-> (verified on the reference machine: a 2026-09-24 play session on the NVIDIA
-> RTX 3050 Ti with **zero** `Xid`). The notes are kept for older builds and for the
-> soft narration assert that remains. Sources: [Blizzard #2359917], [gist: fx],
-> [blue post 69977].
->
-> **Also fixed in the September 24 build:** the separate, session-long **FPS /
-> VRAM degradation** (*"It gets worse the longer I play"*, below) was a **memory
-> leak**, fixed by Blizzard (*"Fixed a memory leak causing gradual performance
-> degradation for some players"*). See
-> [`docs/wow-forever-error-history.md`](wow-forever-error-history.md).
-
-The 69913 beta had **two independent bugs**. They looked alarming but were not
-caused by your GPU choice, the installer, or an outdated driver. Sources:
-[Blizzard forum #2353584], [Proton #10157], [vkd3d-proton #3304].
-
-[Blizzard forum #2353584]: https://us.forums.blizzard.com/en/wow/t/wowf-beta-69913-hard-gpu-hang-entering-world-map-2991-client-deadlock-in-device-lost-recovery-error-109/2353584
-[Blizzard #2359917]: https://us.forums.blizzard.com/en/wow/t/linuxnvidia-forever-gi-secondary-lighting-gpu-hang-xid-109-cause-isolated-shader-override-workaround/2359917
-[gist: fx]: https://gist.github.com/fx/88cf5be8bed8e9ce761e26e183b0ba90
-[blue post 69977]: https://us.forums.blizzard.com/en/wow/t/beta-client-update-september-22/2358655
-[Proton #10157]: https://github.com/ValveSoftware/Proton/issues/10157
-[vkd3d-proton #3304]: https://github.com/HansKristian-Work/vkd3d-proton/issues/3304
-
-### 1. `ERROR #135` — narration/voice assert at the login screen
-
-```
-ASSERTSAFE(m_platformInterface != nullptr)  VoiceSpeakManager.cpp:188
-ERROR #135    Lua: StopSpeakingText -> NarrateCurrentScreen ("Login Screen")
-GxRestarts: 0   GxDeviceLostCount: 0
-```
-
-> The line number tracks the build: **204** on 69913/69977, **188** on
-> **70009** (client `1.60.1.70009`, verified 2026-09-28). Match on the assert
-> text and the file, not the line.
-
-This is the **new narration / text-to-speech subsystem** — not graphics, and
-unaffected by the GPU you run on. It fires repeatedly at the login/character
-screen (~every 1.7 s) **even with screen narration disabled**, on every build so
-far. It is a soft assert (`ASSERTSAFE`), so you can dismiss the dialog and play
-on; the dialog is a separate Blizzard Error process and may linger after you
-quit. There is no client-side fix yet — this is usually the dismissible error
-seen at character select.
-
-**Keep these two keys** in `<edition>/WTF/Config.wtf`:
+**`ERROR #135` — narration assert at the login screen.**
+`ASSERTSAFE(m_platformInterface != nullptr)` in `VoiceSpeakManager.cpp` (the line
+number varies by build — match on text and file). It is the new text-to-speech
+subsystem, fires every ~1.7 s even with narration disabled, and is a soft assert:
+dismiss it. Keep these keys in `<edition>/WTF/Config.wtf`; they suppress the dialog,
+the difference between a nuisance and an unusable login screen:
 
 ```
 SET showScreenNarrationDialog "0"
 SET accessibilityScreenNarrationEnabled "0"
 ```
 
-They do not stop the assert — it fires regardless — but they suppress the
-dialog, which is the difference between a nuisance and an unplayable login
-screen. **They are the first casualty of resetting `Config.wtf`.** Observed
-2026-09-28: regenerating the file from defaults to clear bad window geometry
-produced six of these asserts in 13 s at *Connecting*, ending in a hard
-`BC_ASSERT(result == WAIT_OBJECT_0)` fatal error. Restoring the config, keeping
-only the window keys reset, fixed it.
+Resetting `Config.wtf` drops them (a regenerated file once produced six asserts in
+13 s and a fatal `BC_ASSERT(result == WAIT_OBJECT_0)`). Re-add them if you regenerate.
 
-So: prefer editing the handful of offending keys over regenerating the file.
-If you do regenerate, add these two back before the next launch.
+**`ERROR #109` / `Xid 109` GPU hang — fixed.** Build 1.60.1.69913 had a client bug
+(an unbounded Global Illumination compute shader, hitting AMD/Windows and macOS too —
+not the driver, Proton or your setup). **Build 69977 (2026-09-22) fixes it**, and the
+2026-09-24 build fixed a separate memory leak that caused progressive FPS/VRAM
+decline. Just update the game. On an older build: set Secondary Lighting to *Fair*,
+lower Global Illumination/Volumetric Fog, try DirectX 11, or run on the integrated
+GPU (*Settings → Graphics → Integrated*).
 
-### 2. `ERROR #109` / `Xid 109` — GPU hang on world entry (regression, fixed in 69977)
+## Game freezes — `ERROR #109 (0x8510006d)` on D3D12
 
-Build **69913** regressed. ~11–15 s after the loading screen reaches 100 %, the
-GPU queue hangs (`NVRM: Xid ... 109 CTX SWITCH TIMEOUT`), and the client's
-device-lost recovery then **deadlocks in `WaitForFence`**, so the freeze watchdog
-kills the process. Build **69893 was stable**. Reported on NVIDIA GPUs from a
-GTX 1070 to an RTX 4090 and on **both** D3D11 and D3D12 — a **client
-regression, not an outdated driver**.
+Symptom: window freezes, crash file shows `dxgi.dll`/`d3d12core.dll` with `GxApi D3D12`.
+The vkd3d-proton path hangs; switch to **D3D11** (DXVK): in game *System → Graphics →
+Graphics API*, or `SET GxApi "D3D11"` in `<edition>/WTF/Config.wtf`, or launch with
+`-d3d11`. The most common fix for Blizzard titles on Linux.
 
-The root cause was isolated to one **compute shader** (the GI probe update) whose
-unbounded loops read an invalid count on their first dispatch; it also times out
-drivers on AMD/Windows and freezes macOS. Build **69977 fixes it**. The
-workarounds below only apply if you are still on an older build.
-
-Workarounds, in order:
-
-1. **Set Secondary Lighting to `Fair`** (Options → Graphics) — reported to let
-   you load in with everything else on high/ultra.
-2. Lower **Global Illumination** and **Volumetric Fog** as well.
-3. Try **DirectX 11** (`SET GxApi "D3D11"` / `-d3d11`) and/or the lowest preset.
-4. New characters often load where existing ones hang (zone/character dependent).
-
-A conservative, verified baseline (matches the reference machine's config; the
-quality sliders are stored one lower than the in-game label):
-
-| Setting | In-game | CVar |
-|---|---|---|
-| Graphics API | DirectX 11 | `GxApi "D3D11"` |
-| Secondary Lighting | Fair | (no explicit CVar; set in UI) |
-| Global Illumination | Fair | `giQuality "1"` |
-| Volumetric Fog | Low | `volumeFogLevel "1"` |
-| Compute Effects | Low | `graphicsComputeEffects "1"` |
-| SSAO / Depth Effects | Disabled | `graphicsSSAO "0"` / `graphicsDepthEffects "0"` |
-| Shadow Quality | Low | `graphicsShadowQuality "0"` |
-| Base Game Quality | 3 | `graphicsQuality "2"` |
-| Max Background FPS | 60 (raise from 30) | `maxFPSBK "60"` |
-
-> On the reference machine **Secondary Lighting is already Fair and the API
-> already DirectX 11**, so that workaround alone does not prevent the hang there —
-> the reliable escape remains the iGPU fallback (or waiting for a Blizzard fix).
-
-> The client misparses the NVIDIA driver version (`Device Lost on NVIDIA driver
-> version 999.99`), which disables Aftermath GPU crash dumps — so no dump is
-> captured for these hangs.
-
-## Game freezes — `ERROR #109 (0x8510006d) A thread has become unresponsive`
-
-**Symptom:** the game window is up (often still rendering), then freezes; the
-WoW error dialog reports `ERROR #109`, `Soft Lock`, and the crash file's stack
-shows `dxgi.dll` / `d3d12core.dll` with `<GxApi> D3D12`.
-
-**Cause:** the **D3D12 path (VKD3D-Proton) hangs**. Switch the game to **D3D11**
-(DXVK), the more mature path:
-
-- In game: **System → Graphics → Graphics API → DirectX 11**.
-- Or edit the game's `Config.wtf` (`<game dir>/WTF/Config.wtf`) and set
-  `SET GxApi "D3D11"` (back the file up first).
-- Or launch with `-d3d11` (Battle.net → game → Options → Additional command line
-  arguments).
-
-This is the single most common fix for Blizzard titles on Linux.
-
-## GPU hang — `NVRM: Xid ... 109` / `CTX SWITCH TIMEOUT`
-
-> **Note (2026-09-24):** for WoW: Forever this was the build-69913 shader bug and
-> is **fixed in build 69977** — update the game first. The steps below remain
-> useful for any *other* title or older build that shows the same kernel fault.
-
-**Symptom:** the game freezes regardless of D3D11/D3D12, and
+## NVIDIA `Xid ... 109` / `CTX SWITCH TIMEOUT` (other titles or old builds)
 
 ```bash
 journalctl -k | grep -i nvrm
-# NVRM: Xid (PCI:0000:01:00): 109, name=WowB.exe, errorString CTX SWITCH TIMEOUT
 ```
 
-The crash stack sits in `dxgi.dll` (the present path): this is a **GPU driver
-hang**, not the game. It is common on hybrid/Optimus laptops with the NVIDIA
-**open** kernel modules.
+Common on hybrid laptops with NVIDIA's open modules; changing Proton or lowering
+settings usually does not help. In order:
 
-> Changing the Proton runner or lowering the in-game graphics settings usually
-> does **not** help here — the fault is below them (it happens with both D3D11 and
-> D3D12, on any runner, and can be intermittent). Focus on the driver.
+1. **GPU persistence** (reversible, in the warning dialog): `systemctl enable --now nvidia-persistenced`.
+2. **Disable runtime power management:** `sudo sh -c 'echo on > /sys/bus/pci/devices/0000:01:00.0/power/control'`;
+   persist with `options nvidia NVreg_DynamicPowerManagement=0x00` in `/etc/modprobe.d/`.
+3. **PCIe ASPM:** `sudo sh -c 'echo performance > /sys/module/pcie_aspm/parameters/policy'`;
+   persist with kernel arg `pcie_aspm.policy=performance`.
+4. **Update the driver** (`rpm-ostree upgrade` on Bazzite). Switching from open to
+   proprietary did not help in our tests.
+5. **Run on the integrated GPU** (enough for WoW): *Settings → Graphics*, or
+   `[env] DXVK_FILTER_DEVICE_NAME = "AMD Radeon"` in `config.toml` (a substring from
+   `vulkaninfo --summary`). Rendering on the GPU that drives the panel also avoids the
+   cross-GPU (PRIME) copy.
 
-> The app surfaces this automatically: the **recommendation strip** → **View**
-> shows the steps below and can toggle the reversible one for you. The app never
-> makes large system changes itself — the rest are copy-ready commands.
+## Slowdown over a session = VRAM pressure
 
-1. **Keep the GPU initialised (reversible, in-app):** in the recommendation
-   dialog, press **Aktivera GPU-persistens** (it runs
-   `systemctl enable --now nvidia-persistenced`, with your desktop's
-   authorisation prompt). Press again to turn it off.
-2. **Keep the discrete GPU awake** (disable runtime power management). Test it
-   live:
-
-   ```bash
-   sudo sh -c 'echo on > /sys/bus/pci/devices/0000:01:00.0/power/control'
-   ```
-
-   Make it persistent with `options nvidia NVreg_DynamicPowerManagement=0x00` in
-   `/etc/modprobe.d/`.
-3. **PCIe ASPM:** force performance mode and test:
-
-   ```bash
-   sudo sh -c 'echo performance > /sys/module/pcie_aspm/parameters/policy'
-   ```
-
-   Make it persistent with the kernel argument `pcie_aspm.policy=performance`.
-4. **Update or switch the driver:** on Bazzite run `rpm-ostree upgrade` and
-   reboot; if it persists, rebase from the open modules
-   (`bazzite-nvidia-open`) to the proprietary `bazzite-nvidia` image.
-
-   > **Tested on the reference machine (2026-09-22):** rebasing to the
-   > **proprietary** driver (`kmod-nvidia-580.178.04`, replacing
-   > `kmod-nvidia-open`) did **not** fix `Xid 109` — two fresh
-   > `CTX SWITCH TIMEOUT` faults on `WowB.exe` appeared within minutes of the
-   > first launch. This confirmed the driver type was **not** the cause; the
-   > real cause was the 69913 shader regression (fixed in **69977**). The iGPU
-   > (step 5) was the working fallback in the meantime.
-5. **Last resort — run on the integrated GPU** (enough for WoW). Add to
-   `~/.config/frostfireinstaller/config.toml`:
-
-   ```toml
-   [env]
-   DXVK_FILTER_DEVICE_NAME = "AMD Radeon"
-   ```
-
-   Match a substring of a device name from `vulkaninfo --summary`. Everything in
-   `[env]` is passed to the Wine session (umu-run → Battle.net → games).
-
-## "It gets worse the longer I play" — two separate problems
-
-Field data (Bazzite, RTX 3050 Ti Laptop, GE-Proton11-7, **already on D3D11**)
-shows two *independent* failure modes that are easy to confuse. Inspect
-`<edition>/Logs/gx.log` for both.
-
-### A. `ERROR #109` is a *symptom* of NVIDIA `Xid 109` (`CTX SWITCH TIMEOUT`)
-
-> **Superseded for WoW: Forever (2026-09-24).** The PRIME-path explanation below
-> was the best theory on build 69913. The actual cause turned out to be a
-> **client shader bug** (the GI probe compute shader), and it was **fixed in
-> build 69977** — it also affected AMD/Windows and macOS. Treat this section as
-> historical for Forever; it may still apply to other titles.
-
-The game's render thread blocks in `dxgi.dll` waiting for a wedged GPU context;
-after 20 s WoW's watchdog raises `ERROR #109` / `Soft Lock`. Confirm with:
-
-```bash
-journalctl -k | grep -i nvrm
-# NVRM: Xid (PCI:0000:01:00): 109, name=WowB.exe, errorString CTX SWITCH TIMEOUT
-```
-
-On hybrid laptops the likely root cause is the **cross-GPU (PRIME) path**: the
-panel is wired to the *integrated* GPU (`/sys/class/drm/card*-eDP-1` is
-`connected`), while the game picks the *discrete* one (`gx.log`:
-`Choosing gpu with monitor attached: "NVIDIA ..."`). Every frame is then copied
-between GPUs, and on Wayland that path hangs the NVIDIA driver; the device is
-removed and the 20 s watchdog fires. The crashes are **early (1–6 min) and at low
-memory (13–22 %)** — this is not memory pressure and not the power profile.
-
-**Fix (reversible, no privileges):** run the game on the integrated GPU — the
-same one that drives the panel. Choose **Integrated** under
-**Settings → Graphics** (Auto / NVIDIA / Integrated), or set it yourself:
-
-```toml
-# ~/.config/frostfireinstaller/config.toml
-[env]
-DXVK_FILTER_DEVICE_NAME = "AMD Radeon"
-```
-
-The game **often recovers by itself** by re-creating its D3D11 device — `gx.log`
-shows `Device Destroy Successful` → `Dx11 Device Create Successful`. That is why
-the error can be dismissed and play resumed, and why the error dialog can linger
-after the game exits (it is a separate Blizzard Error process).
-
-> Optional, only if you want to keep using the discrete GPU: keeping it
-> initialised (`nvidia-persistenced` / `power/control=on`) can reduce
-> idle-triggered timeouts. It is **not required**, goes against a low-power/quiet
-> setup, and is your choice — the app never changes it for you.
-
-### B. Slowdown to a slideshow is **VRAM pressure, not heat**
-
-> **Fixed in the September 24 build** (*"Fixed a memory leak causing gradual
-> performance degradation for some players"*). The steps below still help on older
-> builds and for real VRAM pressure.
-
-`gx.log` "Periodic Gpu Status Report" shows the budget filling while clocks and
-temperature stay healthy:
-
-```
-Mem Budget: 0.6GB / 3.3GB (17.6%)  Freq:1.49GHz Temp:53C
-Mem Budget: 2.0GB / 3.3GB (62.1%)  Freq:1.93GHz Temp:70C
-Mem Budget: 2.7GB / 3.3GB (84.4%)  Freq:1.94GHz Temp:67C
-```
-
-The kernel logs the allocation failure:
-
-```bash
-journalctl -k | grep -i 'NV_ERR_NO_MEMORY\|_memdescAllocInternal'
-# NVRM: nvCheckOkFailedNoLog: ... Out of memory [NV_ERR_NO_MEMORY] ... _memdescAllocInternal
-```
-
-A 4 GB laptop GPU minus the desktop and Battle.net (≈0.4 GB) leaves only
-~3.3 GB for the game. As the budget fills, DXVK evicts/streams and performance
-degrades progressively. **`/reload` will not help** — it reloads the Lua UI, not
-GPU resources.
-
-Reduce pressure (easiest first):
-
-- **Run WoW on the iGPU** (ample system RAM, no 4 GB wall, no `Xid`): in
-  `~/.config/frostfireinstaller/config.toml` set
-  `[env] DXVK_FILTER_DEVICE_NAME = "AMD Radeon"`.
-- Close the **Battle.net launcher** window after the game has started (frees
-  ~0.4 GB VRAM).
-- Cap the frame rate and lower render scale / textures.
-- **Raise the background FPS cap** so idling at character select does not drop
-  the client into a low-power state: add `SET maxFPSBK "60"` to
-  `<edition>/WTF/Config.wtf` (remove the line to restore).
+`gx.log` "Periodic Gpu Status Report" shows `Mem Budget` filling while clocks and
+temperature stay healthy, and the kernel logs `NV_ERR_NO_MEMORY`. A 4 GB GPU leaves
+~3.3 GB for the game. Run on the iGPU, close the Battle.net window after the game
+starts (~0.4 GB), cap FPS/render scale, and raise the background cap with
+`SET maxFPSBK "60"` in `Config.wtf`. `/reload` does not touch GPU resources.
 
 ## No Proton build found
 
-If no Proton build is in a `compatibilitytools.d` directory, `frostfireinstaller`
-asks `umu-launcher` to download **UMU-Proton** on first launch. If `umu-run` is
-missing too, install `umu-launcher` first (it fetches Proton for you), or install
-GE-Proton/UMU-Proton with ProtonPlus. `frostfireinstaller doctor` shows which case
-you are in.
+umu downloads **UMU-Proton** on first launch. If `umu-run` is missing too, install
+`umu-launcher` first, or install GE-Proton/UMU-Proton with ProtonPlus. `doctor`
+shows which case you are in.
 
-## Vulkan / old or weak GPU
+## Vulkan / old GPU
 
-Battle.net's launcher and DXVK are **32-bit** and need a 32-bit Vulkan loader; the
-games need **Vulkan 1.3+** (vkd3d-proton) or DXVK. On very old integrated
-graphics (Intel HD 6000, GCN 1, Maxwell) the launcher may start but the game will
-fail — that is Blizzard's hardware floor, not the tool. `doctor` warns when Vulkan
-is missing, too old, software-only (llvmpipe), or the 32-bit loader is absent, and
-lists the packages to install.
+Battle.net and DXVK are **32-bit** and need a 32-bit Vulkan loader; games need
+Vulkan 1.3+ (vkd3d-proton). Very old GPUs (Intel HD 6000, GCN 1, Maxwell) may start
+the launcher but not the game — Blizzard's hardware floor. `doctor` warns when
+Vulkan is missing, too old, software-only (llvmpipe) or the 32-bit loader is absent.
 
 ## Other freezes or low performance
 
-Try these one at a time:
+One at a time: turn off MangoHud; delete `vkd3d-proton.cache*`/DXVK caches (with the
+game closed); try another runner; toggle GameMode/Gamescope off;
+`sudo sysctl vm.max_map_count=1048576`; update Mesa/NVIDIA.
 
-- **Overlays:** turn off **MangoHud** in the app to rule out the overlay.
-- **Shader cache:** delete the game's `vkd3d-proton.cache*` / DXVK cache and let
-  it rebuild.
-- **Runner:** try a different Proton build in the app's **Runner** section
-  (e.g. Proton-CachyOS or UMU-Proton instead of GE-Proton).
-- **GameMode / Gamescope:** toggle them off to isolate the wrapper.
-- **`vm.max_map_count`:** some titles need a higher limit
-  (`sudo sysctl vm.max_map_count=1048576`).
-- **Driver:** make sure your GPU driver (Mesa/NVIDIA) is current.
+## Battle.net launcher: blank window, spinning gear, stuck login
 
-## Battle.net launcher: blank window, spinning gear or stuck login
-
-The launcher needs two Wine fixes, which `frostfireinstaller` already applies:
-
-- `WINE_SIMULATE_WRITECOPY=1`
-- `WINEDLLOVERRIDES=locationapi=d`
-
-If the client still misbehaves, use **Repair** (stops the client, clears
-CEF/cache and relaunches). A full **Reinstall** (with *Keep games*) keeps
-your games.
-
-## "bad gateway" while downloading the installer
-
-A transient 5xx from Blizzard's CDN; the app retries automatically. If it keeps
-failing, check your network/DNS and try again.
+The two required fixes (`WINE_SIMULATE_WRITECOPY=1`, `WINEDLLOVERRIDES=locationapi=d`)
+are already applied. Use **Repair** (stops the client, clears CEF/cache, relaunches);
+a full **Reinstall** with *Keep games* keeps your games. A "bad gateway" while
+downloading the installer is a transient 5xx and is retried automatically.
 
 ## Resetting
 
-- Config: `~/.config/frostfireinstaller/config.toml`.
-- Cached installer: `~/Games/battlenet/Battle.net-Setup.exe` (drop it with the
-  *Also the installer* checkbox or `--purge-installer`).
-- Full reset: `frostfireinstaller remove --purge --purge-installer`, then start
-  again.
+Config: `~/.config/frostfireinstaller/config.toml`. Cached installer:
+`~/Games/battlenet/Battle.net-Setup.exe`. Full reset:
+`frostfireinstaller remove --purge --purge-installer`, then start again.
