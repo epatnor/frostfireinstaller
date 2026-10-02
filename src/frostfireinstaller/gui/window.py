@@ -3,90 +3,135 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any
 
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw  # noqa: E402
+from gi.repository import Adw, Gio, GLib  # noqa: E402
 
-from ..config import Config  # noqa: E402
-from ..core import battlenet, health  # noqa: E402
 from . import pages  # noqa: E402
+from .state import ClientState  # noqa: E402
+from .widgets import ActivityBar  # noqa: E402
+
+Refresher = Callable[[ClientState], None]
+
+# Desktop-file id used to address our own taskbar/dock entry.
+APP_DESKTOP_URI = "application://io.github.epatnor.frostfireinstaller.desktop"
+
+
+def set_running_badge(visible: bool) -> None:
+    """Show or clear a badge on the app's taskbar icon (Unity Launcher API).
+
+    KDE Plasma (and GNOME with a suitable extension) listen for this signal, so
+    the icon keeps showing that Battle.net is up even when both windows are
+    minimised - including after a suspend/resume.
+    """
+    try:
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        properties = {
+            "count": GLib.Variant("x", 1 if visible else 0),
+            "count-visible": GLib.Variant("b", visible),
+        }
+        bus.emit_signal(
+            None,
+            "/com/canonical/Unity/LauncherEntry",
+            "com.canonical.Unity.LauncherEntry",
+            "Update",
+            GLib.Variant("(sa{sv})", (APP_DESKTOP_URI, properties)),
+        )
+    except GLib.Error:
+        pass
 
 
 class MainWindow(Adw.ApplicationWindow):
+    """The launcher window, and the hub that refreshes every state widget.
+
+    Widgets in both windows register a refresher here; ``refresh_state`` reads
+    one ``ClientState`` and hands it to all of them. It runs after every action
+    and whenever a window gains focus, so values changed on disk (or a client
+    that was closed outside the app) show up without a restart.
+    """
+
     def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self.set_title("Frostfire Installer")
-        # Fixed 608 px wide so the banner fills the window. The height is set by
-        # pages.py from the banner's aspect ratio; the advanced options live in
-        # their own resizable window (gui/settings.py). This is only the
-        # pre-build fallback.
+        # Fixed 608 px wide so the banner fills the window; pages.build_main
+        # sets the height from the banner. This is only the pre-build fallback.
         self.set_resizable(False)
-        self.set_default_size(608, 350)
+        self.set_default_size(pages.WINDOW_WIDTH, 350)
 
-        self._state_refreshers: list[Callable[[], None]] = []
-        self._activity: pages.ActivityBar | None = None
-        self._title_widget: Adw.WindowTitle | None = None
+        self._refreshers: list[Refresher] = []
+        self._title: Adw.WindowTitle | None = None
         self._run_bar: pages.RunBar | None = None
-        self._tray: object | None = None
+        self._activity: ActivityBar | None = None
+        self._settings: Any = None
+        self._tray: Any = None
+
         self.toasts = Adw.ToastOverlay()
         self.toasts.set_child(pages.build_main(self))
         self.set_content(self.toasts)
+        self.connect("notify::is-active", self._on_focus)
         self.refresh_state()
 
-    def set_title_widget(self, widget: Adw.WindowTitle) -> None:
-        """Keep the header title so the running state can be shown in it."""
-        self._title_widget = widget
-
-    def set_run_bar(self, run_bar: pages.RunBar) -> None:
-        """Keep the run bar so the tray icon can start/stop Battle.net too."""
+    def attach(
+        self, *, title: Adw.WindowTitle, run_bar: pages.RunBar, activity: ActivityBar
+    ) -> None:
+        self._title = title
         self._run_bar = run_bar
+        self._activity = activity
 
-    def set_tray(self, tray: object) -> None:
+    def set_tray(self, tray: Any) -> None:
         self._tray = tray
-        self._update_running_indicator()
+        self.refresh_state()
 
     def toggle_battlenet(self) -> None:
         if self._run_bar is not None:
             self._run_bar.trigger()
 
-    def register_state(self, refresher: Callable[[], None]) -> None:
-        """Widgets that show client state refresh themselves through here."""
-        self._state_refreshers.append(refresher)
+    def open_settings(self) -> None:
+        """Open (or re-focus) the standalone settings window."""
+        if self._settings is None:
+            from .settings import SettingsWindow
+
+            self._settings = SettingsWindow(self)
+        self._settings.present()
+
+    def settings_closed(self) -> None:
+        self._settings = None
+
+    # --- state ------------------------------------------------------------
+    def register_state(self, refresher: Refresher) -> None:
+        self._refreshers.append(refresher)
+
+    def unregister_state(self, refresher: Refresher) -> None:
+        if refresher in self._refreshers:
+            self._refreshers.remove(refresher)
 
     def refresh_state(self) -> None:
-        for refresher in self._state_refreshers:
-            refresher()
-        self._update_running_indicator()
+        state = ClientState.read()
+        for refresher in list(self._refreshers):
+            refresher(state)
+        self._show_running(state)
 
-    def _update_running_indicator(self) -> None:
-        """Show, in the title, taskbar badge and tray icon, that Battle.net is up.
+    def _on_focus(self, *_args: object) -> None:
+        if self.is_active():
+            self.refresh_state()
 
-        The header subtitle follows the client state, the dock/taskbar icon gets
-        a badge while Battle.net runs and the tray icon mirrors it - so it is
-        still obvious after the machine wakes from suspend, even with both
-        windows minimised.
+    def _show_running(self, state: ClientState) -> None:
+        """Mirror the client state in the title, taskbar badge and tray icon.
+
+        So it is still obvious after the machine wakes from suspend, even with
+        both windows minimised.
         """
-        running = health.running()
-        installed = battlenet.installed(Config.load())
-        if running:
-            text = "Battle.net running"
-        elif installed:
-            text = "Battle.net stopped"
-        else:
-            text = "Battle.net not installed"
-        if self._title_widget is not None:
-            self._title_widget.set_subtitle(text)
-        pages.set_running_badge(running)
+        if self._title is not None:
+            self._title.set_subtitle(state.summary)
+        set_running_badge(state.running)
         if self._tray is not None:
-            self._tray.set_state(running, installed)  # type: ignore[attr-defined]
+            self._tray.set_state(state.running, state.installed)
 
-    def register_activity(self, bar: pages.ActivityBar) -> None:
-        """The strip that shows what operation is running right now."""
-        self._activity = bar
-
+    # --- Surface ----------------------------------------------------------
     def set_activity(self, message: str) -> None:
         if self._activity is not None:
             self._activity.show(message)
