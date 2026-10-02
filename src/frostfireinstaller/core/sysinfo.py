@@ -11,6 +11,7 @@ import re
 import shutil
 from pathlib import Path
 
+from . import gpu
 from .proc import capture
 
 
@@ -83,20 +84,7 @@ def memory() -> str:
 
 def gpus() -> list[str]:
     """The display controllers, one per GPU."""
-    markers = ("VGA compatible controller", "3D controller", "Display controller")
-    names: list[str] = []
-    for line in _run(["lspci"]).splitlines():
-        if any(marker in line for marker in markers):
-            name = line.split(": ", 1)[-1]
-            for prefix in (
-                "Advanced Micro Devices, Inc. [AMD/ATI] ",
-                "Intel Corporation ",
-                "NVIDIA Corporation ",
-            ):
-                name = name.removeprefix(prefix)
-            name = re.sub(r"\s*\(rev [0-9a-f]+\)$", "", name).strip()
-            names.append(name)
-    return names
+    return gpu.pci_gpus()
 
 
 def disks() -> list[str]:

@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 from .config import Config
-from .core import battlenet, proton, recommend, umu
+from .core import battlenet, gpu, proton, umu
 from .core.progress import Progress, emit
 from .logsetup import get_logger
 from .resources import data_file
@@ -116,7 +116,7 @@ def set_gpu_preference(preference: str) -> None:
     elif preference == "nvidia":
         config.env["DXVK_FILTER_DEVICE_NAME"] = "NVIDIA"
     else:
-        integrated = recommend.integrated_gpu_name()
+        integrated = gpu.integrated_gpu_name()
         if not integrated:
             raise ValueError("no integrated GPU detected")
         config.env["DXVK_FILTER_DEVICE_NAME"] = integrated

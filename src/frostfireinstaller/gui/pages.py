@@ -27,7 +27,7 @@ from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk, Pango  # noqa: E4
 
 from .. import service  # noqa: E402
 from ..config import Config  # noqa: E402
-from ..core import battlenet, distro, health, proton, recommend  # noqa: E402
+from ..core import battlenet, distro, gpu, health, proton, recommend  # noqa: E402
 from .helpers import data_file, run_async  # noqa: E402
 
 # Desktop-file id used to address our own taskbar/dock entry.
@@ -715,8 +715,8 @@ def _gamescope_is_risky() -> bool:
     cosmetic glitch, so it is called out on the switch itself rather than left
     for the user to discover.
     """
-    version, _is_open = recommend.nvidia_driver_info()
-    return version is not None and distro.detect().session == "Wayland"
+    version, _is_open = gpu.nvidia_driver_info()
+    return version is not None and distro.session() == "Wayland"
 
 
 def _switch(
@@ -833,7 +833,7 @@ def _command_row(command: str) -> Gtk.Widget:
 def _persistenced_control(window: Adw.ApplicationWindow) -> Gtk.Widget:
     """Reversible in-app mitigation: keep the GPU initialised (nvidia-persistenced)."""
     box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-    active = recommend.persistenced_state() == "active"
+    active = gpu.persistenced_state() == "active"
     button = _button(
         "Disable GPU persistence" if active else "Enable GPU persistence",
         primary=not active,
@@ -853,7 +853,7 @@ def _persistenced_control(window: Adw.ApplicationWindow) -> Gtk.Widget:
 def _toggle_persistenced(
     window: Adw.ApplicationWindow, button: Gtk.Button, note: Gtk.Label
 ) -> None:
-    enable = recommend.persistenced_state() != "active"
+    enable = gpu.persistenced_state() != "active"
     button.set_sensitive(False)
     note.set_label("Waiting for authorisation ...")
 

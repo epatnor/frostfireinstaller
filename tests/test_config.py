@@ -97,7 +97,7 @@ def test_set_persistenced_command(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_set_gpu_preference_roundtrips(sandbox: Config, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("frostfireinstaller.core.recommend.integrated_gpu_name", lambda: "AMD")
+    monkeypatch.setattr("frostfireinstaller.core.gpu.integrated_gpu_name", lambda: "AMD")
     service.set_gpu_preference("nvidia")
     assert Config.load().env["DXVK_FILTER_DEVICE_NAME"] == "NVIDIA"
 

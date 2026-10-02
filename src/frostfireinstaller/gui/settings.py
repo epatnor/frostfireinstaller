@@ -20,7 +20,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gtk  # noqa: E402
 
 from ..config import Config  # noqa: E402
-from ..core import battlenet, proton, recommend, sysinfo  # noqa: E402
+from ..core import battlenet, gpu, proton, recommend, sysinfo  # noqa: E402
 from . import pages  # noqa: E402
 
 _MANGO_HELP = (
@@ -334,11 +334,11 @@ class SettingsWindow(Adw.Window):
             "Graphics",
             "Which GPU the games use. Only the GPUs found on this machine are listed.",
         )
-        preference = recommend.gpu_preference(config)
+        preference = gpu.gpu_preference(config)
         gpu_options: list[tuple[str, str, str]] = [
             ("auto", "Auto", "Let the game choose, without forcing a GPU.")
         ]
-        if recommend.nvidia_driver_info()[0] is not None:
+        if gpu.nvidia_driver_info()[0] is not None:
             gpu_options.append(
                 (
                     "nvidia",
@@ -346,7 +346,7 @@ class SettingsWindow(Adw.Window):
                     'Forces DXVK_FILTER_DEVICE_NAME = "NVIDIA" (the dedicated GPU).',
                 )
             )
-        integrated = recommend.integrated_gpu_name()
+        integrated = gpu.integrated_gpu_name()
         if integrated:
             gpu_options.append(
                 (

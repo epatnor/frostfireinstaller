@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 from frostfireinstaller.config import Config, Performance
@@ -20,35 +19,15 @@ def make_config(root: Path) -> Config:
     )
 
 
-def test_recent_xids_parses_kernel_log(monkeypatch) -> None:
-    def fake_run(*_args, **_kwargs):
-        return subprocess.CompletedProcess(
-            args=[],
-            returncode=0,
-            stdout=(
-                "NVRM: Xid (PCI:0000:01:00): 109, pid=1, name=WowB.exe, CTX SWITCH TIMEOUT\n"
-                "unrelated line\n"
-                "NVRM: Xid (PCI:0000:01:00): 13, pid=2\n"
-            ),
-        )
-
-    monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/journalctl")
-    monkeypatch.setattr(subprocess, "run", fake_run)
-    assert recommend.recent_xids() == ["109", "13"]
-
-
-def test_recent_xids_without_journalctl(monkeypatch) -> None:
-    monkeypatch.setattr(recommend.shutil, "which", lambda _name: None)
-    assert recommend.recent_xids() == []
-
-
 def test_nvidia_warns_on_serious_xid(monkeypatch) -> None:
-    monkeypatch.setattr(recommend, "nvidia_driver_info", lambda: ("550.54.14", True))
+    monkeypatch.setattr(recommend.gpu, "nvidia_driver_info", lambda: ("550.54.14", True))
     monkeypatch.setattr(
-        recommend, "_kernel_log", lambda *_: "NVRM: Xid (PCI:0000:01:00): 109, CTX SWITCH TIMEOUT"
+        recommend.gpu,
+        "kernel_log",
+        lambda *_: "NVRM: Xid (PCI:0000:01:00): 109, CTX SWITCH TIMEOUT",
     )
-    monkeypatch.setattr(recommend, "persistenced_state", lambda: "inactive")
-    monkeypatch.setattr(recommend, "_nvidia_pci", lambda: "0000:01:00.0")
+    monkeypatch.setattr(recommend.gpu, "persistenced_state", lambda: "inactive")
+    monkeypatch.setattr(recommend.gpu, "nvidia_pci", lambda: "0000:01:00.0")
     monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/rpm-ostree")
 
     items = recommend._check_nvidia()
@@ -61,9 +40,9 @@ def test_nvidia_warns_on_serious_xid(monkeypatch) -> None:
 
 
 def test_nvidia_warns_on_memory_error(monkeypatch) -> None:
-    monkeypatch.setattr(recommend, "nvidia_driver_info", lambda: ("550.54.14", True))
-    monkeypatch.setattr(recommend, "_kernel_log", lambda *_: "NVRM: ... NV_ERR_NO_MEMORY ...")
-    monkeypatch.setattr(recommend, "persistenced_state", lambda: None)
+    monkeypatch.setattr(recommend.gpu, "nvidia_driver_info", lambda: ("550.54.14", True))
+    monkeypatch.setattr(recommend.gpu, "kernel_log", lambda *_: "NVRM: ... NV_ERR_NO_MEMORY ...")
+    monkeypatch.setattr(recommend.gpu, "persistenced_state", lambda: None)
 
     items = recommend._check_nvidia()
 
@@ -72,9 +51,9 @@ def test_nvidia_warns_on_memory_error(monkeypatch) -> None:
 
 
 def test_nvidia_info_when_open_without_fault(monkeypatch) -> None:
-    monkeypatch.setattr(recommend, "nvidia_driver_info", lambda: ("550.54.14", True))
-    monkeypatch.setattr(recommend, "_kernel_log", lambda *_: "")
-    monkeypatch.setattr(recommend, "persistenced_state", lambda: None)
+    monkeypatch.setattr(recommend.gpu, "nvidia_driver_info", lambda: ("550.54.14", True))
+    monkeypatch.setattr(recommend.gpu, "kernel_log", lambda *_: "")
+    monkeypatch.setattr(recommend.gpu, "persistenced_state", lambda: None)
     monkeypatch.setattr(recommend.shutil, "which", lambda _name: None)
 
     items = recommend._check_nvidia()
@@ -84,7 +63,7 @@ def test_nvidia_info_when_open_without_fault(monkeypatch) -> None:
 
 
 def test_nvidia_info_without_nvidia(monkeypatch) -> None:
-    monkeypatch.setattr(recommend, "nvidia_driver_info", lambda: (None, False))
+    monkeypatch.setattr(recommend.gpu, "nvidia_driver_info", lambda: (None, False))
     items = recommend._check_nvidia()
     assert items[0].level == "info"
 
@@ -150,35 +129,13 @@ def test_report_sorts_most_severe_first(monkeypatch, tmp_path: Path) -> None:
     ]
 
 
-def test_persistenced_state_active(monkeypatch) -> None:
-    monkeypatch.setattr(recommend.shutil, "which", lambda name: f"/usr/bin/{name}")
-    monkeypatch.setattr(
-        subprocess,
-        "run",
-        lambda *_a, **_k: subprocess.CompletedProcess([], 0, stdout="active\n"),
-    )
-    assert recommend.persistenced_state() == "active"
-
-
-def test_persistenced_state_unavailable(monkeypatch) -> None:
-    monkeypatch.setattr(recommend.shutil, "which", lambda _name: None)
-    assert recommend.persistenced_state() is None
-
-
-def test_integrated_gpu_name(monkeypatch) -> None:
-    monkeypatch.setattr(recommend, "_integrated_gpu", lambda: "AMD")
-    assert recommend.integrated_gpu_name() == "AMD"
-    monkeypatch.setattr(recommend, "_integrated_gpu", lambda: "Intel")
-    assert recommend.integrated_gpu_name() == "Intel"
-    monkeypatch.setattr(recommend, "_integrated_gpu", lambda: None)
-    assert recommend.integrated_gpu_name() is None
-
-
 def test_hybrid_warns_and_points_to_graphics(monkeypatch, tmp_path: Path) -> None:
-    monkeypatch.setattr(recommend, "nvidia_driver_info", lambda: ("550.54.14", True))
-    monkeypatch.setattr(recommend, "integrated_gpu_name", lambda: "AMD")
+    monkeypatch.setattr(recommend.gpu, "nvidia_driver_info", lambda: ("550.54.14", True))
+    monkeypatch.setattr(recommend.gpu, "integrated_gpu_name", lambda: "AMD")
     monkeypatch.setattr(
-        recommend, "_kernel_log", lambda *_: "NVRM: Xid (PCI:0000:01:00): 109, CTX SWITCH TIMEOUT"
+        recommend.gpu,
+        "kernel_log",
+        lambda *_: "NVRM: Xid (PCI:0000:01:00): 109, CTX SWITCH TIMEOUT",
     )
     item = recommend._check_hybrid_gpu(make_config(tmp_path))
     assert item.level == "warn"
@@ -187,27 +144,18 @@ def test_hybrid_warns_and_points_to_graphics(monkeypatch, tmp_path: Path) -> Non
     assert any("DXVK_FILTER_DEVICE_NAME" in command for command in item.commands)
 
 
-def test_gpu_preference(tmp_path: Path) -> None:
-    config = make_config(tmp_path)
-    assert recommend.gpu_preference(config) == "auto"
-    config.env["DXVK_FILTER_DEVICE_NAME"] = "NVIDIA"
-    assert recommend.gpu_preference(config) == "nvidia"
-    config.env["DXVK_FILTER_DEVICE_NAME"] = "AMD"
-    assert recommend.gpu_preference(config) == "integrated"
-
-
 def test_hybrid_ok_when_pinned(monkeypatch, tmp_path: Path) -> None:
-    monkeypatch.setattr(recommend, "nvidia_driver_info", lambda: ("550.54.14", True))
-    monkeypatch.setattr(recommend, "integrated_gpu_name", lambda: "AMD")
+    monkeypatch.setattr(recommend.gpu, "nvidia_driver_info", lambda: ("550.54.14", True))
+    monkeypatch.setattr(recommend.gpu, "integrated_gpu_name", lambda: "AMD")
     config = make_config(tmp_path)
     config.env["DXVK_FILTER_DEVICE_NAME"] = "AMD"
     assert recommend._check_hybrid_gpu(config).level == "ok"
 
 
 def test_hybrid_info_without_trouble(monkeypatch, tmp_path: Path) -> None:
-    monkeypatch.setattr(recommend, "nvidia_driver_info", lambda: ("550.54.14", True))
-    monkeypatch.setattr(recommend, "integrated_gpu_name", lambda: "AMD")
-    monkeypatch.setattr(recommend, "_kernel_log", lambda *_: "")
+    monkeypatch.setattr(recommend.gpu, "nvidia_driver_info", lambda: ("550.54.14", True))
+    monkeypatch.setattr(recommend.gpu, "integrated_gpu_name", lambda: "AMD")
+    monkeypatch.setattr(recommend.gpu, "kernel_log", lambda *_: "")
     assert recommend._check_hybrid_gpu(make_config(tmp_path)).level == "info"
 
 
@@ -233,14 +181,16 @@ def test_vulkan_could_not_be_checked(monkeypatch) -> None:
 
 def test_vulkan_no_device(monkeypatch) -> None:
     monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/vulkaninfo")
-    monkeypatch.setattr(recommend, "_vulkan_versions_and_names", lambda: ([], []))
+    monkeypatch.setattr(recommend.gpu, "vulkan_versions_and_names", lambda: ([], []))
     assert recommend._check_vulkan().level == "warn"
 
 
 def test_vulkan_too_old(monkeypatch) -> None:
     monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/vulkaninfo")
-    monkeypatch.setattr(recommend, "_vulkan_versions_and_names", lambda: ([(1, 2, 200)], ["AMD"]))
-    monkeypatch.setattr(recommend, "_has_32bit_vulkan", lambda: True)
+    monkeypatch.setattr(
+        recommend.gpu, "vulkan_versions_and_names", lambda: ([(1, 2, 200)], ["AMD"])
+    )
+    monkeypatch.setattr(recommend.gpu, "has_32bit_vulkan", lambda: True)
     item = recommend._check_vulkan()
     assert item.level == "warn"
     assert "old" in item.title.lower()
@@ -249,25 +199,29 @@ def test_vulkan_too_old(monkeypatch) -> None:
 def test_vulkan_software_only(monkeypatch) -> None:
     monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/vulkaninfo")
     monkeypatch.setattr(
-        recommend,
-        "_vulkan_versions_and_names",
+        recommend.gpu,
+        "vulkan_versions_and_names",
         lambda: ([(1, 4, 354)], ["llvmpipe (LLVM 22)"]),
     )
-    monkeypatch.setattr(recommend, "_has_32bit_vulkan", lambda: True)
+    monkeypatch.setattr(recommend.gpu, "has_32bit_vulkan", lambda: True)
     assert "software" in recommend._check_vulkan().title.lower()
 
 
 def test_vulkan_missing_32bit(monkeypatch) -> None:
     monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/vulkaninfo")
-    monkeypatch.setattr(recommend, "_vulkan_versions_and_names", lambda: ([(1, 4, 354)], ["AMD"]))
-    monkeypatch.setattr(recommend, "_has_32bit_vulkan", lambda: False)
+    monkeypatch.setattr(
+        recommend.gpu, "vulkan_versions_and_names", lambda: ([(1, 4, 354)], ["AMD"])
+    )
+    monkeypatch.setattr(recommend.gpu, "has_32bit_vulkan", lambda: False)
     assert "32-bit" in recommend._check_vulkan().title
 
 
 def test_vulkan_ok(monkeypatch) -> None:
     monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/vulkaninfo")
-    monkeypatch.setattr(recommend, "_vulkan_versions_and_names", lambda: ([(1, 4, 354)], ["AMD"]))
-    monkeypatch.setattr(recommend, "_has_32bit_vulkan", lambda: True)
+    monkeypatch.setattr(
+        recommend.gpu, "vulkan_versions_and_names", lambda: ([(1, 4, 354)], ["AMD"])
+    )
+    monkeypatch.setattr(recommend.gpu, "has_32bit_vulkan", lambda: True)
     assert recommend._check_vulkan().level == "ok"
 
 

@@ -14,14 +14,12 @@ including the passing ones, for the "System check" dialog and ``doctor``.
 
 from __future__ import annotations
 
-import re
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..config import Config
-from . import proton
-from .proc import capture
+from . import gpu, proton
 
 # Xid values that usually mean a GPU/driver hang rather than an app bug.
 _SERIOUS_XIDS = {"13", "31", "43", "62", "79", "109", "119", "120"}
@@ -31,15 +29,6 @@ _LINUX_FSTYPES = {"ext2", "ext3", "ext4", "btrfs", "xfs", "f2fs", "zfs", "tmpfs"
 # vkd3d-proton (D3D12) needs Vulkan 1.3; Battle.net is 32-bit and needs a 32-bit loader.
 _VULKAN_MIN = (1, 3)
 _SOFTWARE_VULKAN = ("llvmpipe", "lavapipe", "swiftshader")
-_32BIT_VULKAN_CANDIDATES = (
-    "/usr/lib32/libvulkan.so.1",
-    "/usr/lib/i386-linux-gnu/libvulkan.so.1",
-    "/lib32/libvulkan.so.1",
-    "/usr/lib/libvulkan.so.1",  # Fedora/openSUSE multiarch layout
-)
-
-_XID_RE = re.compile(r"NVRM: Xid \(PCI:[0-9a-fA-F:.]+\):\s*(\d+)")
-_VERSION_RE = re.compile(r"(\d+\.\d+(?:\.\d+)?)")
 
 
 @dataclass(slots=True)
@@ -64,74 +53,8 @@ def _existing(path: Path) -> Path:
     return node
 
 
-# --- NVIDIA / GPU --------------------------------------------------------
-def nvidia_driver_info() -> tuple[str | None, bool]:
-    """Return ``(driver_version, is_open_module)`` (``(None, False)`` if no NVIDIA)."""
-    try:
-        text = Path("/proc/driver/nvidia/version").read_text(encoding="utf-8")
-    except OSError:
-        return None, False
-    match = _VERSION_RE.search(text)
-    return (match.group(1) if match else None), "Open Kernel Module" in text
-
-
-def _nvidia_pci() -> str | None:
-    """The NVIDIA GPU's PCI address (e.g. ``0000:01:00.0``), if it can be found."""
-    if not shutil.which("nvidia-smi"):
-        return None
-    out = (
-        capture(["nvidia-smi", "--query-gpu=pci.bus_id", "--format=csv,noheader"], 5) or ""
-    ).strip()
-    line = out.splitlines()[0].strip() if out else ""
-    # "00000000:01:00.0" -> "0000:01:00.0"
-    return line[-12:] if len(line) >= 12 else None
-
-
-def _kernel_log(limit: int = 300) -> str:
-    if not shutil.which("journalctl"):
-        return ""
-    return capture(["journalctl", "-k", "-b", "-n", str(limit), "--no-pager"], 6) or ""
-
-
-def recent_xids(limit: int = 300) -> list[str]:
-    """Return Nvidia Xid codes from the current boot's kernel log (best effort)."""
-    return _XID_RE.findall(_kernel_log(limit))
-
-
-def _integrated_gpu() -> str | None:
-    for card in sorted(Path("/sys/class/drm").glob("card[0-9]*/device/vendor")):
-        try:
-            vendor = card.read_text(encoding="utf-8").strip()
-        except OSError:
-            continue
-        if vendor == "0x1002":
-            return "AMD"
-        if vendor == "0x8086":
-            return "Intel"
-    return None
-
-
-def _vram_mib() -> int | None:
-    """Total video memory in MiB, if it can be determined."""
-    if shutil.which("nvidia-smi"):
-        out = capture(
-            ["nvidia-smi", "--query-gpu=memory.total", "--format=csv,noheader,nounits"], 5
-        )
-        lines = (out or "").strip().splitlines()
-        if lines and lines[0].strip().isdigit():
-            return int(lines[0].strip())
-    for node in Path("/sys/class/drm").glob("card[0-9]*/device/mem_info_vram_total"):
-        try:
-            total = int(node.read_text(encoding="utf-8").strip())
-        except (OSError, ValueError):
-            continue
-        if total > 0:
-            return total // 1024**2
-    return None
-
-
 def _check_vram() -> Recommendation:
-    mib = _vram_mib()
+    mib = gpu.vram_mib()
     if mib is None:
         return Recommendation("vram", "info", "Video memory could not be read", "")
     gb = mib / 1024
@@ -146,25 +69,6 @@ def _check_vram() -> Recommendation:
     return Recommendation("vram", "ok", f"{gb:.0f} GB video memory", "")
 
 
-def _has_32bit_vulkan() -> bool:
-    return any(Path(path).exists() for path in _32BIT_VULKAN_CANDIDATES)
-
-
-def _vulkan_versions_and_names() -> tuple[list[tuple[int, ...]], list[str]]:
-    """Parse ``vulkaninfo --summary`` into ``(api_versions, device_names)``."""
-    if not shutil.which("vulkaninfo"):
-        return [], []
-    text = capture(["vulkaninfo", "--summary"], 12)
-    if text is None:
-        return [], []
-    versions = [
-        tuple(int(part) for part in match.split("."))
-        for match in re.findall(r"apiVersion\s*=\s*(\d+\.\d+(?:\.\d+)?)", text)
-    ]
-    names = [name.strip() for name in re.findall(r"deviceName\s*=\s*(.+)", text)]
-    return versions, names
-
-
 def _check_vulkan() -> Recommendation:
     if not shutil.which("vulkaninfo"):
         return Recommendation(
@@ -173,7 +77,7 @@ def _check_vulkan() -> Recommendation:
             "Vulkan could not be checked",
             "Install vulkan-tools to enable this check.",
         )
-    versions, names = _vulkan_versions_and_names()
+    versions, names = gpu.vulkan_versions_and_names()
     if not versions:
         return Recommendation(
             "vulkan",
@@ -203,7 +107,7 @@ def _check_vulkan() -> Recommendation:
             "unusably slow or fail to start.",
             "Install a GPU driver with Vulkan support.",
         )
-    if not _has_32bit_vulkan():
+    if not gpu.has_32bit_vulkan():
         return Recommendation(
             "vulkan",
             "warn",
@@ -219,7 +123,7 @@ def _driver_commands(is_open: bool, serious: bool) -> tuple[str, ...]:
     commands: list[str] = []
     if serious:
         commands.append("sudo systemctl enable --now nvidia-persistenced")
-        address = _nvidia_pci()
+        address = gpu.nvidia_pci()
         if address:
             commands.append(f"sudo sh -c 'echo on > /sys/bus/pci/devices/{address}/power/control'")
         commands.append("sudo sh -c 'echo performance > /sys/module/pcie_aspm/parameters/policy'")
@@ -230,16 +134,8 @@ def _driver_commands(is_open: bool, serious: bool) -> tuple[str, ...]:
     return tuple(commands)
 
 
-def persistenced_state() -> str | None:
-    """Return nvidia-persistenced's state, or ``None`` if unavailable."""
-    if not shutil.which("nvidia-persistenced") or not shutil.which("systemctl"):
-        return None
-    out = capture(["systemctl", "is-active", "nvidia-persistenced"], 5)
-    return (out or "").strip() or None
-
-
 def _check_nvidia() -> list[Recommendation]:
-    version, is_open = nvidia_driver_info()
+    version, is_open = gpu.nvidia_driver_info()
     if version is None:
         return [
             Recommendation(
@@ -250,10 +146,10 @@ def _check_nvidia() -> list[Recommendation]:
             )
         ]
 
-    log = _kernel_log()
-    serious = sorted({x for x in _XID_RE.findall(log) if x in _SERIOUS_XIDS}, key=int)
+    log = gpu.kernel_log()
+    serious = sorted({x for x in gpu.XID_RE.findall(log) if x in _SERIOUS_XIDS}, key=int)
     oom = "NV_ERR_NO_MEMORY" in log
-    action_id = "persistenced" if persistenced_state() is not None else ""
+    action_id = "persistenced" if gpu.persistenced_state() is not None else ""
 
     if serious or oom:
         signals = []
@@ -297,34 +193,13 @@ def _check_nvidia() -> list[Recommendation]:
     ]
 
 
-def integrated_gpu_name() -> str | None:
-    """A vendor substring for the integrated GPU, for ``DXVK_FILTER_DEVICE_NAME``.
-
-    Deliberately generic (the detected vendor, never a fixed model) so the
-    filter matches whatever GPU the current machine actually has.
-    """
-    vendor = _integrated_gpu()
-    if vendor in {"AMD", "Intel"}:
-        return vendor
-    return None
-
-
-def gpu_preference(config: Config | None = None) -> str:
-    """The configured GPU preference: ``auto``, ``nvidia`` or ``integrated``."""
-    cfg = config if config is not None else Config.load()
-    value = cfg.env.get("DXVK_FILTER_DEVICE_NAME", "")
-    if not value:
-        return "auto"
-    return "nvidia" if "nvidia" in value.lower() else "integrated"
-
-
 def _check_hybrid_gpu(config: Config) -> Recommendation:
-    version, _ = nvidia_driver_info()
-    integrated = integrated_gpu_name()
+    version, _ = gpu.nvidia_driver_info()
+    integrated = gpu.integrated_gpu_name()
     if not (version and integrated):
         return Recommendation("hybrid", "ok", "Single-GPU configuration", "")
 
-    if gpu_preference(config) == "integrated":
+    if gpu.gpu_preference(config) == "integrated":
         return Recommendation(
             "hybrid",
             "ok",
@@ -332,8 +207,8 @@ def _check_hybrid_gpu(config: Config) -> Recommendation:
             "The game is bound to the same GPU as the screen - no cross-GPU copy.",
         )
 
-    log = _kernel_log()
-    trouble = any(x in _SERIOUS_XIDS for x in _XID_RE.findall(log)) or "NV_ERR_NO_MEMORY" in log
+    log = gpu.kernel_log()
+    trouble = any(x in _SERIOUS_XIDS for x in gpu.XID_RE.findall(log)) or "NV_ERR_NO_MEMORY" in log
     detail = (
         f"The laptop has both NVIDIA and an integrated {integrated} GPU, and the "
         "screen is wired to the integrated one. Running the game on NVIDIA therefore "
