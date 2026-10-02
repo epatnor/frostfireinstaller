@@ -40,3 +40,6 @@ assets/generated/
 
 # Local previews (screenshots, banner candidates)
 preview/
+
+# Private Claude Code notes
+CLAUDE.local.md

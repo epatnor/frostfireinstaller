@@ -144,7 +144,7 @@ class SettingsWindow(Adw.Window):
         self._parent = parent
         self._refreshers: list[Refresher] = []
         self._grid: Gtk.Widget | None = None
-        self.set_title("Settings")
+        self.set_title("Frostfire Installer Settings")
         self.set_default_size(920, 660)
         self.set_resizable(True)
         self.set_transient_for(parent)
@@ -155,7 +155,7 @@ class SettingsWindow(Adw.Window):
         content.append(self._build_content(Config.load()))
 
         self.toasts = Adw.ToastOverlay()
-        self.toasts.set_child(toolbar_page("Settings", content)[0])
+        self.toasts.set_child(toolbar_page("Frostfire Installer Settings", content)[0])
         self.set_content(self.toasts)
         self._fit_height()
         self.connect("close-request", self._on_close)

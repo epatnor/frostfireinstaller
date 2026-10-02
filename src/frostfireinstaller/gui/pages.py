@@ -10,6 +10,7 @@ launcher, not here.
 from __future__ import annotations
 
 import shutil
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -20,9 +21,10 @@ gi.require_version("Adw", "1")
 gi.require_version("GdkPixbuf", "2.0")
 from gi.repository import Adw, Gdk, GdkPixbuf, GLib, Gtk, Pango  # noqa: E402
 
+from .. import service  # noqa: E402
 from ..config import Config  # noqa: E402
-from ..core import distro, health, proton, recommend  # noqa: E402
-from . import actions, dialogs  # noqa: E402
+from ..core import battlenet, distro, health, proton, recommend  # noqa: E402
+from . import dialogs  # noqa: E402
 from .helpers import data_file, run_async  # noqa: E402
 from .state import ClientState  # noqa: E402
 from .widgets import (  # noqa: E402
@@ -32,6 +34,7 @@ from .widgets import (  # noqa: E402
     button,
     home_relative,
     icon,
+    reporter,
     toolbar_page,
 )
 
@@ -162,6 +165,14 @@ class ConfigStrip(Gtk.Box):
             self.proton.add_css_class("config-warn")
 
 
+_PILL_TONES = (
+    "status-on",
+    "status-off",
+    "status-missing",
+    "status-busy-ice",
+    "status-busy-fire",
+)
+
 # (pill text, pill class, glyph, button label, tooltip, primary) per state.
 _RUNNING = ("Running", "status-on", "stop", "Stop", "Stops Battle.net", False)
 _STOPPED = ("Stopped", "status-off", "play", "Start", "Starts Battle.net", True)
@@ -176,12 +187,23 @@ _MISSING = (
 
 
 class RunBar(Gtk.Box):
-    """Battle.net state and the one action button: Install / Start / Stop."""
+    """Battle.net state and the one action button: Install / Start / Stop.
+
+    Starting and stopping play out in the band itself rather than in toasts: the
+    pill pulses (ice while starting, ember while stopping), a light sweeps across
+    the band and the button shows a spinner. The band only settles once the
+    Battle.net process has actually appeared or gone, then glows once.
+    """
+
+    _POLL_MS = 1000
+    _TIMEOUT_S = {True: 120, False: 20}  # waiting for the client to appear / exit
+    _GLOW_MS = 1400
 
     def __init__(self, surface: Surface) -> None:
         super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         self.add_css_class("run-bar")
         self._surface = surface
+        self._busy: str | None = None  # "ice" while starting, "fire" while stopping
 
         text = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         text.set_valign(Gtk.Align.CENTER)
@@ -199,9 +221,12 @@ class RunBar(Gtk.Box):
         self.append(spacer)
 
         self.icon = icon(MATERIAL["play"], filled=True)
+        self.spinner = Gtk.Spinner()
+        self.spinner.set_visible(False)
         self.label = Gtk.Label()
         content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         content.append(self.icon)
+        content.append(self.spinner)
         content.append(self.label)
         self.button = button("", primary=True)
         self.button.set_child(content)
@@ -209,17 +234,15 @@ class RunBar(Gtk.Box):
         self.append(self.button)
 
     def refresh(self, state: ClientState) -> None:
+        if self._busy is not None:
+            return  # the animation owns the band until the process has settled
         if state.running:
             look = _RUNNING
         else:
             look = _STOPPED if state.installed else _MISSING
         pill, tone, glyph, label, tooltip, primary = look
 
-        self.status.set_label(pill)
-        for name in ("status-on", "status-off", "status-missing"):
-            self.status.remove_css_class(name)
-        self.status.add_css_class(tone)
-
+        self._set_pill(pill, tone)
         self.icon.set_label(MATERIAL[glyph])
         for name in ("icon-red", "icon-white"):
             self.icon.remove_css_class(name)
@@ -236,13 +259,83 @@ class RunBar(Gtk.Box):
         if self.button.get_sensitive():
             self.button.emit("clicked")
 
-    def _on_clicked(self, clicked: Gtk.Button) -> None:
-        if health.running():
-            health.kill_all()
-            self._surface.refresh_state()
-            self._surface.toast("Stopped Battle.net")
+    # --- start / stop -----------------------------------------------------
+    def _on_clicked(self, _button: Gtk.Button) -> None:
+        if self._busy is not None:
             return
-        actions.start(self._surface, clicked)
+        if health.running():
+            self._begin("fire", "Stopping")
+            run_async(health.kill_all, lambda _r: self._await(False), self._failed)
+            return
+
+        installing = not battlenet.installed(Config.load())
+        self._begin("ice", "Installing" if installing else "Starting")
+        report = reporter(self._surface)
+
+        def work() -> None:
+            config = Config.load()
+            service.launch(config, service.ensure(config, on_progress=report))
+
+        run_async(work, lambda _r: self._await(True), self._failed)
+
+    def _set_pill(self, text: str, tone: str) -> None:
+        self.status.set_label(text)
+        for name in _PILL_TONES:
+            self.status.remove_css_class(name)
+        self.status.add_css_class(tone)
+
+    def _begin(self, theme: str, verb: str) -> None:
+        self._busy = theme
+        self._set_pill(f"{verb}\u2026", f"status-busy-{theme}")
+        self.add_css_class(f"busy-{theme}")
+        self.button.set_sensitive(False)
+        self.icon.set_visible(False)
+        self.spinner.set_visible(True)
+        self.spinner.start()
+        self.label.set_label(f"{verb}\u2026")
+
+    def _await(self, running: bool) -> None:
+        """Hold the animation until Battle.net is (or is no longer) running."""
+        self._surface.clear_activity()
+        deadline = time.monotonic() + self._TIMEOUT_S[running]
+
+        def poll() -> bool:
+            if health.running() == running:
+                self._finish(glow=True)
+                return False
+            if time.monotonic() > deadline:
+                self._finish(glow=False)
+                self._surface.toast(
+                    "Battle.net did not start - see Settings -> Paths -> Logs"
+                    if running
+                    else "Battle.net is still running"
+                )
+                return False
+            return True
+
+        GLib.timeout_add(self._POLL_MS, poll)
+
+    def _failed(self, exc: Exception) -> None:
+        self._surface.clear_activity()
+        self._finish(glow=False)
+        self._surface.toast(f"Error: {exc}")
+
+    def _finish(self, glow: bool) -> None:
+        theme = self._busy
+        self._busy = None
+        self.remove_css_class(f"busy-{theme}")
+        self.spinner.stop()
+        self.spinner.set_visible(False)
+        self.icon.set_visible(True)
+        self.button.set_sensitive(True)
+        self._surface.refresh_state()
+        if glow:
+            self.status.add_css_class("status-glow")
+            GLib.timeout_add(self._GLOW_MS, self._end_glow)
+
+    def _end_glow(self) -> bool:
+        self.status.remove_css_class("status-glow")
+        return False
 
 
 class _RecommendationBar(Gtk.Box):
