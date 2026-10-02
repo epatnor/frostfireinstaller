@@ -226,11 +226,15 @@ class RunBar(Gtk.Box):
 
         self.icon = icon(MATERIAL["play"], filled=True)
         self.spinner = Gtk.Spinner()
-        self.spinner.set_visible(False)
+        self.spinner.set_valign(Gtk.Align.CENTER)
+        # The glyph is taller than the spinner; a stack keeps the larger size for
+        # both, so the band does not change height while it animates.
+        self.glyph_slot = Gtk.Stack()
+        self.glyph_slot.add_child(self.icon)
+        self.glyph_slot.add_child(self.spinner)
         self.label = Gtk.Label()
         content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        content.append(self.icon)
-        content.append(self.spinner)
+        content.append(self.glyph_slot)
         content.append(self.label)
         self.button = button("", primary=True)
         self.button.set_child(content)
@@ -298,8 +302,7 @@ class RunBar(Gtk.Box):
         self._set_pill(f"{verb}\u2026", f"status-busy-{theme}")
         self.add_css_class(f"busy-{theme}")
         self.button.set_sensitive(False)
-        self.icon.set_visible(False)
-        self.spinner.set_visible(True)
+        self.glyph_slot.set_visible_child(self.spinner)
         self.spinner.start()
         self.label.set_label(f"{verb}\u2026")
 
@@ -363,8 +366,7 @@ class RunBar(Gtk.Box):
         self._busy = None
         self.remove_css_class(f"busy-{theme}")
         self.spinner.stop()
-        self.spinner.set_visible(False)
-        self.icon.set_visible(True)
+        self.glyph_slot.set_visible_child(self.icon)
         self.button.set_sensitive(True)
         self._surface.refresh_state()
         if glow:
