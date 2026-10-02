@@ -101,11 +101,16 @@ def kv(title: str, value: str) -> Adw.ActionRow:
     return Adw.ActionRow(title=title, subtitle=value)
 
 
-def toolbar_page(title: str, content: Gtk.Widget) -> tuple[Adw.ToolbarView, Adw.WindowTitle]:
+def toolbar_page(
+    title: str, content: Gtk.Widget, end: Gtk.Widget | None = None
+) -> tuple[Adw.ToolbarView, Adw.WindowTitle]:
+    """A header bar (with an optional widget before the window buttons) over *content*."""
     view = Adw.ToolbarView()
     header = Adw.HeaderBar()
     title_widget = Adw.WindowTitle(title=title)
     header.set_title_widget(title_widget)
+    if end is not None:
+        header.pack_end(end)
     view.add_top_bar(header)
     view.set_content(content)
     return view, title_widget

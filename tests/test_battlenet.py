@@ -126,3 +126,40 @@ def test_ensure_installer_reports_progress(tmp_path: Path, monkeypatch) -> None:
     battlenet.ensure_installer(config, on_progress=seen.append)
 
     assert any("Downloading" in message for message in seen)
+
+
+def _client_log_dir(config) -> Path:
+    logs = config.prefix / "drive_c/users/steamuser/AppData/Local/Battle.net/Logs"
+    logs.mkdir(parents=True)
+    return logs
+
+
+def test_startup_stage_follows_the_new_log(tmp_path: Path, monkeypatch) -> None:
+    import os
+
+    monkeypatch.setenv("FROSTFIREINSTALLER_BNET_DIR", str(tmp_path))
+    config = Config.load()
+    logs = _client_log_dir(config)
+    old = logs / "battle.net-20261002T080000.000000.log"
+    old.write_text("*** LOAD COMPLETE ***\\nAttempting to show main window.\\n")
+    os.utime(old, (1, 1))
+    known = battlenet.client_logs(config)
+    assert known == {old.name}
+
+    # The previous run's log says "ready", but it is not this launch.
+    assert battlenet.startup_stage(config, known) == "starting"
+
+    new = logs / "battle.net-20261002T103201.351089.log"
+    new.write_text("[CatalogLoader] {Main} *** LOAD COMPLETE default ***\\n")
+    assert battlenet.startup_stage(config, known) == "loading"
+
+    with new.open("a") as fh:
+        fh.write("[Frontend] {Main} Attempting to show main window. isMinimizedOnStartup=false\\n")
+    assert battlenet.startup_stage(config, known) == "ready"
+
+
+def test_startup_stage_without_a_prefix(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("FROSTFIREINSTALLER_BNET_DIR", str(tmp_path))
+    config = Config.load()
+    assert battlenet.client_logs(config) == set()
+    assert battlenet.startup_stage(config, set()) == "starting"

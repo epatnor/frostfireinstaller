@@ -191,13 +191,17 @@ class RunBar(Gtk.Box):
 
     Starting and stopping play out in the band itself rather than in toasts: the
     pill pulses (ice while starting, ember while stopping), a light sweeps across
-    the band and the button shows a spinner. The band only settles once the
-    Battle.net process has actually appeared or gone, then glows once.
+    the band and the button shows a spinner. A start follows the client's own log
+    (Starting -> Loading) and settles only when the client shows its window; a
+    stop settles when the process is gone. Then the pill flashes once.
     """
 
     _POLL_MS = 1000
-    _TIMEOUT_S = {True: 120, False: 20}  # waiting for the client to appear / exit
+    _START_TIMEOUT_S = 300  # a first launch may download the Steam Linux Runtime
+    _LOADING_FALLBACK_S = 60  # running but no window marker: assume it is up
+    _STOP_TIMEOUT_S = 20
     _GLOW_MS = 1400
+    _STAGE_VERBS = {"starting": "Starting", "loading": "Loading"}
 
     def __init__(self, surface: Surface) -> None:
         super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
@@ -222,11 +226,15 @@ class RunBar(Gtk.Box):
 
         self.icon = icon(MATERIAL["play"], filled=True)
         self.spinner = Gtk.Spinner()
-        self.spinner.set_visible(False)
+        self.spinner.set_valign(Gtk.Align.CENTER)
+        # The glyph is taller than the spinner; a stack keeps the larger size for
+        # both, so the band does not change height while it animates.
+        self.glyph_slot = Gtk.Stack()
+        self.glyph_slot.add_child(self.icon)
+        self.glyph_slot.add_child(self.spinner)
         self.label = Gtk.Label()
         content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        content.append(self.icon)
-        content.append(self.spinner)
+        content.append(self.glyph_slot)
         content.append(self.label)
         self.button = button("", primary=True)
         self.button.set_child(content)
@@ -265,18 +273,23 @@ class RunBar(Gtk.Box):
             return
         if health.running():
             self._begin("fire", "Stopping")
-            run_async(health.kill_all, lambda _r: self._await(False), self._failed)
+            run_async(health.kill_all, lambda _r: self._await_stop(), self._failed)
             return
 
-        installing = not battlenet.installed(Config.load())
-        self._begin("ice", "Installing" if installing else "Starting")
+        installed = battlenet.installed(Config.load())
+        self._begin("ice", "Starting" if installed else "Installing")
         report = reporter(self._surface)
 
-        def work() -> None:
+        def work() -> set[str]:
             config = Config.load()
-            service.launch(config, service.ensure(config, on_progress=report))
+            build = service.ensure(config, on_progress=report)
+            # Taken after ensure(): a first install runs the client once itself,
+            # and that run's log must not count as this launch.
+            known_logs = battlenet.client_logs(config)
+            service.launch(config, build)
+            return known_logs
 
-        run_async(work, lambda _r: self._await(True), self._failed)
+        run_async(work, self._await_start, self._failed)
 
     def _set_pill(self, text: str, tone: str) -> None:
         self.status.set_label(text)
@@ -289,27 +302,55 @@ class RunBar(Gtk.Box):
         self._set_pill(f"{verb}\u2026", f"status-busy-{theme}")
         self.add_css_class(f"busy-{theme}")
         self.button.set_sensitive(False)
-        self.icon.set_visible(False)
-        self.spinner.set_visible(True)
+        self.glyph_slot.set_visible_child(self.spinner)
         self.spinner.start()
         self.label.set_label(f"{verb}\u2026")
 
-    def _await(self, running: bool) -> None:
-        """Hold the animation until Battle.net is (or is no longer) running."""
+    def _show_stage(self, verb: str) -> None:
+        if self.label.get_label() != f"{verb}\u2026":
+            self.status.set_label(f"{verb}\u2026")
+            self.label.set_label(f"{verb}\u2026")
+
+    def _await_start(self, known_logs: set[str]) -> None:
+        """Follow the launch through the client's log until its window is shown."""
         self._surface.clear_activity()
-        deadline = time.monotonic() + self._TIMEOUT_S[running]
+        config = Config.load()
+        started = time.monotonic()
+        loading_since: list[float] = []
 
         def poll() -> bool:
-            if health.running() == running:
+            stage = battlenet.startup_stage(config, known_logs)
+            now = time.monotonic()
+            if stage == "loading" and not loading_since:
+                loading_since.append(now)
+            ready = stage == "ready" or (
+                loading_since
+                and now - loading_since[0] > self._LOADING_FALLBACK_S
+                and health.running()
+            )
+            if ready:
+                self._finish(glow=True)
+                return False
+            if now - started > self._START_TIMEOUT_S:
+                self._finish(glow=False)
+                self._surface.toast("Battle.net did not start - see Settings -> Logs")
+                return False
+            self._show_stage(self._STAGE_VERBS[stage])
+            return True
+
+        GLib.timeout_add(self._POLL_MS, poll)
+
+    def _await_stop(self) -> None:
+        """Hold the animation until the Battle.net process is gone."""
+        deadline = time.monotonic() + self._STOP_TIMEOUT_S
+
+        def poll() -> bool:
+            if not health.running():
                 self._finish(glow=True)
                 return False
             if time.monotonic() > deadline:
                 self._finish(glow=False)
-                self._surface.toast(
-                    "Battle.net did not start - see Settings -> Paths -> Logs"
-                    if running
-                    else "Battle.net is still running"
-                )
+                self._surface.toast("Battle.net is still running")
                 return False
             return True
 
@@ -325,8 +366,7 @@ class RunBar(Gtk.Box):
         self._busy = None
         self.remove_css_class(f"busy-{theme}")
         self.spinner.stop()
-        self.spinner.set_visible(False)
-        self.icon.set_visible(True)
+        self.glyph_slot.set_visible_child(self.icon)
         self.button.set_sensitive(True)
         self._surface.refresh_state()
         if glow:

@@ -68,6 +68,35 @@ def launcher_ready(config: Config) -> bool:
     return "*** LOAD COMPLETE ***" in text or "login.app?app=app" in text
 
 
+# Written when the client shows its window - the moment it is usable. Much later
+# than the first "LOAD COMPLETE", which only covers catalog data.
+_MAIN_WINDOW_MARK = "Attempting to show main window"
+
+
+def client_logs(config: Config) -> set[str]:
+    """Names of the client's current log files (to spot the next run's new one)."""
+    directory = client_log_dir(config)
+    return {path.name for path in directory.glob("battle.net-*.log")} if directory else set()
+
+
+def startup_stage(config: Config, previous_logs: set[str]) -> str:
+    """How far a launch has got: ``starting``, ``loading`` or ``ready``.
+
+    *previous_logs* is ``client_logs()`` from before the launch; the client opens
+    a new log per run, so a log outside that set belongs to this launch.
+    ``starting``: no new log yet (umu, the runtime and Wine are coming up).
+    ``loading``: the client is initialising. ``ready``: its window is shown.
+    """
+    path = latest_client_log(config)
+    if path is None or path.name in previous_logs:
+        return "starting"
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return "loading"
+    return "ready" if _MAIN_WINDOW_MARK in text else "loading"
+
+
 def wait_for_launcher_ready(config: Config, timeout: int = 300, interval: int = 2) -> bool:
     log.info("Waiting for Battle.net to become ready (max %ss)...", timeout)
     waited = 0
