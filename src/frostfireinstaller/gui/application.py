@@ -98,35 +98,23 @@ headerbar {{
 }}
 
 /* Start/stop in the Battle.net band: the pill pulses (ice while starting,
-   ember while stopping), a light sweeps across the band, and the pill glows
-   once when the client has actually come up or gone. */
+   ember while stopping), a light sweeps across the band, and the pill flashes
+   once when the client has actually come up or gone. No box-shadow: the pill's
+   parent clips it into hard lines above and below. */
 @keyframes ff-pulse-ice {{
-    from {{
-        background-color: rgba(116, 216, 255, 0.10);
-        box-shadow: 0 0 0 0 rgba(116, 216, 255, 0);
-    }}
-    to {{
-        background-color: rgba(116, 216, 255, 0.30);
-        box-shadow: 0 0 10px 1px rgba(116, 216, 255, 0.45);
-    }}
+    from {{ background-color: rgba(116, 216, 255, 0.10); }}
+    to {{ background-color: rgba(116, 216, 255, 0.34); }}
 }}
 @keyframes ff-pulse-fire {{
-    from {{
-        background-color: rgba(255, 122, 47, 0.10);
-        box-shadow: 0 0 0 0 rgba(255, 122, 47, 0);
-    }}
-    to {{
-        background-color: rgba(255, 122, 47, 0.32);
-        box-shadow: 0 0 10px 1px rgba(255, 122, 47, 0.5);
-    }}
+    from {{ background-color: rgba(255, 122, 47, 0.10); }}
+    to {{ background-color: rgba(255, 122, 47, 0.36); }}
 }}
 @keyframes ff-sweep {{
     from {{ background-position: -100% 0; }}
     to   {{ background-position: 300% 0; }}
 }}
 @keyframes ff-glow {{
-    0%   {{ box-shadow: 0 0 14px 3px rgba(234, 249, 255, 0.55); }}
-    100% {{ box-shadow: 0 0 0 0 rgba(234, 249, 255, 0); }}
+    from {{ background-color: rgba(234, 249, 255, 0.45); color: #ffffff; }}
 }}
 .status-busy-ice {{
     color: #c9f1ff;
