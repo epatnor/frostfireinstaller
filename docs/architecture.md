@@ -62,8 +62,16 @@ is one column, **608 px wide and not resizable**:
 
 While Battle.net runs, the header subtitle, a taskbar badge (Unity Launcher API)
 and a tray icon (StatusNotifierItem, spoken over D-Bus directly because GTK4
-cannot load the GTK3 indicator bindings) show it. Long-running work runs in worker
-threads and reports through the activity strip and toasts.
+cannot load the GTK3 indicator bindings) show it. Long-running work — including
+host detection and the system check at startup — runs in worker threads and
+reports through the activity strip and toasts.
+
+**State:** `gui/state.ClientState` (config, installed, running) is read once per
+refresh — after every action and whenever a window gains focus — and handed to
+every widget in both windows, so values changed in `config.toml` show up without
+a restart. Code layout: `pages.py` (main column), `settings.py`, `widgets.py`,
+`actions.py` (background actions), `dialogs.py`, `window.py` (the refresh hub),
+`tray.py`.
 
 **Look:** Battle.net-inspired structure (flat panels with 1 px borders, uppercase
 section labels, gradient buttons, bundled Open Sans), our own frost/fire palette —
@@ -91,7 +99,7 @@ Toggles whose tool is missing are disabled.
 
 > **Gamescope is not a safe default.** On NVIDIA + Wayland, nesting it can strobe
 > the whole display (photosensitivity hazard, observed on the reference machine).
-> `_gamescope_is_risky()` detects the combination and the switch warns in place.
+> `settings.gamescope_is_risky()` detects the combination and the switch warns in place.
 > See [troubleshooting](troubleshooting.md).
 
 **The idle lock is a sidecar, not a wrapper.** A wrapper's lock dies with the

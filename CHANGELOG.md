@@ -36,6 +36,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   `install.md`, and the WoW error history condensed into `troubleshooting.md`.
 
 ### Fixed
+- **Startup no longer blocks on the system check.** Host detection and the
+  check (`vulkaninfo`, `journalctl`, ...) run in the background, and the check
+  runs once instead of twice.
+- **Settings follow `config.toml`.** Switches drew the value from when the window
+  was built, so after an on-disk change a click re-saved the stale value; every
+  control now re-syncs on refresh and when a window regains focus. The config
+  band no longer shows the runner from startup after it is changed.
 - **Settings window did not open on Wayland** (`get_primary_monitor` and
   `get_workarea` do not exist there); the monitor now comes from the window's surface.
 - **Gamescope + NVIDIA + Wayland** can strobe the whole display (photosensitivity
@@ -45,6 +52,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
   sidecar tracking the **wineserver**, giving up after two minutes if none appears
   and exiting only after three consecutive misses. `--what=idle:sleep` plus
   `kde-inhibit --power --screenSaver` cover logind and KDE PowerDevil.
+
+- **GUI internals:** `pages.py` split into `widgets`, `actions`, `dialogs` and
+  `state`; GPU/Vulkan detection moved from `recommend.py` to `core/gpu.py`.
 
 ### Removed
 - Unused game covers, the legacy ice-portal SVG, `core/profiles.py` with its JSON

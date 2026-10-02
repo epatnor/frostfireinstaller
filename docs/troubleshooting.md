@@ -18,9 +18,9 @@ appears when a check fails, and the full report is under
 > **Photosensitivity hazard.** On the reference machine (driver 615.71.09 open
 > module, KDE Wayland) enabling **Gamescope** made the display strobe on launch.
 
-Get out: `Alt+F4`, then `pkill -f gamescope`. Stop it recurring (killing the
-process does not change the setting), then **restart the GUI** — the switches read
-their state once, so a stale on-disk value shows the wrong position:
+Get out: `Alt+F4`, then `pkill -f gamescope`. Stop it recurring — killing the
+process does not change the setting. Turn the switch off in *Settings →
+Performance*, or edit the file (the GUI picks it up when its window regains focus):
 
 ```bash
 sed -i 's/^gamescope = true/gamescope = false/' ~/.config/frostfireinstaller/config.toml
