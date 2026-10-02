@@ -33,7 +33,7 @@ def test_recent_xids_parses_kernel_log(monkeypatch) -> None:
         )
 
     monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/journalctl")
-    monkeypatch.setattr(recommend.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
     assert recommend.recent_xids() == ["109", "13"]
 
 
@@ -119,9 +119,6 @@ def test_report_sorts_most_severe_first(monkeypatch, tmp_path: Path) -> None:
         recommend, "_check_wow_tuning", lambda _c: recommend.Recommendation("w", "ok", "o")
     )
     monkeypatch.setattr(
-        recommend, "_check_wow_forever", lambda _c: recommend.Recommendation("f", "ok", "o")
-    )
-    monkeypatch.setattr(
         recommend, "_check_proton", lambda: recommend.Recommendation("p", "ok", "o")
     )
     monkeypatch.setattr(
@@ -150,14 +147,13 @@ def test_report_sorts_most_severe_first(monkeypatch, tmp_path: Path) -> None:
         "ok",
         "ok",
         "ok",
-        "ok",
     ]
 
 
 def test_persistenced_state_active(monkeypatch) -> None:
     monkeypatch.setattr(recommend.shutil, "which", lambda name: f"/usr/bin/{name}")
     monkeypatch.setattr(
-        recommend.subprocess,
+        subprocess,
         "run",
         lambda *_a, **_k: subprocess.CompletedProcess([], 0, stdout="active\n"),
     )
@@ -229,20 +225,6 @@ def test_wow_tuning_ok_without_install(tmp_path: Path) -> None:
     assert recommend._check_wow_tuning(make_config(tmp_path)).level == "ok"
 
 
-def test_wow_forever_flags_known_bugs(tmp_path: Path) -> None:
-    config = make_config(tmp_path)
-    wtf = config.prefix / "drive_c/Program Files (x86)/World of Warcraft/_classic_beta_/WTF"
-    wtf.mkdir(parents=True)
-    (wtf / "Config.wtf").write_text('SET GxApi "D3D11"\n', encoding="utf-8")
-    item = recommend._check_wow_forever(config)
-    assert item.level == "info"
-    assert "69913" in item.title
-
-
-def test_wow_forever_ok_without_beta(tmp_path: Path) -> None:
-    assert recommend._check_wow_forever(make_config(tmp_path)).level == "ok"
-
-
 # --- Vulkan capability ---------------------------------------------------
 def test_vulkan_could_not_be_checked(monkeypatch) -> None:
     monkeypatch.setattr(recommend.shutil, "which", lambda _name: None)
@@ -257,9 +239,7 @@ def test_vulkan_no_device(monkeypatch) -> None:
 
 def test_vulkan_too_old(monkeypatch) -> None:
     monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/vulkaninfo")
-    monkeypatch.setattr(
-        recommend, "_vulkan_versions_and_names", lambda: ([(1, 2, 200)], ["AMD"])
-    )
+    monkeypatch.setattr(recommend, "_vulkan_versions_and_names", lambda: ([(1, 2, 200)], ["AMD"]))
     monkeypatch.setattr(recommend, "_has_32bit_vulkan", lambda: True)
     item = recommend._check_vulkan()
     assert item.level == "warn"
@@ -279,18 +259,14 @@ def test_vulkan_software_only(monkeypatch) -> None:
 
 def test_vulkan_missing_32bit(monkeypatch) -> None:
     monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/vulkaninfo")
-    monkeypatch.setattr(
-        recommend, "_vulkan_versions_and_names", lambda: ([(1, 4, 354)], ["AMD"])
-    )
+    monkeypatch.setattr(recommend, "_vulkan_versions_and_names", lambda: ([(1, 4, 354)], ["AMD"]))
     monkeypatch.setattr(recommend, "_has_32bit_vulkan", lambda: False)
     assert "32-bit" in recommend._check_vulkan().title
 
 
 def test_vulkan_ok(monkeypatch) -> None:
     monkeypatch.setattr(recommend.shutil, "which", lambda _name: "/usr/bin/vulkaninfo")
-    monkeypatch.setattr(
-        recommend, "_vulkan_versions_and_names", lambda: ([(1, 4, 354)], ["AMD"])
-    )
+    monkeypatch.setattr(recommend, "_vulkan_versions_and_names", lambda: ([(1, 4, 354)], ["AMD"]))
     monkeypatch.setattr(recommend, "_has_32bit_vulkan", lambda: True)
     assert recommend._check_vulkan().level == "ok"
 

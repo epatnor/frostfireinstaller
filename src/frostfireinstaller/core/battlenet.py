@@ -8,27 +8,15 @@ import shutil
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
 from ..config import Config
 from ..logsetup import get_logger, open_install_log
 from . import distro, health, umu
+from .progress import Progress, emit
 
 log = get_logger()
-
-Progress = Callable[[str], None]
-
-
-def _emit(on_progress: Progress | None, message: str) -> None:
-    """Report a human-readable step; never let a UI callback break the work."""
-    if on_progress is None:
-        return
-    try:
-        on_progress(message)
-    except Exception:  # noqa: BLE001
-        log.debug("progress callback failed", exc_info=True)
 
 
 # --- state ---------------------------------------------------------------
@@ -109,7 +97,7 @@ def ensure_installer(
     last: OSError | None = None
     for attempt in range(1, attempts + 1):
         try:
-            _emit(on_progress, f"Downloading the installer ({attempt}/{attempts}) ...")
+            emit(on_progress, f"Downloading the installer ({attempt}/{attempts}) ...")
             log.info("Fetching Battle.net-Setup.exe (attempt %d/%d) ...", attempt, attempts)
             with (
                 urllib.request.urlopen(config.installer_url, timeout=120) as resp,
@@ -125,7 +113,7 @@ def ensure_installer(
             if not _retryable(exc) or attempt == attempts:
                 break
             log.warning("The download failed (%s), retrying ...", exc)
-            _emit(on_progress, "The download failed, retrying ...")
+            emit(on_progress, "The download failed, retrying ...")
             time.sleep(2 * attempt)
     tmp.unlink(missing_ok=True)
     raise RuntimeError(f"Could not download the installer: {last}") from last
@@ -147,7 +135,7 @@ def install(config: Config, proton: Path, on_progress: Progress | None = None) -
     log_path = open_install_log(config.log_dir)
     _write_header(log_path, config, proton)
 
-    _emit(on_progress, "Installing Battle.net (this can take a few minutes) ...")
+    emit(on_progress, "Installing Battle.net (this can take a few minutes) ...")
     log.info("Starting the Battle.net installation (click 'Continue' in the window if asked)...")
     with log_path.open("a", encoding="utf-8") as out:
         umu.spawn(config, proton, str(config.installer), stdout=out, stderr=out)
@@ -286,7 +274,7 @@ def remove(
     prefix (including games) is deleted. With *remove_installer* the cached
     ``Battle.net-Setup.exe`` is deleted too (next start downloads it again).
     """
-    _emit(on_progress, "Removing Battle.net ...")
+    emit(on_progress, "Removing Battle.net ...")
     health.kill_all()
     if keep_games:
         kept = installed_games(config)

@@ -16,12 +16,12 @@ from __future__ import annotations
 
 import re
 import shutil
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..config import Config
 from . import proton
+from .proc import capture
 
 # Xid values that usually mean a GPU/driver hang rather than an app bug.
 _SERIOUS_XIDS = {"13", "31", "43", "62", "79", "109", "119", "120"}
@@ -79,17 +79,10 @@ def _nvidia_pci() -> str | None:
     """The NVIDIA GPU's PCI address (e.g. ``0000:01:00.0``), if it can be found."""
     if not shutil.which("nvidia-smi"):
         return None
-    try:
-        out = subprocess.run(
-            ["nvidia-smi", "--query-gpu=pci.bus_id", "--format=csv,noheader"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    line = out.stdout.strip().splitlines()[0].strip() if out.stdout.strip() else ""
+    out = (
+        capture(["nvidia-smi", "--query-gpu=pci.bus_id", "--format=csv,noheader"], 5) or ""
+    ).strip()
+    line = out.splitlines()[0].strip() if out else ""
     # "00000000:01:00.0" -> "0000:01:00.0"
     return line[-12:] if len(line) >= 12 else None
 
@@ -97,17 +90,7 @@ def _nvidia_pci() -> str | None:
 def _kernel_log(limit: int = 300) -> str:
     if not shutil.which("journalctl"):
         return ""
-    try:
-        out = subprocess.run(
-            ["journalctl", "-k", "-b", "-n", str(limit), "--no-pager"],
-            capture_output=True,
-            text=True,
-            timeout=6,
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return ""
-    return out.stdout
+    return capture(["journalctl", "-k", "-b", "-n", str(limit), "--no-pager"], 6) or ""
 
 
 def recent_xids(limit: int = 300) -> list[str]:
@@ -131,20 +114,12 @@ def _integrated_gpu() -> str | None:
 def _vram_mib() -> int | None:
     """Total video memory in MiB, if it can be determined."""
     if shutil.which("nvidia-smi"):
-        try:
-            out = subprocess.run(
-                ["nvidia-smi", "--query-gpu=memory.total", "--format=csv,noheader,nounits"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                check=False,
-            )
-        except (OSError, subprocess.SubprocessError):
-            out = None
-        if out is not None and out.stdout.strip().splitlines():
-            value = out.stdout.strip().splitlines()[0].strip()
-            if value.isdigit():
-                return int(value)
+        out = capture(
+            ["nvidia-smi", "--query-gpu=memory.total", "--format=csv,noheader,nounits"], 5
+        )
+        lines = (out or "").strip().splitlines()
+        if lines and lines[0].strip().isdigit():
+            return int(lines[0].strip())
     for node in Path("/sys/class/drm").glob("card[0-9]*/device/mem_info_vram_total"):
         try:
             total = int(node.read_text(encoding="utf-8").strip())
@@ -179,17 +154,9 @@ def _vulkan_versions_and_names() -> tuple[list[tuple[int, ...]], list[str]]:
     """Parse ``vulkaninfo --summary`` into ``(api_versions, device_names)``."""
     if not shutil.which("vulkaninfo"):
         return [], []
-    try:
-        out = subprocess.run(
-            ["vulkaninfo", "--summary"],
-            capture_output=True,
-            text=True,
-            timeout=12,
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
+    text = capture(["vulkaninfo", "--summary"], 12)
+    if text is None:
         return [], []
-    text = out.stdout
     versions = [
         tuple(int(part) for part in match.split("."))
         for match in re.findall(r"apiVersion\s*=\s*(\d+\.\d+(?:\.\d+)?)", text)
@@ -267,18 +234,8 @@ def persistenced_state() -> str | None:
     """Return nvidia-persistenced's state, or ``None`` if unavailable."""
     if not shutil.which("nvidia-persistenced") or not shutil.which("systemctl"):
         return None
-    try:
-        out = subprocess.run(
-            ["systemctl", "is-active", "nvidia-persistenced"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    state = out.stdout.strip()
-    return state or None
+    out = capture(["systemctl", "is-active", "nvidia-persistenced"], 5)
+    return (out or "").strip() or None
 
 
 def _check_nvidia() -> list[Recommendation]:
@@ -391,7 +348,7 @@ def _check_hybrid_gpu(config: Config) -> Recommendation:
         "warn" if trouble else "info",
         "Hybrid GPU: the screen is wired to the integrated GPU",
         detail,
-        "Choose the GPU under Advanced -> Graphics: NVIDIA for dGPU performance, "
+        "Choose the GPU under Settings -> Graphics: NVIDIA for dGPU performance, "
         f"Integrated ({integrated}) as a troubleshooting mode for GPU hangs. "
         "Reversible.",
         commands=(
@@ -436,25 +393,6 @@ def _check_wow_tuning(config: Config) -> Recommendation:
             commands=('SET maxFPSBK "60"',),
         )
     return Recommendation("wow-tuning", "ok", "WoW: background FPS set", "")
-
-
-def _check_wow_forever(config: Config) -> Recommendation:
-    """Surface the World of Warcraft: Forever build-69913 bugs and their fix."""
-    betas = [path for path in _find_wow_configs(config) if "_classic_beta_" in str(path)]
-    if not betas:
-        return Recommendation("wow-forever", "ok", "No Forever beta found", "")
-    return Recommendation(
-        "wow-forever",
-        "info",
-        "WoW Forever: build 69913 bugs (fixed in 69977)",
-        "Build 69913 had an ERROR #109 / NVIDIA Xid 109 GPU hang on world entry, "
-        "caused by an unbounded Global Illumination compute shader (not the driver - "
-        "it also affects AMD/Windows and macOS). Build 69977 fixes it. A separate, "
-        "still-open issue is a session-long FPS drop / apparent memory leak.",
-        "Update to build 69977 or later. If you are stuck on 69913, set Secondary "
-        "Lighting to Fair (Options -> Graphics) or use the integrated GPU. See "
-        "docs/troubleshooting.md.",
-    )
 
 
 # --- requirements --------------------------------------------------------
@@ -572,7 +510,7 @@ def _check_runner(config: Config) -> Recommendation:
                 "info",
                 f"Runner: {proton.DEFAULT_CODENAME} (auto-download)",
                 "No local Proton build; umu-launcher will fetch it on first launch.",
-                "Change the runner under Advanced -> Runner.",
+                "Change the runner under Settings -> Runner.",
             )
         return Recommendation("runner", "info", "No runner to recommend", "")
     preferred = next((name for name in sorted(names) if "UMU-Proton" in name), None)
@@ -582,7 +520,7 @@ def _check_runner(config: Config) -> Recommendation:
             "info",
             f"Recommended runner: {preferred}",
             "UMU-Proton often works best for Battle.net.",
-            "Pick it under Advanced -> Runner.",
+            "Pick it under Settings -> Runner.",
         )
     return Recommendation("runner", "ok", "Runner selected", "")
 
@@ -595,7 +533,6 @@ def report(config: Config) -> list[Recommendation]:
         _check_vulkan(),
         _check_hybrid_gpu(config),
         _check_wow_tuning(config),
-        _check_wow_forever(config),
         _check_umu(),
         _check_proton(),
         _check_disk(config),

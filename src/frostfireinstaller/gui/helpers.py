@@ -1,14 +1,14 @@
-"""Small GUI helpers: background work and bundled asset lookup."""
+"""Small GUI helpers: background work (and re-export of ``data_file``)."""
 
 from __future__ import annotations
 
 import threading
 from collections.abc import Callable
-from importlib import resources
-from pathlib import Path
 from typing import Any
 
 from gi.repository import GLib  # noqa: E402
+
+from ..resources import data_file  # noqa: E402, F401
 
 
 def run_async(
@@ -29,16 +29,3 @@ def run_async(
                 GLib.idle_add(on_done, result)
 
     threading.Thread(target=worker, daemon=True).start()
-
-
-def data_file(*parts: str) -> Path | None:
-    """Return a path to a bundled data file (icons, covers), or None."""
-    try:
-        base = resources.files("frostfireinstaller.data")
-    except (ModuleNotFoundError, TypeError):
-        return None
-    target = base.joinpath(*parts)
-    try:
-        return Path(str(target)) if target.is_file() else None
-    except (FileNotFoundError, OSError):
-        return None

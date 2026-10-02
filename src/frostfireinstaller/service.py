@@ -9,44 +9,20 @@ import os
 import shutil
 import subprocess
 import sys
-from collections.abc import Callable
-from importlib import resources
 from pathlib import Path
 
 from .config import Config
 from .core import battlenet, proton, recommend, umu
+from .core.progress import Progress, emit
 from .logsetup import get_logger
+from .resources import data_file
 
 log = get_logger()
-
-Progress = Callable[[str], None]
-
-
-def _emit(on_progress: Progress | None, message: str) -> None:
-    if on_progress is None:
-        return
-    try:
-        on_progress(message)
-    except Exception:  # noqa: BLE001
-        log.debug("progress callback failed", exc_info=True)
-
 
 APP_ID = "io.github.epatnor.frostfireinstaller"
 
 # Earlier releases used a shorter app id; clean up its desktop entry/icon.
 _LEGACY_APP_IDS = ("io.github.frostfireinstaller",)
-
-
-def _data_file(*parts: str) -> Path | None:
-    try:
-        base = resources.files("frostfireinstaller.data")
-    except (ModuleNotFoundError, TypeError):
-        return None
-    target = base.joinpath(*parts)
-    try:
-        return Path(str(target)) if target.is_file() else None
-    except (FileNotFoundError, OSError):
-        return None
 
 
 def applications_dir() -> Path:
@@ -67,7 +43,7 @@ def ensure_shortcut(config: Config) -> Path:
     apps.mkdir(parents=True, exist_ok=True)
     icons.mkdir(parents=True, exist_ok=True)
 
-    icon_src = _data_file("icons", "frostfireinstaller.png")
+    icon_src = data_file("icons", "frostfireinstaller.png")
     if icon_src is not None:
         shutil.copyfile(icon_src, icons / f"{APP_ID}.png")
     # Icons from the pre-0.1 SVG were installed here; drop any stale copy.
@@ -173,7 +149,7 @@ def ensure(config: Config, on_progress: Progress | None = None) -> Path:
 
     config.bnet_dir.mkdir(parents=True, exist_ok=True)
 
-    _emit(on_progress, "Looking for Proton ...")
+    emit(on_progress, "Looking for Proton ...")
     build = find_proton(config)
     log.info("Proton: %s", build)
 
@@ -188,7 +164,7 @@ def ensure(config: Config, on_progress: Progress | None = None) -> Path:
     if battlenet.ensure_config(config):
         log.info("Turned off 'start minimized'")
 
-    _emit(on_progress, "Creating shortcut ...")
+    emit(on_progress, "Creating shortcut ...")
     ensure_shortcut(config)
     return build
 

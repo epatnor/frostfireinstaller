@@ -58,7 +58,6 @@ def set_running_badge(visible: bool) -> None:
         pass
 
 
-
 def _kv(title: str, value: str) -> Adw.ActionRow:
     return Adw.ActionRow(title=title, subtitle=value)
 
@@ -80,8 +79,6 @@ MATERIAL = {
     "refresh": "\ue5d5",
     "delete": "\ue92e",
     "info": "\ue88e",
-    "expand": "\ue5cf",
-    "collapse": "\ue5ce",
     "check": "\ue5ca",
     "settings": "\ue8b8",
 }
@@ -92,7 +89,7 @@ MATERIAL = {
 # live in their own window (see gui/settings.py).
 WINDOW_WIDTH = 608
 DEFAULT_BANNER_HEIGHT = 198
-_COLLAPSED_BASE = 350 - DEFAULT_BANNER_HEIGHT  # window minus banner
+_CHROME_HEIGHT = 350 - DEFAULT_BANNER_HEIGHT  # window minus banner
 
 
 def _banner_height(banner: Path | None) -> int:
@@ -495,7 +492,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     # Banner: full window width, height from the image's own aspect ratio.
     banner = data_file("header", "frostfire_installer_header.png")
     banner_height = _banner_height(banner)
-    collapsed_height = _COLLAPSED_BASE + banner_height
+    window_height = _CHROME_HEIGHT + banner_height
 
     # --- Footer button: opens the settings window ------------------------
     settings_button = Gtk.Button()
@@ -552,7 +549,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         window.register_state(run_bar.refresh)  # type: ignore[attr-defined]
     if hasattr(window, "register_activity"):
         window.register_activity(activity_bar)  # type: ignore[attr-defined]
-    window.set_default_size(WINDOW_WIDTH, collapsed_height)  # type: ignore[attr-defined]
+    window.set_default_size(WINDOW_WIDTH, window_height)  # type: ignore[attr-defined]
     view = _toolbar_page("Frostfire Installer", column)
     if hasattr(window, "set_title_widget"):
         window.set_title_widget(view.title_widget)  # type: ignore[attr-defined]

@@ -386,8 +386,7 @@ class TrayIcon:
         children: list[GLib.Variant] = []
         if item_id == 0:
             children = [
-                GLib.Variant("(ia{sv}av)", self._layout(child_id))
-                for child_id in _ROOT_CHILDREN
+                GLib.Variant("(ia{sv}av)", self._layout(child_id)) for child_id in _ROOT_CHILDREN
             ]
         return (item_id, self._item_props(item_id), children)
 
@@ -422,9 +421,7 @@ class TrayIcon:
             if name in props:
                 invocation.return_value(GLib.Variant("(v)", (props[name],)))
             else:
-                invocation.return_error_literal(
-                    Gio.DBusError, Gio.DBusError.UNKNOWN_PROPERTY, name
-                )
+                invocation.return_error_literal(Gio.DBusError, Gio.DBusError.UNKNOWN_PROPERTY, name)
         elif method == "Event":
             item_id, event_id, _data, _timestamp = params.unpack()
             if event_id == "clicked":
@@ -441,6 +438,4 @@ class TrayIcon:
         elif method == "AboutToShowGroup":
             invocation.return_value(GLib.Variant("(aiai)", ([], [])))
         else:
-            invocation.return_error_literal(
-                Gio.DBusError, Gio.DBusError.UNKNOWN_METHOD, method
-            )
+            invocation.return_error_literal(Gio.DBusError, Gio.DBusError.UNKNOWN_METHOD, method)

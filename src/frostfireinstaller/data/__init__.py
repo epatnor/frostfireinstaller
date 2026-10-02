@@ -1,1 +1,1 @@
-"""Bundled data: fonts, banner art, app icon and game profiles."""
+"""Bundled data: fonts, banner art and app icons."""
