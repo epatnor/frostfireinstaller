@@ -558,7 +558,7 @@ def _check_perf_tools(config: Config) -> Recommendation:
             "warn",
             f"Performance tools missing: {', '.join(missing)}",
             "A toggle is on but points at a package that is not installed.",
-            "Install the package or turn the toggle off under Advanced -> Performance.",
+            "Install the package or turn the toggle off under Settings -> Performance.",
         )
     return Recommendation("perf-tools", "ok", "Performance tools OK", "")
 

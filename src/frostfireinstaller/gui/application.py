@@ -46,7 +46,7 @@ headerbar {{
 }}
 
 .info-strip {{
-    background-color: #00070f;
+    background-color: #00030a;
     color: #eaf9ff;
     padding: 8px 14px;
     font-size: 0.8em;
@@ -89,8 +89,8 @@ headerbar {{
     background-color: rgba(87, 227, 137, 0.14);
 }}
 .status-off {{
-    color: rgba(234, 249, 255, 0.62);
-    background-color: rgba(255, 255, 255, 0.06);
+    color: #ff8f6b;
+    background-color: rgba(246, 97, 81, 0.15);
 }}
 .status-missing {{
     color: #ffb079;
@@ -121,7 +121,7 @@ headerbar {{
 }}
 
 button.bn-footer {{
-    background-color: #07141f;
+    background-color: #00030a;
     background-image: none;
     border: none;
     border-bottom: 1px solid rgba(120, 200, 255, 0.10);
@@ -149,7 +149,7 @@ button.bn-footer .material-icon {{
     margin: 16px 18px 22px 18px;
 }}
 .bn-section {{
-    margin-bottom: 20px;
+    margin-bottom: 14px;
 }}
 .section-title {{
     font-size: 0.74em;
@@ -157,6 +157,23 @@ button.bn-footer .material-icon {{
     letter-spacing: 0.11em;
     color: #7fb6d9;
     margin: 0 2px 8px 2px;
+}}
+.bn-panel .card-head {{
+    padding: 7px 14px 6px 14px;
+    min-height: 0;
+    background-color: rgba(120, 200, 255, 0.04);
+}}
+.bn-panel .card-head:hover {{
+    background-color: rgba(120, 200, 255, 0.04);
+}}
+.card-title {{
+    font-size: 0.95em;
+    font-weight: 700;
+    color: #dcefff;
+}}
+.card-desc {{
+    font-size: 0.78em;
+    color: rgba(234, 249, 255, 0.5);
 }}
 .section-desc {{
     font-size: 0.82em;
@@ -169,8 +186,8 @@ button.bn-footer .material-icon {{
     border-radius: 4px;
 }}
 .bn-panel row {{
-    padding: 8px 14px;
-    min-height: 44px;
+    padding: 3px 14px;
+    min-height: 34px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.055);
 }}
 .bn-panel row:last-child {{
@@ -179,18 +196,70 @@ button.bn-footer .material-icon {{
 .bn-panel row:hover {{
     background-color: rgba(120, 200, 255, 0.035);
 }}
+row.row-inactive .title {{
+    color: rgba(234, 249, 255, 0.40);
+}}
+row.row-inactive .subtitle {{
+    color: rgba(234, 249, 255, 0.28);
+}}
 
 button.bn-btn,
 button.bn-btn-primary,
 button.bn-btn-danger,
 button.bn-btn-flat {{
     border-radius: 3px;
-    min-height: 30px;
-    padding: 0 14px;
+    min-height: 26px;
+    padding: 0 12px;
     font-weight: 600;
     font-size: 0.9em;
     box-shadow: none;
     text-shadow: none;
+}}
+menubutton.help-button {{
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: none;
+    background-image: none;
+    box-shadow: none;
+}}
+menubutton.help-button > button {{
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0;
+    border: none;
+    background: none;
+    background-image: none;
+    box-shadow: none;
+    color: #9fc6dd;
+    -gtk-icon-size: 19px;
+}}
+menubutton.help-button > button:hover {{
+    color: #eaf9ff;
+}}
+menubutton.help-button.help-warn > button {{
+    color: #ff7a2f;
+}}
+menubutton.help-button.help-warn > button:hover {{
+    color: #ffd9b3;
+}}
+.runner-dropdown {{
+    border: 1px solid rgba(120, 200, 255, 0.35);
+    border-radius: 4px;
+    background-color: rgba(120, 200, 255, 0.05);
+    min-height: 22px;
+    margin-right: 6px;
+}}
+.runner-dropdown button {{
+    border: none;
+    background: none;
+    background-image: none;
+    box-shadow: none;
+    min-height: 22px;
+    padding: 0 4px 0 8px;
+    color: #dcefff;
 }}
 button.bn-btn {{
     background-image: linear-gradient(to bottom, #16232f, #0d1720);
@@ -239,6 +308,10 @@ button.bn-btn-flat:hover {{
 
 .material-icon {{
     font-family: "Material Symbols Outlined";
+    font-size: 24px;
+}}
+.material-icon-filled {{
+    font-family: "Material Symbols Filled";
     font-size: 24px;
 }}
 .icon-ice {{
@@ -292,7 +365,9 @@ def _register_fonts() -> None:
 class FrostfireApplication(Adw.Application):
     def __init__(self) -> None:
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
+        self._tray: object | None = None
         self.connect("activate", self._on_activate)
+        self.connect("shutdown", self._on_shutdown)
 
     def _load_css(self) -> None:
         _register_fonts()
@@ -310,3 +385,23 @@ class FrostfireApplication(Adw.Application):
         if window is None:
             window = MainWindow(application=self)
         window.present()
+        self._ensure_tray(window)
+
+    def _ensure_tray(self, window: MainWindow) -> None:
+        """Create the StatusNotifierItem tray icon once."""
+        if self._tray is not None:
+            return
+        from .tray import TrayIcon
+
+        self._tray = TrayIcon(
+            app_id=APP_ID,
+            on_activate=window.present,
+            on_toggle=window.toggle_battlenet,
+            on_quit=self.quit,
+        )
+        window.set_tray(self._tray)
+
+    def _on_shutdown(self, *_args: object) -> None:
+        if self._tray is not None:
+            self._tray.close()  # type: ignore[attr-defined]
+            self._tray = None
