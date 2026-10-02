@@ -98,7 +98,7 @@ Battle.net and its games share one Wine session, so these follow into the games.
 Toggles whose tool is missing are disabled.
 
 > **Gamescope is not a safe default.** On NVIDIA + Wayland, nesting it can strobe
-> the whole display (photosensitivity hazard, observed on the reference machine).
+> the whole display (photosensitivity hazard, observed with an RTX 4070 on KDE Wayland).
 > `settings.gamescope_is_risky()` detects the combination and the switch warns in place.
 > See [troubleshooting](troubleshooting.md).
 

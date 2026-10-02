@@ -7,7 +7,7 @@ Frostfire Installer is developed **with generative AI under human supervision**.
   assets (banner, header, icon, concept art), selected and edited by the maintainer.
 - **Human:** design, scope and direction. The maintainer (**Patrik Nordlund**,
   [@epatnor](https://github.com/epatnor)) reviews every change, runs the tool on real
-  hardware (Bazzite, RTX 3050 Ti laptop + AMD iGPU), and is responsible for the
+  hardware, and is responsible for the
   released result — AI output is a first draft, and bugs are the maintainer's to fix.
 - **Checks:** `ruff`, `mypy`, `pytest` in CI on every push, plus manual testing of the
   GUI and the Battle.net install path.

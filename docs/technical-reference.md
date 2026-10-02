@@ -1,7 +1,7 @@
 # Technical reference — Battle.net on Linux
 
 Background for the choices `frostfireinstaller` makes. Items tagged **[verified]**
-were confirmed on the reference machine, **[community]** come from community
+were confirmed on the maintainer's own hardware, **[community]** come from community
 sources and may change between builds. Everything else is standard, documented
 stack behaviour; for depth follow the links at the end.
 
@@ -106,20 +106,14 @@ DXVK/vkd3d-proton. Select the API with `SET GxApi "D3D11"|"D3D12"` in
 Illumination probe-update compute shader read its loop count from a constant buffer
 that was not yet valid on the first dispatch, so it never terminated
 ([analysis](https://us.forums.blizzard.com/en/wow/t/linuxnvidia-forever-gi-secondary-lighting-gpu-hang-xid-109-cause-isolated-shader-override-workaround/2359917)).
-69977 fixed it, the 2026-09-24 build fixed a session-long memory leak, and by
-**1.60.1.70170** the game runs smoother on the reference machine than ever. Driver
-flavour (open vs proprietary) and power tweaks made no difference. The other cost was
+The hangs were reproduced on an RTX 3050 Ti laptop with an AMD iGPU, where 69977
+was also verified to fix them **[verified]**; the 2026-09-24 build fixed a
+session-long memory leak, and by **1.60.1.70170** the game runs smoother than ever.
+Driver flavour (open vs proprietary) and power tweaks made no difference. The other cost was
 a 138 % `RenderScale` stored after a monitor sleep (see
 [troubleshooting](troubleshooting.md)).
 
-## 6. Reference machine **[verified]**
-
-Bazzite 44 (Kinoite), kernel 7.2.4, Wayland/KDE, RTX 3050 Ti Laptop 4 GB (driver
-615.71.09) + AMD Cezanne iGPU (RADV, Mesa 26.2.2), umu 1.4.4, GE-Proton11-7 and
-UMU-Proton-10.0-4. The documented `Xid 109` hangs were seen on this hybrid setup
-with the open modules.
-
-## 7. Environment quick reference
+## 6. Environment quick reference
 
 | Variable | Typical value | Purpose |
 |---|---|---|

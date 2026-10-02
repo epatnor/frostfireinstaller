@@ -6,8 +6,8 @@ a warning strip appears when a check fails, and the full report is under
 (umu, Proton, Vulkan, disk, prefix filesystem, GPU driver and recent `NVRM: Xid`
 faults, WoW render scale, performance tools, runner).
 
-> **Lesson learned.** Weeks of WoW: Forever beta stutter, lag and GPU hangs on the
-> reference machine looked like Linux/Proton/driver problems. They were not: the
+> **Lesson learned.** Weeks of WoW: Forever beta stutter, lag and GPU hangs
+> looked like Linux/Proton/driver problems. They were not: the
 > game's own patches fixed them, and the rest was a 138 % render scale left behind
 > by a monitor that slept mid-session (below). **Update the game and check its
 > settings before tuning the system.**
@@ -20,7 +20,7 @@ faults, WoW render scale, performance tools, runner).
 
 ## Gamescope strobes the whole screen — NVIDIA + Wayland **[verified]**
 
-> **Photosensitivity hazard.** On the reference machine (driver 615.71.09 open
+> **Photosensitivity hazard.** On an RTX 4070 laptop (driver 615.71.09 open
 > module, KDE Wayland) enabling **Gamescope** made the display strobe on launch.
 
 Get out: `Alt+F4`, then `pkill -f gamescope`. Stop it recurring — killing the
