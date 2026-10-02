@@ -7,6 +7,7 @@ exactly what GTK draws, without the compositor's decorations or shadows.
 
     python3 tools/screenshot.py                 # -> preview/main.png, preview/settings.png
     python3 tools/screenshot.py --out assets/screenshots --delay 3
+    python3 tools/screenshot.py --busy ice      # main window only, mid start animation
 
 Runs from a checkout (uses ``src/``) under a separate app id, so it does not
 collide with an instance of the app that is already running.
@@ -49,8 +50,19 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", type=Path, default=ROOT / "preview")
     parser.add_argument("--delay", type=float, default=2.5, help="seconds to let checks finish")
+    parser.add_argument(
+        "--busy",
+        choices=("ice", "fire"),
+        help="freeze the Battle.net band mid start (ice) or stop (fire) animation",
+    )
+    parser.add_argument(
+        "--windows",
+        choices=("both", "main", "settings"),
+        help="which windows to render (default: both, or only main with --busy)",
+    )
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
+    windows = args.windows or ("main" if args.busy else "both")
 
     app = Adw.Application(
         application_id=f"{APP_ID}.Screenshot", flags=Gio.ApplicationFlags.NON_UNIQUE
@@ -59,10 +71,10 @@ def main() -> int:
 
     def capture(window: MainWindow) -> bool:
         try:
-            save(window, args.out / "main.png")
-            settings = window._settings
-            if settings is not None:
-                save(settings, args.out / "settings.png")
+            if windows in ("both", "main"):
+                save(window, args.out / "main.png")
+            if windows in ("both", "settings"):
+                save(window._settings, args.out / "settings.png")
         except Exception as exc:  # noqa: BLE001
             print(f"error: {exc}", file=sys.stderr)
             status["code"] = 1
@@ -73,7 +85,11 @@ def main() -> int:
         FrostfireApplication._load_css(application)  # type: ignore[arg-type]
         window = MainWindow(application=application)
         window.present()
-        window.open_settings()
+        if windows in ("both", "settings"):
+            window.open_settings()
+        if args.busy and window._run_bar is not None:
+            verb = "Starting" if args.busy == "ice" else "Stopping"
+            window._run_bar._begin(args.busy, verb)
         GLib.timeout_add(int(args.delay * 1000), capture, window)
 
     app.connect("activate", activate)

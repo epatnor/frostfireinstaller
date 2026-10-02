@@ -97,6 +97,81 @@ headerbar {{
     background-color: rgba(255, 122, 47, 0.14);
 }}
 
+/* Start/stop in the Battle.net band: the pill pulses (ice while starting,
+   ember while stopping), a light sweeps across the band, and the pill glows
+   once when the client has actually come up or gone. */
+@keyframes ff-pulse-ice {{
+    from {{
+        background-color: rgba(116, 216, 255, 0.10);
+        box-shadow: 0 0 0 0 rgba(116, 216, 255, 0);
+    }}
+    to {{
+        background-color: rgba(116, 216, 255, 0.30);
+        box-shadow: 0 0 10px 1px rgba(116, 216, 255, 0.45);
+    }}
+}}
+@keyframes ff-pulse-fire {{
+    from {{
+        background-color: rgba(255, 122, 47, 0.10);
+        box-shadow: 0 0 0 0 rgba(255, 122, 47, 0);
+    }}
+    to {{
+        background-color: rgba(255, 122, 47, 0.32);
+        box-shadow: 0 0 10px 1px rgba(255, 122, 47, 0.5);
+    }}
+}}
+@keyframes ff-sweep {{
+    from {{ background-position: -100% 0; }}
+    to   {{ background-position: 300% 0; }}
+}}
+@keyframes ff-glow {{
+    0%   {{ box-shadow: 0 0 14px 3px rgba(234, 249, 255, 0.55); }}
+    100% {{ box-shadow: 0 0 0 0 rgba(234, 249, 255, 0); }}
+}}
+.status-busy-ice {{
+    color: #c9f1ff;
+    animation: ff-pulse-ice 0.8s ease-in-out infinite alternate;
+}}
+.status-busy-fire {{
+    color: #ffd2b0;
+    animation: ff-pulse-fire 0.8s ease-in-out infinite alternate;
+}}
+.status-glow {{
+    animation: ff-glow 1.3s ease-out 1;
+}}
+.run-bar.busy-ice,
+.run-bar.busy-fire {{
+    background-repeat: no-repeat;
+    background-size: 50% 100%;
+    animation: ff-sweep 1.8s linear infinite;
+}}
+.run-bar.busy-ice {{
+    background-image: linear-gradient(
+        to right, rgba(116, 216, 255, 0), rgba(116, 216, 255, 0.24), rgba(116, 216, 255, 0)
+    );
+}}
+.run-bar.busy-fire {{
+    background-image: linear-gradient(
+        to right, rgba(255, 122, 47, 0), rgba(255, 122, 47, 0.24), rgba(255, 122, 47, 0)
+    );
+}}
+/* The busy button keeps its theme colour instead of libadwaita's greyed-out
+   disabled look: it is working, not unavailable. */
+.run-bar.busy-ice button:disabled,
+.run-bar.busy-fire button:disabled {{
+    color: #ffffff;
+    filter: none;
+    opacity: 1;
+}}
+.run-bar.busy-ice button:disabled {{
+    background-image: linear-gradient(to bottom, #1c86e6, #0a5fb8);
+    border-color: #63c2ff;
+}}
+.run-bar.busy-fire button:disabled {{
+    background-image: linear-gradient(to bottom, #cf5418, #a8400e);
+    border-color: #ff8f45;
+}}
+
 .activity-bar {{
     background-color: #07141f;
     color: #cfe9f7;

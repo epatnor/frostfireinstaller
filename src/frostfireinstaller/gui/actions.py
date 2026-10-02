@@ -49,16 +49,6 @@ def run_action(
     run_async(lambda: work(report), done, error)
 
 
-def start(surface: Surface, button: Gtk.Button) -> None:
-    """Install if needed, then launch Battle.net."""
-
-    def work(report: Callable[[str], None]) -> None:
-        config = Config.load()
-        service.launch(config, service.ensure(config, on_progress=report))
-
-    run_action(surface, button, "Starting Battle.net ...", work, lambda _: "Starting Battle.net")
-
-
 def repair(surface: Surface, button: Gtk.Button) -> None:
     def work(report: Callable[[str], None]) -> None:
         config = Config.load()
