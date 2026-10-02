@@ -1,9 +1,7 @@
 # Architecture
 
-`frostfireinstaller` is a thin, opinionated orchestrator. It does **not** bundle Wine or Proton;
-it drives what is already on the host.
-
-## Backend: umu-launcher + Proton
+`frostfireinstaller` is a thin, opinionated orchestrator. It does **not** bundle
+Wine or Proton; it drives what is already on the host.
 
 ```
 frostfireinstaller
@@ -13,7 +11,7 @@ frostfireinstaller
                  └─ Battle.net.exe  →  your games
 ```
 
-Environment applied to the launcher:
+Environment applied to the launcher (children inherit it):
 
 | Variable | Value | Why |
 |---|---|---|
@@ -21,155 +19,108 @@ Environment applied to the launcher:
 | `WINEDLLOVERRIDES` | `locationapi=d` | avoids blank CEF login |
 | `WINEPREFIX` | `~/Games/battlenet/prefix` | dedicated prefix |
 | `GAMEID` | `umu-battlenet` | umu identity |
-| `PROTONPATH` | detected Proton build | the runner |
+| `PROTONPATH` | detected build | the runner |
 
-Extra variables can be added under `[env]` in `config.toml`; they are merged last
-and win over the defaults (useful for driver workarounds, e.g.
-`DXVK_FILTER_DEVICE_NAME`). See `docs/troubleshooting.md`.
+Extra variables go under `[env]` in `config.toml`; they are merged last and win
+(e.g. `DXVK_FILTER_DEVICE_NAME` to pick a GPU).
 
-## Why not Bottles/Soda or Lutris
-
-- **Bottles + Soda**: the launcher's CEF UI does not render (black window / spinning gear,
-  `tassadar Login URL is empty`). The runner is the differentiator, not the settings.
-- **Lutris + GE-Proton**: worked, but adds a heavy layer and the author hit friction.
-- **umu + Proton**: Valve's modern non-Steam path, present on Bazzite, best performance.
+**Why not Bottles/Soda or Lutris?** Bottles + Soda: the CEF UI does not render
+(black window, `tassadar Login URL is empty`) — the runner is the differentiator.
+Lutris + GE-Proton works but adds a heavy layer. umu + Proton is Valve's modern
+non-Steam path and performs best.
 
 ## Lifecycle
 
-1. **Detect** host (distro/atomic/session/GPU) and Proton builds.
+1. **Detect** host (distro, atomic, session, GPU) and Proton builds.
 2. **Ensure** prefix, installer, Battle.net, config, shortcut (all idempotent).
-3. **Install** (first time): run the installer, wait for a reliable readiness signal, then
-   auto-close the first run.
-4. **Launch** and **health-check**: wait for a UI window; if none, remediate and retry.
-
-### Reliable readiness signal
-
-The launcher writes `drive_c/users/*/AppData/Local/Battle.net/Logs/battle.net-*.log`.
-The client is considered ready when the log contains `*** LOAD COMPLETE ***` or resolves
-the login URL (`login.app?app=app`). This is used to auto-close the first run instead of
-asking the user to do it manually.
-
-### Health / self-healing
-
-- `ui_window_present()` checks the X window tree (`xwininfo`) for `Battle.net` /
-  `Battle.net Login`. On a pure Wayland session there is no usable X tree, so the
-  check reports "fine" rather than risking a false positive.
-- `kill_all()` sends `SIGTERM` first and only then `SIGKILL` (lets Wine flush state).
-- On failure: kill processes, clear `Cache`/`CEF`, fix config, relaunch.
+3. **Install** (first time): run the installer, wait for readiness, auto-close the
+   first run. Ready = the client log (`drive_c/users/*/AppData/Local/Battle.net/Logs/battle.net-*.log`)
+   contains `*** LOAD COMPLETE ***` or resolves the login URL (`login.app?app=app`).
+4. **Launch** and **health-check**: wait for a UI window (`xwininfo`; on pure
+   Wayland there is no X tree, so the check reports "fine"); on failure kill
+   (SIGTERM, then SIGKILL), clear `Cache`/`CEF`, relaunch.
 
 ## GUI
 
-GTK4 + libadwaita (`frostfireinstaller gui`), one column:
+GTK4 + libadwaita, fixed dark palette (CSS in `gui/application.py`). The launcher
+is one column, **608 px wide and not resizable**:
 
-1. **Banner** — full-bleed header art.
-2. **Info strip** — one line of system info (distro + kernel, session, GPU).
-3. **Config band** — narrow band with the runner (Proton) and prefix, i.e. how the app
-   is set up; a missing Proton is highlighted.
-4. **Battle.net band** — client state (coloured) plus the install/start/stop button.
-   The button runs `ensure()` first, so a missing client is installed ("Install")
-   before launching.
-5. **Activity strip** — a spinner + text showing the operation running right now
-   (searching for Proton, downloading, installing, starting, removing).
-6. **Recommendation strip** — appears **only for warnings** from
-   `core/recommend.py`: NVIDIA `NVRM: Xid` / `NV_ERR_NO_MEMORY` GPU faults,
-   missing `umu-run` (a missing Proton is **auto-downloaded** by umu as
-   `UMU-Proton`), **Vulkan** capability (absent, older than 1.3, software-only
-   `llvmpipe`, or no 32-bit loader), low disk, an NTFS/exFAT prefix, and missing
-   performance tools. It opens a dialog with copy-ready fix commands and one
-   **reversible in-app toggle** (`nvidia-persistenced` via `systemctl`,
-   Polkit-prompted). The full report — every check including the passing ones —
-   is under **Settings → Diagnostics → System check** and in `doctor`. The app
-   never makes large system changes.
-7. **Settings window** — a **Settings** footer button right under the Battle.net
-   band opens a **separate, resizable** window with the options grouped into
-   cards: Battle.net (status/repair/reset), Performance, Runner, Graphics, Paths
-   (with *View logs*) and Diagnostics & about. The launcher window stays a fixed
-   **608 px wide** (not user-resizable) with a banner that fills the width at the
-   image's own aspect ratio; its height follows the banner only. While Battle.net
-   runs, the header subtitle, the taskbar-icon badge and a StatusNotifierItem
-   tray icon report it.
+1. **Banner** — full width, height from the image's aspect ratio.
+2. **Info strip** — distro + kernel, session, GPU.
+3. **Config band** — Proton and prefix; a missing Proton is shown in fire-orange.
+4. **Battle.net band** — status pill and one action button. It runs `ensure()`
+   first, so a missing client reads *Install*, otherwise *Start*/*Stop*.
+5. **Activity strip** — spinner + the operation in progress.
+6. **Warning strip** — only when `core/recommend.py` finds a problem; opens a
+   dialog with copy-ready commands and one reversible toggle
+   (`nvidia-persistenced`, Polkit-prompted). The full report is under
+   *Settings → Diagnostics → System check* and in `doctor`.
+7. **Settings footer** — opens a separate, resizable window of equal-height cards
+   (Battle.net, Performance, Runner, Graphics, Paths, Diagnostics & about) in a
+   two-column grid that collapses to one column when narrow. Per-option help sits
+   behind "(i)" buttons. Reset/remove rows are hidden until the client is installed.
 
-Long-running work runs in worker threads: the activity strip shows the current step,
-and toasts report the result.
+While Battle.net runs, the header subtitle, a taskbar badge (Unity Launcher API)
+and a tray icon (StatusNotifierItem, spoken over D-Bus directly because GTK4
+cannot load the GTK3 indicator bindings) show it. Long-running work runs in worker
+threads and reports through the activity strip and toasts.
+
+**Look:** Battle.net-inspired structure (flat panels with 1 px borders, uppercase
+section labels, gradient buttons, bundled Open Sans), our own frost/fire palette —
+ice-blue for preserving/maintaining, ember-orange for destructive actions. *Keep
+games* is the ice side of *Reinstall*/*Remove*. Icons are a small Material Symbols
+subset (`data/fonts/`, rebuilt by `tools/make_symbols.py`).
+
+**Assets:** banner source `assets/header/frostfire_installer_header_no_installer.png`
+→ `tools/make_header.py` bakes the subtitle into
+`data/header/frostfire_installer_header.png`. App icon `assets/icon/frostfireinstaller.png`
+→ `tools/make_icon.py` (hicolor set; the package ships 512 px). The tray uses a
+monochrome glyph, `data/icons/frostfireinstaller-tray.png`.
 
 ### Performance wrappers
 
 | Option | Effect |
 |---|---|
-| MangoHud | sets `MANGOHUD=1` (overlay/diagnostics; via `--mangoapp` under gamescope) |
-| GameMode | wraps the command in `gamemode` (system tuning while running) |
-| Gamescope | wraps the command in `gamescope -f --`, plus `-W`/`-H` (fixed virtual output), `-O` (pin to one monitor), `--force-grab-cursor` and `--force-windows-fullscreen` |
-| Keep awake | holds an idle/suspend lock for the session (`inhibit_idle`) |
+| MangoHud | `MANGOHUD=1` (via `--mangoapp` under gamescope) |
+| GameMode | wraps the command in `gamemode` |
+| Gamescope | `gamescope -f --` plus `-W`/`-H`, `-O`, `--force-grab-cursor`, `--force-windows-fullscreen` |
+| Keep awake | idle/suspend lock for the session (`inhibit_idle`) |
 
-Because Battle.net and the games it starts share one Wine session, these settings
-follow into the games — not just the launcher. Toggles whose tool is missing are
-disabled in the UI.
+Battle.net and its games share one Wine session, so these follow into the games.
+Toggles whose tool is missing are disabled.
 
-> **Gamescope is not a safe default.** On NVIDIA + Wayland, nesting it inside the
-> running session can collapse presentation against the outer compositor and
-> strobe the whole display — a photosensitivity hazard, observed on the reference
-> machine. `_gamescope_is_risky()` detects that combination and the switch warns
-> in place. See `docs/troubleshooting.md`.
+> **Gamescope is not a safe default.** On NVIDIA + Wayland, nesting it can strobe
+> the whole display (photosensitivity hazard, observed on the reference machine).
+> `_gamescope_is_risky()` detects the combination and the switch warns in place.
+> See [troubleshooting](troubleshooting.md).
 
-#### The idle lock is a sidecar, not a wrapper
-
-`inhibit_idle` deliberately does **not** wrap the launch command, and
-`launch_command()` stays a plain argv list. Two reasons:
-
-- **Lifetime.** A wrapper's lock dies with its direct child. Battle.net starts
-  the game and is then normally closed, so the lock would be released part-way
-  into the session — which is exactly what let the monitor sleep mid-game. The
-  sidecar tracks the prefix's **wineserver** instead, the process that really
-  spans the session.
-- **Structure.** Folding the command into `sh -c` to append a wait loop sinks the
-  gamescope flags into a shell string.
-
-`_spawn_inhibitor()` starts it detached from `spawn()`. The script waits up to
-two minutes for a wineserver to appear (then gives up, rather than leaking a lock
-that keeps the machine awake), and exits only after **three consecutive misses** —
-relaunching Battle.net leaves the old wineserver dying as the new one starts, and
-quitting on the first miss made the sidecar kill itself seconds after launch.
-
-Coverage needs both tools: `systemd-inhibit --what=idle:sleep` blocks logind's own
-idle and suspend actions, while KDE's PowerDevil runs its screen-blanking timer off
-the freedesktop ScreenSaver/PowerManagement interfaces and can fire straight through
-a logind-only lock — `kde-inhibit --power --screenSaver` covers that. Each is applied
-when present.
+**The idle lock is a sidecar, not a wrapper.** A wrapper's lock dies with the
+launcher, but Battle.net exits once the game is up — which let the monitor sleep
+mid-game. `_spawn_inhibitor()` instead starts a detached process that tracks the
+prefix's **wineserver**: it waits up to two minutes for one to appear, and exits
+only after **three consecutive misses** (relaunching Battle.net leaves the old
+wineserver dying as the new one starts). `launch_command()` stays a plain argv
+list. `systemd-inhibit --what=idle:sleep` and `kde-inhibit --power --screenSaver`
+are both applied when present — KDE's PowerDevil fires through a logind-only lock.
 
 ## Security and robustness
 
-- **No secrets at rest.** The tool needs none; `tools/genassets.py` (image generation)
-  is developer-only and reads `OPENAI_API_KEY` from the environment or a gitignored
-  `.env`/key file.
-- **No shell.** Every subprocess call passes an argument list (`shell=False`).
-- **No string injection into TOML.** `Config.save()` escapes values and merges with the
-  existing file, so hand-written keys and sections survive.
-- **Path guards.** `proton.find()` accepts plain directory names only.
-- **Quoted `.desktop` Exec** when paths contain spaces.
-- **Network:** the only download is Battle.net's official installer over HTTPS
-  (`www.battle.net`); its size and SHA-256 are recorded in the installation log.
-  Wine/Proton components come from the host, not from us.
+- **No secrets, no telemetry.** Nothing is sent anywhere except the download of
+  Battle.net's official installer over HTTPS (`www.battle.net`); size and SHA-256
+  are recorded in the installation log. Wine/Proton come from the host.
+- **No shell.** Every subprocess call passes an argument list.
+- **No string injection into TOML.** `Config.save()` escapes values and merges with
+  the existing file, so hand-written keys and sections survive.
+- **Path guards.** `proton.find()` accepts plain directory names only; `.desktop`
+  `Exec` is quoted when paths contain spaces.
 
 ## Paths (XDG)
 
 | Purpose | Path |
 |---|---|
-| Prefix / game data | `~/Games/battlenet` (override: `FROSTFIREINSTALLER_BNET_DIR`, or `[paths] bnet_dir`) |
-| Cached installer | `~/Games/battlenet/Battle.net-Setup.exe` (reused; delete with `--purge-installer`) |
+| Prefix / game data | `~/Games/battlenet` (override: `FROSTFIREINSTALLER_BNET_DIR` or `[paths] bnet_dir`) |
+| Cached installer | `~/Games/battlenet/Battle.net-Setup.exe` |
 | Config | `~/.config/frostfireinstaller/config.toml` |
-| State | `~/.local/state/frostfireinstaller` |
-| Logs | `~/.local/state/frostfireinstaller/logs` |
+| Logs | `~/.local/state/frostfireinstaller/logs` — `run-<ts>.log` per invocation, `install-<ts>.log` per installation (shareable in bug reports) |
 | Desktop entry | `~/.local/share/applications/io.github.epatnor.frostfireinstaller.desktop` |
 | Icon | `~/.local/share/icons/hicolor/512x512/apps/io.github.epatnor.frostfireinstaller.png` |
-
-## Logging
-
-- `run-<ts>.log` — one per invocation (tool activity).
-- `install-<ts>.log` — one per installation (system info, installer sha256, full installer
-  output, client log tail, result). Meant to be shareable for bug reports.
-
-## Troubleshooting
-
-Common failures and their fixes (e.g. the WoW `ERROR #109` D3D12/VKD3D freeze, the
-launcher CEF fixes, where the logs live) are collected in
-[`docs/troubleshooting.md`](troubleshooting.md).

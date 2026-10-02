@@ -1,120 +1,87 @@
 # Installing frostfireinstaller
 
-frostfireinstaller drives the host's `umu-launcher` + a Proton build. It is **not**
-a Flatpak-only app (yet); the recommended installs are below.
+It drives the host's `umu-launcher` + a Proton build; the recommended installs are
+below.
 
 ## Requirements
 
 - Linux, Python 3.11+
 - [`umu-launcher`](https://github.com/Open-Wine-Components/umu-launcher) (`umu-run`)
-- A Proton build (GE-Proton, UMU-Proton or Proton-CachyOS) in a `compatibilitytools.d`
-  directory — install one with [ProtonPlus](https://github.com/Vysp3r/ProtonPlus)
+- A Proton build in a `compatibilitytools.d` directory (e.g. via
+  [ProtonPlus](https://github.com/Vysp3r/ProtonPlus)); without one, umu downloads UMU-Proton
 - Vulkan-capable GPU drivers
-- **For the GUI only** (`frostfireinstaller gui`): **PyGObject + GTK4 +
-  libadwaita** for the system Python (e.g. `python3-gobject`; preinstalled on
-  Fedora/Bazzite). The CLI needs none of these. The installer wires this up
-  automatically — see the channels below.
+- GUI only: PyGObject + GTK4 + libadwaita for the system Python (`python3-gobject`;
+  preinstalled on Fedora/Bazzite). The CLI needs none.
 
-Check everything with:
+Check everything with `frostfireinstaller doctor`.
 
-```bash
-frostfireinstaller doctor
-```
+## Channels
 
-## Distro support
-
-The tool only needs Python 3.11+ plus the host's `umu-run`/Proton, so the **pipx
-and curl channels work everywhere**. Native channels exist where a distro has a
-package manager convention.
-
-| Distro | Recommended channel |
+| Distro | Recommended |
 |---|---|
-| Bazzite / Silverblue / ublue (Fedora atomic) | `ujust` recipe, or Flatpak (experimental) |
-| Fedora Workstation, Nobara | pipx / curl |
-| Arch, CachyOS, EndeavourOS, Manjaro | AUR |
-| Debian, Ubuntu, Mint, Pop!_OS | pipx / curl |
-| openSUSE (Tumbleweed/Leap) | pipx / curl |
-| Alpine, Void, Gentoo | pipx / curl |
-| SteamOS | pipx / curl (or Flatpak) |
-| macOS (for reference/testing) | Homebrew |
+| Bazzite / Silverblue / ublue | `ujust install-frostfireinstaller` |
+| Arch, CachyOS, EndeavourOS, Manjaro | AUR: `yay -S frostfireinstaller` |
+| Fedora, Nobara, Debian, Ubuntu, Mint, openSUSE, Alpine, Void, Gentoo, SteamOS | pipx / curl |
+| macOS (testing only) | Homebrew |
 
-Immutable/atomic distros that cannot install host `umu-launcher` should use the
-Flatpak (once it ships) or install umu via `rpm-ostree`/Homebrew and use pipx.
-
-## Channel 1 — pipx (recommended, universal)
+**pipx** (universal):
 
 ```bash
 pipx install --system-site-packages frostfireinstaller
-# or straight from git:
-pipx install --system-site-packages git+https://github.com/epatnor/frostfireinstaller
+# or: pipx install --system-site-packages git+https://github.com/epatnor/frostfireinstaller
 ```
 
-`--system-site-packages` exposes the distro's **PyGObject/GTK4/libadwaita** to the
-app environment so the GUI works without compiling anything. If the system Python
-has no `gi`, install the GUI dependency into the app environment instead:
+`--system-site-packages` exposes the distro's GTK4/libadwaita to the app. Without
+a system `gi`, use `pipx install "frostfireinstaller[gui]"` (pip builds PyGObject).
 
-```bash
-pipx install "frostfireinstaller[gui]"   # pip builds PyGObject
-```
-
-## Channel 2 — curl | bash
+**curl | bash:**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/epatnor/frostfireinstaller/main/packaging/install.sh | bash
 ```
 
-## Channel 3 — AUR (Arch family)
+**Others:** AUR source `packaging/aur/PKGBUILD`, ujust recipe
+`packaging/frostfireinstaller.ujust`, Homebrew `brew tap epatnor/frostfireinstaller &&
+brew install frostfireinstaller` (formula `packaging/brew/`; needs a companion repo
+`homebrew-frostfireinstaller`).
+
+> **Publication status:** the GitHub repo and release are public. PyPI, AUR and
+> Homebrew are **not published yet**; until then install from a clone:
+> `git clone https://github.com/epatnor/frostfireinstaller && cd frostfireinstaller && pipx install --system-site-packages .`
+
+### Flatpak (experimental, not built end-to-end yet)
+
+Manifest in `packaging/flatpak/`. Flathub rejects `flatpak-spawn --host`, so it
+follows [Faugus Launcher](https://github.com/flathub/io.github.Faugus.faugus-launcher):
+`org.winehq.Wine` base (`stable-25.08`) for the 32-bit libraries, the official
+umu zipapp as `/app/bin/umu-run`, `--allow=per-app-dev-shm` so pressure-vessel can
+nest, and `--filesystem=home` for the prefix and Proton builds. App id
+`io.github.epatnor.frostfireinstaller`.
 
 ```bash
-yay -S frostfireinstaller          # or: paru -S frostfireinstaller
+flatpak-builder --user --install --force-clean build-dir \
+  packaging/flatpak/io.github.epatnor.frostfireinstaller.yml
 ```
 
-(Package source: `packaging/aur/PKGBUILD`.)
+Before Flathub: build the manifest, confirm umu + pressure-vessel work nested,
+narrow `--filesystem=home`, pass `flatpak-builder-lint`, submit to
+`flathub/io.github.epatnor.frostfireinstaller`.
 
-## Channel 4 — Bazzite (`ujust`)
-
-Once the recipe ships in your image:
-
-```bash
-ujust install-frostfireinstaller
-```
-
-(Recipe source: `packaging/frostfireinstaller.ujust`.)
-
-## Channel 5 — Homebrew
-
-```bash
-brew tap epatnor/frostfireinstaller
-brew install frostfireinstaller
-```
-
-(Formula source: `packaging/brew/frostfireinstaller.rb`.)
-
-## Channel 6 — Flatpak (experimental)
-
-See `packaging/flatpak/`. A sandboxed app cannot run the host's `umu-run`
-directly, so the manifest currently relies on `flatpak-spawn --host`. A future
-version will bundle umu + Proton inside the sandbox and ship on Flathub (and thus
-appear in Bazaar).
-
-## After install
+## First run
 
 ```bash
 frostfireinstaller          # ensure everything and launch Battle.net
-frostfireinstaller gui      # graphical interface
-frostfireinstaller doctor   # environment + status
+frostfireinstaller gui
 ```
 
-First run downloads the Battle.net installer (cached at
-`~/Games/battlenet/Battle.net-Setup.exe`) and installs it into
-`~/Games/battlenet/prefix`. The cached installer is reused on reinstall; use
-`--purge-installer` or the *Also the installer* checkbox to force a fresh download. When the launcher appears, close it once (the tool
-does this automatically) and then start it again before logging in.
+The first run downloads the installer (cached at `~/Games/battlenet/Battle.net-Setup.exe`)
+and installs into `~/Games/battlenet/prefix`. The tool closes the first launcher
+run itself; start it again before logging in. Use `--purge-installer` or the
+*Keep installer* option to force a fresh download.
 
 ## Custom prefix location
 
-The prefix lives in `~/Games/battlenet` by default. Override it with an environment
-variable or a config entry (the config wins):
+Environment variable or config (config wins):
 
 ```bash
 export FROSTFIREINSTALLER_BNET_DIR=/mnt/games/battlenet
@@ -126,50 +93,19 @@ export FROSTFIREINSTALLER_BNET_DIR=/mnt/games/battlenet
 bnet_dir = "/mnt/games/battlenet"
 ```
 
-## Updating
-
-From PyPI (once published):
+## Updating and removing
 
 ```bash
-pipx upgrade frostfireinstaller
+pipx upgrade frostfireinstaller            # from PyPI, once published
+pipx uninstall frostfireinstaller && pipx install --system-site-packages .   # from a clone
+
+frostfireinstaller remove                  # client only, keeps games
+frostfireinstaller remove --purge-installer
+frostfireinstaller uninstall               # prefix, desktop entry and icon
 ```
 
-From a local clone (run in the repo root after pulling or editing the code):
+Avoid `pipx install --force .`: with `uv` as backend it refuses to overwrite the
+existing venv and the reinstall silently does not happen. Updating keeps the
+prefix, games and settings. Verify with `frostfireinstaller --version` and `doctor`.
 
-```bash
-pipx uninstall frostfireinstaller
-pipx install --system-site-packages .
-```
-
-> Avoid `pipx install --force .`: when pipx uses `uv` as its backend, it refuses
-> to overwrite the existing venv ("A virtual environment already exists") and
-> the reinstall silently does not happen. Uninstall first, then install.
-
-`frostfireinstaller` keeps the prefix, games and settings; only the code changes.
-Verify with `frostfireinstaller --version` and `frostfireinstaller doctor`.
-
-## Removing
-
-```bash
-frostfireinstaller remove       # remove the client, keep installed games
-frostfireinstaller remove --purge
-frostfireinstaller remove --purge-installer   # also drop the cached installer
-frostfireinstaller uninstall    # remove prefix, desktop entry and icon
-```
-
-> The GitHub repo and the **v0.1.0 release** are public. The **PyPI**, **AUR** and
-> **Homebrew** channels are not published yet, so those commands only work once
-> they are. Until then, install from the repo:
->
-> ```bash
-> git clone https://github.com/epatnor/frostfireinstaller
-> cd frostfireinstaller && pipx install --system-site-packages .
-> ```
->
-> The Homebrew tap expects a companion repo named `homebrew-frostfireinstaller`;
-> the AUR package must be pushed to the AUR (`packaging/aur/PKGBUILD`).
-
-## Troubleshooting
-
-See [`docs/troubleshooting.md`](troubleshooting.md) for common failures (e.g. the
-WoW `ERROR #109` D3D12 freeze, launcher issues, where the logs live).
+Problems? See [troubleshooting](troubleshooting.md).

@@ -38,7 +38,7 @@ _HAS_WINESERVER = 'pgrep -x -u "$(id -u)" wineserver >/dev/null 2>&1'
 _GRACE_CHECKS = 3
 _INHIBIT_SCRIPT = (
     f"for _ in $(seq 60); do {_HAS_WINESERVER} && break; sleep 2; done; "
-    f"miss=0; while [ \"$miss\" -lt {_GRACE_CHECKS} ]; do "
+    f'miss=0; while [ "$miss" -lt {_GRACE_CHECKS} ]; do '
     f"if {_HAS_WINESERVER}; then miss=0; else miss=$((miss+1)); fi; "
     f"sleep 10; done"
 )

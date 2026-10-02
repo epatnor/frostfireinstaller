@@ -9,20 +9,13 @@ from __future__ import annotations
 
 import re
 import shutil
-import subprocess
 from pathlib import Path
 
-_TIMEOUT = 8
+from .proc import capture
 
 
 def _run(command: list[str]) -> str:
-    try:
-        result = subprocess.run(
-            command, capture_output=True, text=True, timeout=_TIMEOUT, check=False
-        )
-    except (OSError, subprocess.SubprocessError):
-        return ""
-    return result.stdout
+    return capture(command) or ""
 
 
 def _cpu_model() -> str:
@@ -38,12 +31,10 @@ def _cpu_model() -> str:
 
 def _cpu_nominal_khz() -> int:
     """The CPU's advertised (static) clock, not the live dynamic frequency."""
-    for path in ("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq",):
-        try:
-            return int(Path(path).read_text().strip())
-        except (OSError, ValueError):
-            continue
-    return 0
+    try:
+        return int(Path("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq").read_text())
+    except (OSError, ValueError):
+        return 0
 
 
 def cpu() -> str:

@@ -69,9 +69,7 @@ def test_desktop_exec_quotes_only_when_needed() -> None:
 
 def test_env_section_is_read_and_applied(sandbox: Config) -> None:
     sandbox.config_dir.mkdir(parents=True, exist_ok=True)
-    sandbox.config_file.write_text(
-        '[env]\nDXVK_FILTER_DEVICE_NAME = "AMD"\n', encoding="utf-8"
-    )
+    sandbox.config_file.write_text('[env]\nDXVK_FILTER_DEVICE_NAME = "AMD"\n', encoding="utf-8")
 
     config = Config.load()
     assert config.env["DXVK_FILTER_DEVICE_NAME"] == "AMD"
@@ -151,7 +149,7 @@ def test_inhibit_command_outlives_the_launcher(monkeypatch: pytest.MonkeyPatch) 
     # Relaunching leaves the old wineserver dying as the new one starts, so a
     # single miss must not be read as the end of the session.
     assert "miss=0" in cmd[-1]
-    assert f'-lt {umu._GRACE_CHECKS}' in cmd[-1]
+    assert f"-lt {umu._GRACE_CHECKS}" in cmd[-1]
 
 
 def test_inhibit_command_without_tools(monkeypatch: pytest.MonkeyPatch) -> None:

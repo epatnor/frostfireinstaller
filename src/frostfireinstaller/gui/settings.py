@@ -208,8 +208,7 @@ class SettingsWindow(Adw.Window):
         buttons.add_widget(client_row.button)
         client_row.add_suffix(
             pages._help_button(
-                "The Battle.net client. Repair stops it, clears the CEF cache and "
-                "starts it again."
+                "The Battle.net client. Repair stops it, clears the CEF cache and starts it again."
             )
         )
         battle.add(client_row)
@@ -239,8 +238,7 @@ class SettingsWindow(Adw.Window):
         keep_row.add_suffix(keep_installer)
         keep_row.add_suffix(
             pages._help_button(
-                "Keep installed games and/or the cached installer when reinstalling "
-                "or removing."
+                "Keep installed games and/or the cached installer when reinstalling or removing."
             )
         )
         battle.add(keep_row)
@@ -263,9 +261,7 @@ class SettingsWindow(Adw.Window):
             cfg.save()
 
         force_fullscreen.connect("toggled", save_force)
-        gamescope_help = (
-            _GAMESCOPE_RISKY_HELP if pages._gamescope_is_risky() else _GAMESCOPE_HELP
-        )
+        gamescope_help = _GAMESCOPE_RISKY_HELP if pages._gamescope_is_risky() else _GAMESCOPE_HELP
         performance.add(
             pages._switch(
                 config,
@@ -278,9 +274,7 @@ class SettingsWindow(Adw.Window):
             )
         )
         performance.add(
-            pages._switch(
-                config, "Keep awake", "inhibit_idle", "systemd-inhibit", _INHIBIT_HELP
-            )
+            pages._switch(config, "Keep awake", "inhibit_idle", "systemd-inhibit", _INHIBIT_HELP)
         )
         left.append(performance)
 
@@ -384,9 +378,7 @@ class SettingsWindow(Adw.Window):
             row.add_prefix(radio)
             row.add_suffix(pages._help_button(help_text))
             graphics.add(row)
-        graphics.add(
-            Adw.ActionRow(title="GPU", subtitle=" · ".join(sysinfo.gpus()) or "unknown")
-        )
+        graphics.add(Adw.ActionRow(title="GPU", subtitle=" · ".join(sysinfo.gpus()) or "unknown"))
         right.append(graphics)
 
         # --- Paths --------------------------------------------------------

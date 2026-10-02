@@ -16,7 +16,7 @@ def test_nvidia_formats_name_and_driver(monkeypatch) -> None:
         )
 
     monkeypatch.setattr(distro.shutil, "which", lambda _name: "/usr/bin/nvidia-smi")
-    monkeypatch.setattr(distro.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
     assert distro._nvidia() == "GeForce RTX 4070 (550.54.14)"
 
 
@@ -34,7 +34,7 @@ def test_pci_strips_vendor_prefix(monkeypatch) -> None:
         )
 
     monkeypatch.setattr(distro.shutil, "which", lambda _name: "/usr/bin/lspci")
-    monkeypatch.setattr(distro.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
     assert distro._pci() == "Raptor Lake-P [Iris Xe]"
 
 

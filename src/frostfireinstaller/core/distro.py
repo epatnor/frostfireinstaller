@@ -5,8 +5,9 @@ from __future__ import annotations
 import os
 import platform
 import shutil
-import subprocess
 from dataclasses import dataclass
+
+from .proc import capture
 
 
 @dataclass(slots=True)
@@ -33,21 +34,8 @@ def _os_release() -> str:
 def _nvidia() -> str | None:
     if not shutil.which("nvidia-smi"):
         return None
-    try:
-        out = subprocess.run(
-            [
-                "nvidia-smi",
-                "--query-gpu=name,driver_version",
-                "--format=csv,noheader",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    lines = out.stdout.strip().splitlines()
+    out = capture(["nvidia-smi", "--query-gpu=name,driver_version", "--format=csv,noheader"], 10)
+    lines = (out or "").strip().splitlines()
     if not lines:
         return None
     name, _, driver = lines[0].partition(",")
@@ -58,12 +46,11 @@ def _nvidia() -> str | None:
 def _pci() -> str | None:
     if not shutil.which("lspci"):
         return None
-    try:
-        out = subprocess.run(["lspci"], capture_output=True, text=True, timeout=10, check=False)
-    except (OSError, subprocess.SubprocessError):
+    out = capture(["lspci"], 10)
+    if out is None:
         return None
     markers = ("VGA compatible controller", "3D controller", "Display controller")
-    for line in out.stdout.splitlines():
+    for line in out.splitlines():
         if any(marker in line for marker in markers):
             name = line.split(": ", 1)[-1]
             for prefix in ("Advanced Micro Devices, Inc. [AMD/ATI] ", "Intel Corporation "):

@@ -1,6 +1,6 @@
 # Flatpak manifest.
 #
-# Design (see docs/flatpak.md): like io.github.Faugus.faugus-launcher, umu-launcher
+# Design (see docs/install.md): like io.github.Faugus.faugus-launcher, umu-launcher
 # runs INSIDE the sandbox — there is no `flatpak-spawn --host` escape.
 #   - base org.winehq.Wine provides a Wine/Proton-compatible environment and the
 #     32-bit libraries Battle.net needs;

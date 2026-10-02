@@ -58,7 +58,6 @@ def set_running_badge(visible: bool) -> None:
         pass
 
 
-
 def _kv(title: str, value: str) -> Adw.ActionRow:
     return Adw.ActionRow(title=title, subtitle=value)
 
@@ -80,8 +79,6 @@ MATERIAL = {
     "refresh": "\ue5d5",
     "delete": "\ue92e",
     "info": "\ue88e",
-    "expand": "\ue5cf",
-    "collapse": "\ue5ce",
     "check": "\ue5ca",
     "settings": "\ue8b8",
 }
@@ -92,7 +89,7 @@ MATERIAL = {
 # live in their own window (see gui/settings.py).
 WINDOW_WIDTH = 608
 DEFAULT_BANNER_HEIGHT = 198
-_COLLAPSED_BASE = 350 - DEFAULT_BANNER_HEIGHT  # window minus banner
+_CHROME_HEIGHT = 350 - DEFAULT_BANNER_HEIGHT  # window minus banner
 
 
 def _banner_height(banner: Path | None) -> int:
@@ -495,7 +492,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
     # Banner: full window width, height from the image's own aspect ratio.
     banner = data_file("header", "frostfire_installer_header.png")
     banner_height = _banner_height(banner)
-    collapsed_height = _COLLAPSED_BASE + banner_height
+    window_height = _CHROME_HEIGHT + banner_height
 
     # --- Footer button: opens the settings window ------------------------
     settings_button = Gtk.Button()
@@ -552,7 +549,7 @@ def build_main(window: Adw.ApplicationWindow) -> Adw.ToolbarView:
         window.register_state(run_bar.refresh)  # type: ignore[attr-defined]
     if hasattr(window, "register_activity"):
         window.register_activity(activity_bar)  # type: ignore[attr-defined]
-    window.set_default_size(WINDOW_WIDTH, collapsed_height)  # type: ignore[attr-defined]
+    window.set_default_size(WINDOW_WIDTH, window_height)  # type: ignore[attr-defined]
     view = _toolbar_page("Frostfire Installer", column)
     if hasattr(window, "set_title_widget"):
         window.set_title_widget(view.title_widget)  # type: ignore[attr-defined]
@@ -573,29 +570,45 @@ def _open_settings(window: Adw.ApplicationWindow) -> None:
 
 
 # --- Handlers ------------------------------------------------------------
-def _repair(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
+def _run_action(
+    window: Adw.ApplicationWindow,
+    button: Gtk.Button,
+    busy: str,
+    work: Callable[[Callable[[str], None]], Any],
+    finished: Callable[[Any], str],
+) -> None:
+    """Run *work* off the GTK thread with the activity strip and toasts around it.
+
+    *work* receives a thread-safe progress reporter; *finished* turns its result
+    into the success toast.
+    """
+    win: Any = window
     button.set_sensitive(False)
     report = _reporter(window)
-    window.set_activity("Repairing ...")  # type: ignore[attr-defined]
-    window.toast("Repairing ...")  # type: ignore[attr-defined]
+    win.set_activity(busy)
+    win.toast(busy)
 
-    def work() -> None:
-        config = Config.load()
-        health.remediate(config)
-        service.launch(config, service.ensure(config, on_progress=report))
-
-    def done(_result: object) -> None:
+    def done(result: Any) -> None:
         button.set_sensitive(True)
         _clear_activity(window)
         _refresh_root(window)
-        window.toast("Repaired and started")  # type: ignore[attr-defined]
+        win.toast(finished(result))
 
     def error(exc: Exception) -> None:
         button.set_sensitive(True)
         _clear_activity(window)
-        window.toast(f"Error: {exc}")  # type: ignore[attr-defined]
+        win.toast(f"Error: {exc}")
 
-    run_async(work, done, error)
+    run_async(lambda: work(report), done, error)
+
+
+def _repair(window: Adw.ApplicationWindow, button: Gtk.Button) -> None:
+    def work(report: Callable[[str], None]) -> None:
+        config = Config.load()
+        health.remediate(config)
+        service.launch(config, service.ensure(config, on_progress=report))
+
+    _run_action(window, button, "Repairing ...", work, lambda _: "Repaired and started")
 
 
 def _reinstall(
@@ -604,40 +617,29 @@ def _reinstall(
     keep_games: Gtk.CheckButton,
     keep_installer: Gtk.CheckButton,
 ) -> None:
-    button.set_sensitive(False)
     games = keep_games.get_active()
     remove_installer = not keep_installer.get_active()
-    report = _reporter(window)
-    window.set_activity("Reinstalling Battle.net ...")  # type: ignore[attr-defined]
-    window.toast("Reinstalling Battle.net ...")  # type: ignore[attr-defined]
 
-    def work() -> str:
+    def work(report: Callable[[str], None]) -> None:
         config = Config.load()
         build = proton.find(config.proton_name)
         if build is None:
             raise RuntimeError("No Proton found")
-        return str(
-            battlenet.reinstall(
-                config,
-                build,
-                keep_games=games,
-                remove_installer=remove_installer,
-                on_progress=report,
-            )
+        battlenet.reinstall(
+            config,
+            build,
+            keep_games=games,
+            remove_installer=remove_installer,
+            on_progress=report,
         )
 
-    def done(_log_path: str) -> None:
-        button.set_sensitive(True)
-        _clear_activity(window)
-        _refresh_root(window)
-        window.toast("Reinstalled" + (" (games kept)" if games else ""))  # type: ignore[attr-defined]
-
-    def error(exc: Exception) -> None:
-        button.set_sensitive(True)
-        _clear_activity(window)
-        window.toast(f"Error: {exc}")  # type: ignore[attr-defined]
-
-    run_async(work, done, error)
+    _run_action(
+        window,
+        button,
+        "Reinstalling Battle.net ...",
+        work,
+        lambda _: "Reinstalled" + (" (games kept)" if games else ""),
+    )
 
 
 def _remove(
@@ -646,14 +648,10 @@ def _remove(
     keep_games: Gtk.CheckButton,
     keep_installer: Gtk.CheckButton,
 ) -> None:
-    button.set_sensitive(False)
     games = keep_games.get_active()
     remove_installer = not keep_installer.get_active()
-    report = _reporter(window)
-    window.set_activity("Removing Battle.net ...")  # type: ignore[attr-defined]
-    window.toast("Removing Battle.net ...")  # type: ignore[attr-defined]
 
-    def work() -> None:
+    def work(report: Callable[[str], None]) -> None:
         battlenet.remove(
             Config.load(),
             keep_games=games,
@@ -661,18 +659,13 @@ def _remove(
             on_progress=report,
         )
 
-    def done(_result: object) -> None:
-        button.set_sensitive(True)
-        _clear_activity(window)
-        _refresh_root(window)
-        window.toast("Battle.net removed" + (" (games kept)" if games else ""))  # type: ignore[attr-defined]
-
-    def error(exc: Exception) -> None:
-        button.set_sensitive(True)
-        _clear_activity(window)
-        window.toast(f"Error: {exc}")  # type: ignore[attr-defined]
-
-    run_async(work, done, error)
+    _run_action(
+        window,
+        button,
+        "Removing Battle.net ...",
+        work,
+        lambda _: "Battle.net removed" + (" (games kept)" if games else ""),
+    )
 
 
 def _pick_runner(window: Adw.ApplicationWindow, name: str) -> None:

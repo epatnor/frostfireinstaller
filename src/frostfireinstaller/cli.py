@@ -12,7 +12,7 @@ from pathlib import Path
 
 from . import __version__, service
 from .config import Config
-from .core import battlenet, distro, health, profiles, proton, recommend
+from .core import battlenet, distro, health, proton, recommend
 from .logsetup import get_logger, setup_console, setup_run_log
 
 log = get_logger()
@@ -100,12 +100,6 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
         print("proton builds:")
         for build in builds:
             print(f"  - {build}")
-
-    games = profiles.load_all()
-    if games:
-        print("game profiles:")
-        for game in games.values():
-            print(f"  - {game.id}: {game.name}")
 
     recommendations = recommend.report(config)
     print("system check:")
