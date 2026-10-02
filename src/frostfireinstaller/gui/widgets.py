@@ -124,8 +124,16 @@ def installer_state(path: Path) -> str:
     try:
         size = path.stat().st_size
     except OSError:
-        return "missing, will download on next start"
-    return f"{size / 1024**2:.1f} MB, downloaded and cached"
+        return "not downloaded yet"
+    return f"{size / 1024**2:.1f} MB, cached"
+
+
+def home_relative(path: Path) -> str:
+    """``~/...`` for paths under the home directory, as the user would type them."""
+    try:
+        return f"~/{path.relative_to(Path.home())}"
+    except ValueError:
+        return str(path)
 
 
 def copy_to_clipboard(text: str) -> None:

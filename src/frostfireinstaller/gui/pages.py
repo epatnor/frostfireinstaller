@@ -25,7 +25,15 @@ from ..core import distro, health, proton, recommend  # noqa: E402
 from . import actions, dialogs  # noqa: E402
 from .helpers import data_file, run_async  # noqa: E402
 from .state import ClientState  # noqa: E402
-from .widgets import MATERIAL, ActivityBar, Surface, button, icon, toolbar_page  # noqa: E402
+from .widgets import (  # noqa: E402
+    MATERIAL,
+    ActivityBar,
+    Surface,
+    button,
+    home_relative,
+    icon,
+    toolbar_page,
+)
 
 if TYPE_CHECKING:
     from .window import MainWindow
@@ -135,7 +143,7 @@ class ConfigStrip(Gtk.Box):
 
     def refresh(self, state: ClientState) -> None:
         prefix = state.config.prefix
-        self.prefix.set_label(str(prefix).replace(str(Path.home()), "~", 1))
+        self.prefix.set_label(home_relative(prefix))
         self.prefix.set_tooltip_text(str(prefix))
 
         build = proton.find(state.config.proton_name)

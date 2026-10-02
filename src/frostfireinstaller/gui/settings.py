@@ -31,6 +31,7 @@ from .widgets import (  # noqa: E402
     Section,
     button,
     help_button,
+    home_relative,
     icon,
     installer_state,
     kv,
@@ -256,12 +257,6 @@ class SettingsWindow(Adw.Window):
 
     # --- content ----------------------------------------------------------
     def _build_content(self, config: Config) -> Gtk.Widget:
-        left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        for column in (left, right):
-            column.set_hexpand(True)
-            column.set_homogeneous(True)
-            column.add_css_class("settings-column")
         # All action buttons share the width of the widest one ("Open folder").
         buttons = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
 
@@ -285,34 +280,34 @@ class SettingsWindow(Adw.Window):
                 row.add_suffix(help_button(help_text))
             return row
 
-        left.append(self._battlenet_card(action_row))
-        left.append(self._performance_card(config))
-        left.append(self._runner_card(config))
-        right.append(self._graphics_card(config))
-        right.append(self._paths_card(config, buttons))
-        right.append(self._more_card(action_row))
+        pairs = (
+            (self._battlenet_card(action_row), self._graphics_card(config)),
+            (self._performance_card(config), self._paths_card(config, buttons)),
+            (self._runner_card(config), self._more_card(action_row)),
+        )
 
-        # Two equal-height columns make a grid; both columns are homogeneous, so
-        # every card gets the same height. libadwaita flips it to a single column
-        # below the breakpoint.
-        columns = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=18)
-        columns.set_homogeneous(True)
-        columns.add_css_class("bn-sections")
-        columns.append(left)
-        columns.append(right)
-        self._grid = columns
-
+        # A grid built from rows of two: cards side by side share a height (the
+        # taller one's), but a row is only as tall as its own pair, so short cards
+        # do not inherit the tallest card's height. Below the breakpoint each pair
+        # stacks, giving one natural-height column.
+        grid = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        grid.add_css_class("bn-sections")
         breakpoint = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("max-width: 700px"))
-        breakpoint.add_setter(columns, "orientation", Gtk.Orientation.VERTICAL)
-        breakpoint.add_setter(columns, "homogeneous", False)
-        breakpoint.add_setter(left, "homogeneous", False)
-        breakpoint.add_setter(right, "homogeneous", False)
+        for left, right in pairs:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=18)
+            row.set_homogeneous(True)
+            row.append(left)
+            row.append(right)
+            grid.append(row)
+            breakpoint.add_setter(row, "orientation", Gtk.Orientation.VERTICAL)
+            breakpoint.add_setter(row, "homogeneous", False)
         self.add_breakpoint(breakpoint)
+        self._grid = grid
 
         scroller = Gtk.ScrolledWindow(vexpand=True)
         scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         scroller.set_propagate_natural_width(False)
-        scroller.set_child(columns)
+        scroller.set_child(grid)
         return scroller
 
     def _battlenet_card(self, action_row: Callable[..., Adw.ActionRow]) -> Section:
@@ -572,9 +567,9 @@ class SettingsWindow(Adw.Window):
                 f"{state.config.installer.name}, {installer_state(state.config.installer)}"
             )
         )
-        card.add(kv("Config", str(config.config_file)))
+        card.add(kv("Config", home_relative(config.config_file)))
 
-        log_row = Adw.ActionRow(title="Logs", subtitle=str(config.log_dir))
+        log_row = Adw.ActionRow(title="Logs", subtitle=home_relative(config.log_dir))
         log_button = button("View", tooltip="Run and installation logs")
         buttons.add_widget(log_button)
         log_button.connect("clicked", lambda *_: dialogs.show_logs(self))
