@@ -128,11 +128,25 @@ bnet_dir = "/mnt/games/battlenet"
 
 ## Updating
 
+From PyPI (once published):
+
 ```bash
-pipx upgrade frostfireinstaller     # or: pipx install --force .
+pipx upgrade frostfireinstaller
 ```
 
+From a local clone (run in the repo root after pulling or editing the code):
+
+```bash
+pipx uninstall frostfireinstaller
+pipx install --system-site-packages .
+```
+
+> Avoid `pipx install --force .`: when pipx uses `uv` as its backend, it refuses
+> to overwrite the existing venv ("A virtual environment already exists") and
+> the reinstall silently does not happen. Uninstall first, then install.
+
 `frostfireinstaller` keeps the prefix, games and settings; only the code changes.
+Verify with `frostfireinstaller --version` and `frostfireinstaller doctor`.
 
 ## Removing
 
@@ -149,7 +163,7 @@ frostfireinstaller uninstall    # remove prefix, desktop entry and icon
 >
 > ```bash
 > git clone https://github.com/epatnor/frostfireinstaller
-> cd frostfireinstaller && pipx install .
+> cd frostfireinstaller && pipx install --system-site-packages .
 > ```
 >
 > The Homebrew tap expects a companion repo named `homebrew-frostfireinstaller`;

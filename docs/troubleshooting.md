@@ -7,7 +7,7 @@ Play) are usually Wine/Proton/graphics issues, not the installer.
 > **The app checks for you.** A **recommendation strip** appears under the
 > Battle.net band when a check fails, with copy-ready commands. The full report —
 > every check, including the ones that pass — is under
-> **Advanced → Diagnostics → System check** and in `frostfireinstaller doctor`.
+> **Settings → Diagnostics → System check** and in `frostfireinstaller doctor`.
 > It covers: `umu-run`, Proton builds, free disk space, the prefix filesystem
 > (NTFS/exFAT warning), hybrid GPUs, the NVIDIA driver/module and any recent
 > `NVRM: Xid` / `NV_ERR_NO_MEMORY` faults, missing performance tools and the
@@ -16,7 +16,7 @@ Play) are usually Wine/Proton/graphics issues, not the installer.
 ## Where the logs are
 
 - App run/installation logs: `~/.local/state/frostfireinstaller/logs`
-  (also in the GUI: *Advanced → Paths → **View logs***).
+  (also in the GUI: *Settings → Paths → **View logs***).
 - Battle.net client log:
   `<prefix>/drive_c/users/*/AppData/Local/Battle.net/Logs/battle.net-*.log`.
 - Per-game crash dumps: `<game dir>/Errors/*.txt` (e.g. `_retail_/Errors/`).
@@ -318,7 +318,7 @@ memory (13–22 %)** — this is not memory pressure and not the power profile.
 
 **Fix (reversible, no privileges):** run the game on the integrated GPU — the
 same one that drives the panel. Choose **Integrated** under
-**Advanced → Graphics** (Auto / NVIDIA / Integrated), or set it yourself:
+**Settings → Graphics** (Auto / NVIDIA / Integrated), or set it yourself:
 
 ```toml
 # ~/.config/frostfireinstaller/config.toml

@@ -29,8 +29,8 @@ Blizzard's own Battle.net launcher — `frostfireinstaller` is the helper undern
 - **Broad distro support** (Bazzite/Fedora atomic, Arch, Debian/Ubuntu, ...).
 - **Looks cool:** a Battle.net-inspired GTK4/libadwaita UI with our own frost/fire
   palette — dark flat panels, uppercase section labels and gradient buttons. The
-  window is a compact, fixed 608 px wide; everything except the run controls sits
-  behind a "Show advanced" footer expander.
+  launcher is a compact, fixed 608 px wide; the advanced options open in a
+  separate, resizable **Settings** window.
 
 Born from a working recipe on Bazzite: `umu-launcher` + GE-Proton (see `docs/`).
 
@@ -53,24 +53,37 @@ frostfireinstaller gui
   missing performance tools and the runner. A
   **warning strip** (below the band) appears only on problems and opens a dialog
   with **copy-ready commands**; the full report (including OK) is under
-  **Advanced → Diagnostics → System check** and in `doctor`. The **reversible**
+  **Settings → Diagnostics → System check** and in `doctor`. The **reversible**
   action (GPU persistence) can be toggled in the app — the app never makes large
   system changes itself.
-- **"Show advanced"** (footer with a chevron) expands everything else:
-  - **Installation & maintenance** (ice): status + *Repair* in the same row.
-  - **Reset & remove** (fire): *Keep games*, *Reinstall*, *Remove* (with the
-    **Also the installer** checkbox).
-  - **Performance** (with a "?" explanation per toggle), **Runner**, **Paths**
-    (incl. *Open folder* and **View logs**) and **About**.
+- **Settings** (a full-width footer button) opens a separate, **resizable**
+  window with every option grouped into compact cards that line up as an
+  equal-height grid (two columns when there is room, one when narrow). Each card
+  has a one-line subtitle and per-option explanations sit behind "(i)" buttons:
+  - **Battle.net**: status + *Repair*, *Reinstall*, *Remove*, and a *Keep
+    games* / *Keep installer* row.
+  - **Performance**: MangoHud, GameMode, Gamescope (with a *Force fullscreen*
+    checkbox), Keep awake. **Runner** is a dropdown; **Graphics** is a radio
+    choice; **Paths** has *Open folder* and **View logs**; plus
+    **Diagnostics & about**.
 
-The window is **608 px wide and not resizable**; when expanded it only grows
-downwards.
+While Battle.net is running the header shows *Battle.net running* and the app's
+taskbar icon carries a badge, so it stays visible after suspend even when the
+windows are minimised.
+
+- **Tray icon** (StatusNotifierItem, works on KDE Plasma and GNOME with an
+  AppIndicator extension) with *Show*, *Start/Stop Battle.net* and *Quit*; the
+  state is shown in its tooltip. No extra dependency - it speaks the D-Bus
+  protocol directly because GTK4 cannot load the GTK3 indicator bindings.
+
+The launcher window is **608 px wide and not resizable**; the Settings window can
+be resized freely.
 
 ### Screenshots
 
-| Main window | Advanced |
+| Main window | Settings |
 |---|---|
-| ![Frostfire Installer main window](assets/screenshots/main.png) | ![Frostfire Installer advanced options](assets/screenshots/advanced.png) |
+| ![Frostfire Installer main window](assets/screenshots/main.png) | ![Frostfire Installer settings](assets/screenshots/advanced.png) |
 
 ---
 

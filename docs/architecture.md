@@ -78,14 +78,16 @@ GTK4 + libadwaita (`frostfireinstaller gui`), one column:
    performance tools. It opens a dialog with copy-ready fix commands and one
    **reversible in-app toggle** (`nvidia-persistenced` via `systemctl`,
    Polkit-prompted). The full report — every check including the passing ones —
-   is under **Advanced → Diagnostics → System check** and in `doctor`. The app
+   is under **Settings → Diagnostics → System check** and in `doctor`. The app
    never makes large system changes.
-7. **Advanced footer expander** — right under the Battle.net band; "Show
-   advanced" (chevron-down/up) reveals, in a scroll area below, "Installation &
-   maintenance", "Reset & remove", Performance / Runner / Paths (with *View
-   logs*) / About. The window is a fixed **608 px wide** (not user-resizable) with
-   a banner that fills the width at the image's own aspect ratio; the window height
-   follows the banner and grows when the advanced sections are toggled.
+7. **Settings window** — a **Settings** footer button right under the Battle.net
+   band opens a **separate, resizable** window with the options grouped into
+   cards: Battle.net (status/repair/reset), Performance, Runner, Graphics, Paths
+   (with *View logs*) and Diagnostics & about. The launcher window stays a fixed
+   **608 px wide** (not user-resizable) with a banner that fills the width at the
+   image's own aspect ratio; its height follows the banner only. While Battle.net
+   runs, the header subtitle, the taskbar-icon badge and a StatusNotifierItem
+   tray icon report it.
 
 Long-running work runs in worker threads: the activity strip shows the current step,
 and toasts report the result.

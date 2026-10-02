@@ -5,7 +5,66 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
 
 ## [Unreleased]
 
+### Changed
+- **Graphics adapts to the hardware.** The GPU list is built from what is
+  detected: *Dedicated* only appears when an NVIDIA GPU is present and
+  *Integrated* only when an integrated GPU is found, instead of hardcoding the
+  vendors.
+- **Host summary in Settings -> Runner.** Below the Proton dropdown the card now
+  lists CPU (with its advertised, static clock), memory, GPU(s) and disks
+  (memory type/speed only when `dmidecode` is readable, i.e. as root). The Runner
+  dropdown is a little shorter.
+- **Header banner cropped and colour-matched.** The header artwork had a lot of
+  near-black dead space above the stars and below the forest. It is now cropped
+  to the content plus ~8 px of dark on each side (1216x545 -> 1216x443), and the
+  info strip (distro/session/GPU) and the Settings footer row use the banner's
+  bottom dark tone (`#00030a`) so they blend.
+- **Settings moved into their own resizable window.** The advanced options no
+  longer expand the launcher window in place. A *Settings* button under the
+  Battle.net band opens a standalone, resizable window with all options grouped
+  into fewer **cards** (Battle.net, Performance, Runner, Graphics, Paths,
+  Diagnostics & about), each with its header inside the card. On a wide window
+  the cards sit in two equal-height columns as a grid; a narrow window falls back
+  to a single, natural-height column. The launcher window stays a fixed, compact
+  size.
+- **Settings are more compact.** Each card keeps a one-line subtitle; the
+  per-option explanations are tucked behind round "(i)" buttons. Action buttons
+  (Repair, Reinstall, Remove, Open folder, View, Run, About) share the width of
+  the widest one with normal padding, and rows are shorter. *Runner* is a
+  bordered dropdown, the GPU choice says just *Integrated* (AMD or Intel,
+  detected automatically). *Keep games* and *Keep installer* moved to their own
+  row at the bottom of the Battle.net card, and *Force fullscreen (gamescope)* is
+  a checkbox on the *Gamescope* switch, enabled only while Gamescope is on. When
+  a required tool is missing, the row no longer grows a subtitle: the title is
+  greyed, the warning moves into the "(i)" popover and the button gets an orange
+  border. The window opens tall enough to show every card, capped to the screen.
+- **The run button's icons are now the filled Material Symbols variant** (a new
+  bundled `MaterialSymbolsFilled.ttf` subset), so the play/stop/install glyphs
+  read more clearly on the gradient button. The Settings gear uses it too.
+
+### Added
+- **Monochrome tray icon.** The tray now uses a dedicated black-and-white
+  gateway glyph (`data/icons/frostfireinstaller-tray.png`, generated from the
+  colour icon with the OpenRouter Image API; prototypes under
+  `assets/prototypes/`) instead of the colour app icon, so it matches the other
+  symbolic panel icons. The launcher/taskbar icon is unchanged. The pixmap is
+  supplied at 16/22/24/32/48 px.
+- **Tray icon (StatusNotifierItem).** A native KDE/GNOME tray icon is registered
+  over D-Bus (no `AppIndicator3` dependency, which cannot coexist with GTK4 in
+  one process). Its menu offers *Show Frostfire Installer*, *Start/Stop
+  Battle.net* and *Quit*, and it carries the running state in its tooltip.
+- **Battle.net running indicator.** While Battle.net is up the header subtitle
+  reads *Battle.net running* and the app's dock/taskbar icon carries a badge
+  (Unity Launcher API), so it is obvious after a suspend/resume even with both
+  windows minimised.
+
 ### Fixed
+- **Settings window now opens on Wayland.** `_fit_height` called
+  `Gdk.Display.get_primary_monitor` and `Gdk.Monitor.get_workarea`, neither of
+  which exists on the Wayland display, so clicking *Settings* raised and the
+  window never appeared. The monitor is now resolved from the window's surface
+  (falling back to the monitor list) and its height from `get_workarea` when
+  present, else `get_geometry`.
 - **Gamescope switch now warns about NVIDIA on Wayland.** It described itself as
   "can help on Wayland" with no caveat. Nesting gamescope inside a Wayland
   session on the proprietary NVIDIA driver can collapse presentation against the

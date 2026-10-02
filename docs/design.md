@@ -58,25 +58,34 @@ launcher (without their logos or artwork), but keeps our own frost/fire palette:
 ## Layout
 
 - **One column:** the window header bar → full-width banner → info strip → config
-  band → Battle.net band → "Show advanced" footer → scrollable area with the panels
-  (shown only when the footer is expanded).
+  band → Battle.net band → **Settings** footer button.
 - **Fixed width:** the window is **608 px wide and not user-resizable** (the same as
   the banner, so it fills the width).
 - **Adaptive banner:** the banner fills the fixed 608 px width; its height is
   derived from the image's aspect ratio at load, so any header renders without
-  distortion. On toggle only the window height changes and the app grows
-  downwards.
+  distortion.
 - **The info strip** (dark, `#00070f`) is one line of system info: distro + kernel,
   session, GPU (name, driver).
 - **The config band** (`#051320`, narrow) shows Proton and prefix — how the app is
   configured — so the band below only has to carry state. A missing Proton is shown
   in fire-orange (`#ff7a2f`).
 - **The Battle.net band** (`#061520`) carries the state (pill) and the action button.
+  Its play/stop/install glyphs use the **filled** Material Symbols variant.
 - **Activity strip** below the band shows the operation in progress (spinner + text)
   while downloading/installing/running.
-- **The "Show advanced" footer** (chevron down/up) expands everything else in a
-  scrollable area; **Installation & maintenance** and **Reset & remove** are also
-  hidden when the client is not installed (the run bar then offers *Install*).
+- **Running indicator:** while Battle.net is up the header subtitle reads
+  *Battle.net running*, the app's dock/taskbar icon carries a badge (Unity
+  Launcher API) and a **tray icon** (StatusNotifierItem over D-Bus) stays
+  visible, so it stays obvious after suspend even with the windows minimised.
+- **The Settings footer button** opens a **separate, resizable window** with all the
+  remaining options as **cards** (a short title/subtitle inside the card) in a
+  scrollable area; the window opens just tall enough to show every card (capped to
+  the screen). Per-option explanations live behind round "(i)" buttons, so the rows
+  stay short and the action buttons share one width. On a wide window the cards
+  form a **grid of equal-height cells** (two homogeneous columns); below a
+  breakpoint (libadwaita `Adw.Breakpoint`) they collapse to a single, natural-height
+  column. The reset/remove/keep rows are hidden when the client is not installed
+  (the run bar then offers *Install*).
 - GTK4 + libadwaita; the app uses a fixed dark palette (does not follow the system
   theme).
 
