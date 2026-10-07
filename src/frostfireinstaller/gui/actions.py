@@ -12,7 +12,7 @@ from gi.repository import Gtk  # noqa: E402
 
 from .. import service  # noqa: E402
 from ..config import Config  # noqa: E402
-from ..core import battlenet, health, proton  # noqa: E402
+from ..core import battlenet, health, proton, update  # noqa: E402
 from .helpers import run_async  # noqa: E402
 from .widgets import Surface, reporter  # noqa: E402
 
@@ -96,6 +96,21 @@ def remove(surface: Surface, button: Gtk.Button, keep_games: bool, keep_installe
         "Removing Battle.net ...",
         work,
         lambda _: "Battle.net removed" + (" (games kept)" if keep_games else ""),
+    )
+
+
+def update_app(surface: Surface, button: Gtk.Button) -> None:
+    """Download and install the latest release into this environment."""
+
+    def work(report: Callable[[str], None]) -> str:
+        return update.self_update(on_progress=report)
+
+    run_action(
+        surface,
+        button,
+        "Updating Frostfire Installer ...",
+        work,
+        lambda version: f"Updated to {version} - restart the app",
     )
 
 

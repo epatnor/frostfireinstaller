@@ -179,6 +179,14 @@ headerbar {{
     font-size: 0.86em;
 }}
 
+.update-bar {{
+    background-color: rgba(116, 216, 255, 0.13);
+    color: #d6f2ff;
+    padding: 8px 16px;
+    border-bottom: 1px solid rgba(120, 200, 255, 0.10);
+    font-size: 0.86em;
+}}
+
 button.bn-footer {{
     background-color: #00030a;
     background-image: none;

@@ -95,7 +95,14 @@ bnet_dir = "/mnt/games/battlenet"
 
 ## Updating and removing
 
+A newer release shows up as a banner in the app at start; *Settings → Updates*
+checks on demand and updates a pipx/venv install in place with one click. From
+the CLI:
+
 ```bash
+frostfireinstaller update          # check and, for a pipx/venv install, update in place
+frostfireinstaller update --check  # only report whether a newer release exists
+
 pipx upgrade frostfireinstaller            # from PyPI, once published
 pipx uninstall frostfireinstaller && pipx install --system-site-packages .   # from a clone
 

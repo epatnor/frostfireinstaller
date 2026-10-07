@@ -12,7 +12,7 @@ from pathlib import Path
 
 from . import __version__, service
 from .config import Config
-from .core import battlenet, distro, health, proton, recommend
+from .core import battlenet, distro, health, proton, recommend, update
 from .logsetup import get_logger, setup_console, setup_run_log
 
 log = get_logger()
@@ -135,6 +135,27 @@ def cmd_gui(_args: argparse.Namespace) -> int:
     return gui.main([sys.argv[0]])
 
 
+def cmd_update(args: argparse.Namespace) -> int:
+    try:
+        release = update.check()
+    except (OSError, ValueError) as exc:
+        log.error("Could not check for updates: %s", exc)
+        return 1
+    if release is None:
+        print(f"frostfireinstaller {__version__} is up to date")
+        return 0
+    print(f"New version available: {release.version} (current {__version__})")
+    print(f"Release notes: {release.url}")
+    if args.check:
+        return 0
+    if not update.can_self_update():
+        print("This install is managed outside the app; update via pipx or your package manager.")
+        return 1
+    version = update.self_update(on_progress=print)
+    print(f"Updated to {version} - restart the app.")
+    return 0
+
+
 def cmd_uninstall(args: argparse.Namespace) -> int:
     config = Config.load()
     apps = service.applications_dir()
@@ -180,6 +201,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--purge-installer", action="store_true", help="also remove the cached installer"
     )
     sub.add_parser("doctor", help="show environment and status")
+    update_parser = sub.add_parser("update", help="check GitHub for a newer release and update")
+    update_parser.add_argument("--check", action="store_true", help="only check, do not install")
     sub.add_parser("logs", help="show the latest run log")
     sub.add_parser("install-logs", help="show the latest installation log")
     sub.add_parser("kill", help="stop all Battle.net processes")
@@ -200,6 +223,7 @@ def main(argv: list[str] | None = None) -> int:
         "reinstall": cmd_reinstall,
         "remove": cmd_remove,
         "doctor": cmd_doctor,
+        "update": cmd_update,
         "logs": cmd_logs,
         "install-logs": cmd_install_logs,
         "kill": cmd_kill,

@@ -16,7 +16,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, GLib, Gtk, Pango  # noqa: E402
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk, Pango  # noqa: E402
 
 # Material Symbols glyphs (subset of the variable font, see data/fonts).
 MATERIAL = {
@@ -122,6 +122,14 @@ def open_folder(path: Path) -> None:
         path.mkdir(parents=True, exist_ok=True)
         subprocess.Popen(["xdg-open", str(path)])  # noqa: S603,S607
     except OSError:
+        pass
+
+
+def open_url(url: str) -> None:
+    """Open a URL in the user's default browser."""
+    try:
+        Gio.AppInfo.launch_default_for_uri(url, None)
+    except GLib.Error:
         pass
 
 

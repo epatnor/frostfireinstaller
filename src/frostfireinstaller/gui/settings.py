@@ -20,8 +20,9 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gtk, Pango  # noqa: E402
 
+from .. import __version__  # noqa: E402
 from ..config import Config  # noqa: E402
-from ..core import distro, gpu, proton, recommend, sysinfo  # noqa: E402
+from ..core import distro, gpu, proton, recommend, sysinfo, update  # noqa: E402
 from . import actions, dialogs  # noqa: E402
 from .helpers import run_async  # noqa: E402
 from .state import ClientState  # noqa: E402
@@ -306,6 +307,7 @@ class SettingsWindow(Adw.Window):
             breakpoint.add_setter(row, "orientation", Gtk.Orientation.VERTICAL)
             breakpoint.add_setter(row, "homogeneous", False)
         self.add_breakpoint(breakpoint)
+        grid.append(self._updates_card())
         self._grid = grid
 
         scroller = Gtk.ScrolledWindow(vexpand=True)
@@ -571,6 +573,57 @@ class SettingsWindow(Adw.Window):
             )
         )
         card.add(kv("Config", home_relative(config.config_file)))
+        return card
+
+    def _updates_card(self) -> Section:
+        """Check GitHub for a newer release and update the app in place."""
+        card = Section("Updates", "Check GitHub for a newer release and update in place.")
+        version_row = Adw.ActionRow(title="Installed", subtitle=__version__)
+        card.add(version_row)
+
+        status_row = Adw.ActionRow(title="Latest", subtitle="Checking ...")
+        check_button = button("Check", tooltip="Check GitHub for a newer release")
+        status_row.add_suffix(check_button)
+        card.add(status_row)
+
+        update_row = Adw.ActionRow(title="Update")
+        update_button = button("Update", primary=True, tooltip="Download and install the update")
+        update_button.set_sensitive(False)
+        update_row.add_suffix(update_button)
+        card.add(update_row)
+
+        def apply(release: update.Release | None) -> None:
+            if release is None:
+                status_row.set_subtitle("Up to date")
+                update_row.set_subtitle("You have the latest version")
+                update_button.set_sensitive(False)
+                return
+            status_row.set_subtitle(f"{release.version} available")
+            if update.can_self_update():
+                update_row.set_subtitle(f"Install {release.version} into this environment")
+                update_button.set_sensitive(True)
+            else:
+                update_row.set_subtitle("Managed by your package manager - update there")
+                update_button.set_sensitive(False)
+
+        def done(release: update.Release | None) -> None:
+            check_button.set_sensitive(True)
+            apply(release)
+
+        def failed(exc: Exception) -> None:
+            check_button.set_sensitive(True)
+            status_row.set_subtitle(f"Check failed: {exc}")
+            update_button.set_sensitive(False)
+
+        def check(*_args: object) -> None:
+            check_button.set_sensitive(False)
+            status_row.set_subtitle("Checking ...")
+            run_async(update.check, done, failed)
+
+        check_button.connect("clicked", check)
+        update_button.connect("clicked", lambda widget: actions.update_app(self, widget))
+        if update.auto_check_enabled():
+            run_async(update.check, done, failed)
         return card
 
     def _diagnostics_card(self, config: Config, buttons: Gtk.SizeGroup) -> Section:

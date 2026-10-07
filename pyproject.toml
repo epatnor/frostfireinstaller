@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "frostfireinstaller"
-version = "0.2.14"
+version = "0.3.0"
 description = "A Battle.net installer helper for Linux (umu-launcher + Proton)."
 readme = "README.md"
 requires-python = ">=3.11"

@@ -3,9 +3,15 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follows [SemVer](https://semver.org/).
 
-## [0.2.14] - Unreleased
+## [0.3.0] - 2026-10-07
 
 ### Added
+- **Update check and one-click update.** The app checks the GitHub release at
+  start and shows a banner when a newer version exists; *Settings → Updates*
+  reports the installed and latest versions and installs the release wheel into
+  a pipx/venv install in place. `frostfireinstaller update [--check]` does the
+  same from the CLI. A package-manager install is only pointed at its own
+  updater. Opt out with `FROSTFIREINSTALLER_NO_UPDATE_CHECK=1`.
 - **Settings window:** the advanced options moved from an in-place expander into a
   standalone, resizable window of equal-height cards (Battle.net, Performance,
   Runner, Graphics, Paths, Diagnostics & about) — two columns when wide, one when

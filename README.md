@@ -72,6 +72,7 @@ frostfireinstaller              # ensure + launch Battle.net
 frostfireinstaller gui          # graphical interface
 frostfireinstaller ensure       # set up/verify only
 frostfireinstaller doctor       # environment, status and system check
+frostfireinstaller update       # check GitHub for a newer release and update in place
 frostfireinstaller reinstall    # reinstall the client (keeps games)
 frostfireinstaller remove [--purge-installer]   # remove the client (keeps games)
 frostfireinstaller logs | install-logs          # latest run / installation log

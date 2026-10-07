@@ -23,8 +23,8 @@ from gi.repository import Adw, Gdk, GdkPixbuf, GLib, Gtk, Pango  # noqa: E402
 
 from .. import service  # noqa: E402
 from ..config import Config  # noqa: E402
-from ..core import battlenet, distro, health, proton, recommend  # noqa: E402
-from . import dialogs  # noqa: E402
+from ..core import battlenet, distro, health, proton, recommend, update  # noqa: E402
+from . import actions, dialogs  # noqa: E402
 from .helpers import data_file, run_async  # noqa: E402
 from .state import ClientState  # noqa: E402
 from .widgets import (  # noqa: E402
@@ -34,6 +34,7 @@ from .widgets import (  # noqa: E402
     button,
     home_relative,
     icon,
+    open_url,
     reporter,
     toolbar_page,
 )
@@ -412,6 +413,40 @@ def _recommendation_slot(window: MainWindow) -> Gtk.Widget:
     return slot
 
 
+class _UpdateBar(Gtk.Box):
+    """Strip that offers a one-click update when a newer release exists."""
+
+    def __init__(self, surface: Surface, release: update.Release) -> None:
+        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        self.add_css_class("update-bar")
+        self.append(icon(MATERIAL["download"], "ice"))
+        label = Gtk.Label(label=f"Frostfire Installer {release.version} is available", xalign=0)
+        label.set_ellipsize(Pango.EllipsizeMode.END)
+        label.set_hexpand(True)
+        self.append(label)
+
+        notes = button("Notes", tooltip="Open the release notes")
+        notes.connect("clicked", lambda *_: open_url(release.url))
+        self.append(notes)
+        if update.can_self_update():
+            install = button("Update", primary=True, tooltip="Download and install the update")
+            install.connect("clicked", lambda widget: actions.update_app(surface, widget))
+            self.append(install)
+
+
+def _update_slot(window: MainWindow) -> Gtk.Widget:
+    """Check for a newer release in the background; show a strip only if there is one."""
+    slot = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+
+    def show(release: update.Release | None) -> None:
+        if release is not None:
+            slot.append(_UpdateBar(window, release))
+
+    if update.auto_check_enabled():
+        run_async(update.check, show)
+    return slot
+
+
 def _settings_footer(window: MainWindow) -> Gtk.Button:
     footer = Gtk.Button()
     footer.add_css_class("bn-footer")
@@ -444,6 +479,7 @@ def build_main(window: MainWindow) -> Adw.ToolbarView:
     column.append(_system_strip())
     column.append(config_strip)
     column.append(run_bar)
+    column.append(_update_slot(window))
     column.append(_recommendation_slot(window))
     column.append(activity)
     column.append(_settings_footer(window))
