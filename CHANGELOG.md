@@ -3,6 +3,18 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follows [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- **Proton list sorted newest first.** Builds are ordered by family (GE-Proton,
+  UMU-Proton, Proton) and then by release number, so `GE-Proton11-12` comes before
+  `GE-Proton11-7` instead of following the alphabet. Auto-detection picks the
+  newest build of the preferred family the same way.
+- **Real release shown for aliases.** A build whose folder name hides its release,
+  such as ProtonPlus's *Proton-GE Latest*, is listed with the release from its
+  `version` file, e.g. *Proton-GE Latest (GE-Proton11-5)*, in *Settings → Runner*
+  and in `doctor`.
+
 ## [0.3.0] - 2026-10-07
 
 ### Added

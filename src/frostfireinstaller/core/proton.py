@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 SEARCH_DIRS: tuple[Path, ...] = (
@@ -24,6 +25,47 @@ def is_codename(name: str | None) -> bool:
     return bool(name) and name in CODENAMES
 
 
+def build_version(build: Path) -> str | None:
+    """The release a build reports in its ``version`` file (e.g. ``GE-Proton11-5``).
+
+    Proton writes ``<timestamp> <release>``; aliases such as ProtonPlus's
+    "Proton-GE Latest" only reveal their real release this way.
+    """
+    try:
+        parts = (build / "version").read_text(encoding="utf-8", errors="replace").split()
+    except OSError:
+        return None
+    return parts[1] if len(parts) >= 2 else None
+
+
+def label(build: Path) -> str:
+    """Directory name, plus the real release when the name does not show it."""
+    version = build_version(build)
+    if version and version not in build.name:
+        return f"{build.name} ({version})"
+    return build.name
+
+
+def _family_rank(name: str) -> int:
+    for rank, family in enumerate(PREFERRED):
+        if name.startswith(family):
+            return rank
+    return len(PREFERRED)
+
+
+def _numbers(name: str) -> tuple[int, ...]:
+    name = re.sub(r"x86_64|aarch64", "", name)
+    return tuple(int(part) for part in re.findall(r"\d+", name))
+
+
+def _newest_first(builds: list[Path]) -> list[Path]:
+    """Preferred family first, then newest release first (11-12 before 11-7)."""
+    release = {b: build_version(b) or b.name for b in builds}
+    by_name = sorted(builds, key=lambda b: b.name)
+    by_version = sorted(by_name, key=lambda b: _numbers(release[b]), reverse=True)
+    return sorted(by_version, key=lambda b: _family_rank(release[b]))
+
+
 def _safe_name(name: str) -> bool:
     """Reject anything that is not a plain directory name (no traversal)."""
     return bool(name) and "/" not in name and "\\" not in name and name not in {".", ".."}
@@ -34,8 +76,8 @@ def find(proton_name: str | None = None) -> Path | None:
 
     If *proton_name* is given, an exact directory match is preferred; a known
     codename (e.g. ``UMU-Proton``) is returned as-is so umu-launcher can download
-    it on first launch. Otherwise builds are searched preferring GE-Proton, then
-    UMU-Proton, then Proton.
+    it on first launch. Otherwise the newest build is picked, preferring
+    GE-Proton, then UMU-Proton, then Proton.
     """
     if proton_name:
         if not _safe_name(proton_name):
@@ -52,14 +94,14 @@ def find(proton_name: str | None = None) -> Path | None:
         for directory in SEARCH_DIRS:
             if not directory.is_dir():
                 continue
-            for candidate in sorted(directory.glob(f"{family}*")):
-                if candidate.is_dir():
-                    return candidate
+            matches = [c for c in directory.glob(f"{family}*") if c.is_dir()]
+            if matches:
+                return _newest_first(matches)[0]
     return None
 
 
 def all_builds() -> list[Path]:
-    """Return every detected Proton build (deduplicated by real path, sorted)."""
+    """Every detected Proton build, deduplicated by real path, newest first."""
     seen: dict[str, Path] = {}
     for directory in SEARCH_DIRS:
         if not directory.is_dir():
@@ -71,4 +113,4 @@ def all_builds() -> list[Path]:
                 except OSError:
                     key = str(candidate)
                 seen.setdefault(key, candidate)
-    return sorted(seen.values())
+    return _newest_first(list(seen.values()))

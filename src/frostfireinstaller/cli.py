@@ -99,7 +99,9 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
     if builds:
         print("proton builds:")
         for build in builds:
-            print(f"  - {build}")
+            version = proton.build_version(build)
+            suffix = f"  ({version})" if version and version not in build.name else ""
+            print(f"  - {build}{suffix}")
 
     recommendations = recommend.report(config)
     print("system check:")

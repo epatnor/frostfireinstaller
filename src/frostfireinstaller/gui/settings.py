@@ -426,7 +426,7 @@ class SettingsWindow(Adw.Window):
 
         if candidates:
             runner_row = Adw.ActionRow(title="Proton runner")
-            dropdown = Gtk.DropDown(model=Gtk.StringList.new([c.name for c in candidates]))
+            dropdown = Gtk.DropDown(model=Gtk.StringList.new([proton.label(c) for c in candidates]))
             dropdown.set_valign(Gtk.Align.CENTER)
             dropdown.add_css_class("runner-dropdown")
             dropdown.set_tooltip_text("Choose the Proton build")
